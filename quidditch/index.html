@@ -89,6 +89,14 @@ label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
 #tAct{bottom:calc(172px + env(safe-area-inset-bottom,0px))}
 #tBoost.on{background:rgba(122,215,255,.35)}
 #nogl{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:24px;font-size:18px;color:var(--soft)}
+.arenas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:14px 0 4px}
+.arena{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:12px;background:rgba(255,255,255,.06);
+  color:var(--soft);text-decoration:none;font-size:12px;border:1px solid transparent;line-height:1.25;text-align:center}
+.arena .ai{font-size:24px}
+.arena.on{border-color:var(--gold);color:var(--gold);background:rgba(255,217,119,.08)}
+a.arena:hover,a.arena:focus-visible{border-color:var(--line);color:var(--ink);outline:none}
+.boardlbl{font-size:13px;color:var(--soft);margin-top:12px}
+@media (max-width:400px){.arenas{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:640px){
   .top{flex-wrap:wrap}
   #panel{order:3;flex-basis:100%;min-width:0;padding:6px 10px}
@@ -130,6 +138,8 @@ label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
 <div class="screen" id="startScreen">
   <div class="card">
     <h1 id="hTitle"></h1>
+    <div class="boardlbl">בחרי זירה</div>
+    <nav class="arenas" aria-label="בחירת זירה"></nav>
     <p class="sub" id="hSub"></p>
     <ul class="howto" id="howto"></ul>
     <div class="keys" id="keysHelp"></div>
@@ -156,6 +166,8 @@ label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
     <div class="statgrid" id="statgrid"></div>
     <div class="best" id="oBest"></div>
     <button class="go" id="againBtn">עוד טיסה</button>
+    <div class="boardlbl">או זירה אחרת</div>
+    <nav class="arenas" aria-label="בחירת זירה"></nav>
     <div><a class="home" href="../" hidden>← לכל המשחקים</a></div>
   </div>
 </div>
@@ -195,7 +207,15 @@ $("keysHelp").textContent = isTouch
   ? `גררי אצבע בצד שמאל של המסך להיגוי · 🧹 האצה · ${A.actionIcon} ${A.actionName}`
   : `חיצים / WASD או העכבר להיגוי · Shift, רווח או לחיצת עכבר להאצה · E: ${A.actionName} · P הפסקה`;
 if (isTouch) document.querySelectorAll(".kb").forEach(e => e.hidden = true);
-if (/github\.io$/.test(location.hostname)) document.querySelectorAll(".home").forEach(e => e.hidden = false);
+const onGH = /github\.io$/.test(location.hostname);
+if (onGH) document.querySelectorAll(".home").forEach(e => e.hidden = false);
+{
+  const GAMES = [["potions", "🧪", "מעוף הקוסמת"], ["dragon", "🐉", "מבחן הדרקון"], ["quidditch", "🏆", "גביע הקווידיץ'"], ["castle", "🪜", "מגדל המדרגות"]];
+  const board = GAMES.map(([id, ic, nm]) => id === A.id
+    ? `<span class="arena on" aria-current="page"><span class="ai">${ic}</span>${nm}</span>`
+    : `<a class="arena" href="${onGH ? "../" + id + "/" : "https://roinevo.github.io/wizard-games/" + id + "/"}"${onGH ? "" : ' target="_blank" rel="noopener"'}><span class="ai">${ic}</span>${nm}</a>`).join("");
+  document.querySelectorAll(".arenas").forEach(e => e.innerHTML = board);
+}
 
 /* ---------- renderer ---------- */
 const canvas = $("c");
@@ -910,7 +930,7 @@ const A = {
   id: "quidditch", title: "גביע הקווידיץ'",
   sub: "משחק לילה באצטדיון מואר. את נגד שלוש שחקניות בירוק, שני בלאדג'רים, וסניץ' זהב שמסתובב איפשהו.",
   howto: [
-    "🔮 <b>תפסי את כדור היסוד</b> במרכז המגרש, וטוסי איתו <b>דרך אחד משלושת חישוקי הזהב</b> בצד של היריבות. הכדור נופל לקלחת שמאחוריהם.",
+    "🔮 <b>תפסי את כדור היסוד</b> במרכז המגרש, וטוסי איתו <b>דרך חישוקי הזהב או ישר לתוך הקלחת</b> שמאחוריהם, בצד של היריבות.",
     "🧪 כל יסוד שנכנס לקלחת מתקדם במתכון. מתכון שלם = שיקוי ובונוס.",
     "🟢 היריבות מנסות לחטוף לך את הכדור ולהבקיע בחישוקי הכסף שלך. אפשר לחטוף בחזרה בנגיעה.",
     "💥 בלאדג'רים מורידים לב. ✨ הסניץ' שווה 150 ומסיים את המשחק."
@@ -1003,7 +1023,8 @@ const A = {
     const liq = new THREE.Mesh(new THREE.CircleGeometry(2.45, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x4dff8f })); liq.position.y = 3.9; cau.add(liq);
     cauldronGlow = glowSprite(0x4dff8f, 18, .55); cauldronGlow.position.y = 4.4; cau.add(cauldronGlow);
     const cl = new THREE.PointLight(0x4dff8f, 1.4, 60); cl.position.set(142, 10, 0); scene.add(cl);
-    E.towerCols.push({ x: 142, z: 0, r: 6, top: 8 });
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 240, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0x4dff8f, transparent: true, opacity: .12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    beam.position.set(142, 120, 0); scene.add(beam);
     // ball
     ball.spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: E.elTex("H"), transparent: true, depthWrite: false, fog: false }));
     ball.spr.scale.set(4.6, 4.6, 1); scene.add(ball.spr); ball.pos = new V3(0, 22, 0);
@@ -1066,22 +1087,22 @@ const A = {
     // ball
     if (ball.resetT > 0) { ball.resetT -= dt; if (ball.resetT <= 0) resetBall(); }
     if (ball.state === "free" && ball.resetT <= 0) {
-      if (ball.pos.distanceTo(pc) < 4.8) { ball.state = "player"; E.carry.add(ball.spr); ball.spr.position.set(0, 0, 0); E.sfx.good(); E.toast("🔮 הכדור אצלך! לחישוקי הזהב", 1.4); }
+      if (ball.pos.distanceTo(pc) < 4.8) { ball.state = "player"; E.carry.add(ball.spr); ball.spr.position.set(0, 0, 0); E.sfx.good(); E.toast("🔮 הכדור אצלך! דרך חישוקי הזהב או ישר לקלחת", 1.8); }
     }
     // goal through their hoops
     for (const h of theirHoops) {
       const s = P.pos.x - h.c.x;
-      if (ball.state === "player" && h.prevP !== 0 && Math.sign(s) !== Math.sign(h.prevP) && Math.hypot(P.pos.y - h.c.y, P.pos.z - h.c.z) < 5) score(h);
+      if (ball.state === "player" && h.prevP !== 0 && Math.sign(s) !== Math.sign(h.prevP) && Math.hypot(P.pos.y - h.c.y, P.pos.z - h.c.z) < 5.6) score(h);
       h.prevP = s;
     }
+    if (ball.state === "player" && Math.hypot(P.pos.x - cauldronPos.x, P.pos.z - cauldronPos.z) < 11 && P.pos.y < 26) score(null);
     updateOpps(dt, true);
     updateBludgers(dt, true);
     updateSnitch(dt, true);
     if (E.state !== "play") return;
     // arrow + danger
     if (ball.state === "player") {
-      let best = theirHoops[0]; for (const h of theirHoops) if (h.c.distanceTo(P.pos) < best.c.distanceTo(P.pos)) best = h;
-      E.arrowTarget = best.c; E.arrowColor = 0xffc040;
+      E.arrowTarget = t2.set(cauldronPos.x, 8, cauldronPos.z); E.arrowColor = 0x4dff8f;
     } else if (ball.state === "opp") { E.arrowTarget = ball.holder.pos; E.arrowColor = 0x4dff8f; }
     else if (ball.resetT <= 0) { E.arrowTarget = ball.pos; E.arrowColor = 0xffffff; } else E.arrowTarget = null;
     let dn = 1e9; for (const b of bludgers) if (b.away <= 0) dn = Math.min(dn, b.pos.distanceTo(P.pos)); E.danger = dn;
@@ -1131,7 +1152,7 @@ function score(h) {
   match.me += 10; match.goals++;
   const sym = ball.sym, G = E.G;
   E.addScore(100); E.sfx.hoop(); E.sfx.good();
-  E.burst(h.c, E.COL.GOLD, 70, 16, 2, 1.2);
+  if (h) E.burst(h.c, E.COL.GOLD, 70, 16, 2, 1.2);
   E.burst(t2.set(cauldronPos.x, 9, cauldronPos.z), E.COL.GREEN, 50, 10, 2, 1.2);
   E.scene.add(ball.spr); ball.state = "free"; ball.holder = null; ball.resetT = 1.6;
   const need = E.R.cur.need[sym] || 0, got = E.R.got[sym] || 0;

@@ -89,6 +89,14 @@ label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
 #tAct{bottom:calc(172px + env(safe-area-inset-bottom,0px))}
 #tBoost.on{background:rgba(122,215,255,.35)}
 #nogl{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:24px;font-size:18px;color:var(--soft)}
+.arenas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:14px 0 4px}
+.arena{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:12px;background:rgba(255,255,255,.06);
+  color:var(--soft);text-decoration:none;font-size:12px;border:1px solid transparent;line-height:1.25;text-align:center}
+.arena .ai{font-size:24px}
+.arena.on{border-color:var(--gold);color:var(--gold);background:rgba(255,217,119,.08)}
+a.arena:hover,a.arena:focus-visible{border-color:var(--line);color:var(--ink);outline:none}
+.boardlbl{font-size:13px;color:var(--soft);margin-top:12px}
+@media (max-width:400px){.arenas{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:640px){
   .top{flex-wrap:wrap}
   #panel{order:3;flex-basis:100%;min-width:0;padding:6px 10px}
@@ -130,6 +138,8 @@ label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
 <div class="screen" id="startScreen">
   <div class="card">
     <h1 id="hTitle"></h1>
+    <div class="boardlbl">בחרי זירה</div>
+    <nav class="arenas" aria-label="בחירת זירה"></nav>
     <p class="sub" id="hSub"></p>
     <ul class="howto" id="howto"></ul>
     <div class="keys" id="keysHelp"></div>
@@ -156,6 +166,8 @@ label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
     <div class="statgrid" id="statgrid"></div>
     <div class="best" id="oBest"></div>
     <button class="go" id="againBtn">עוד טיסה</button>
+    <div class="boardlbl">או זירה אחרת</div>
+    <nav class="arenas" aria-label="בחירת זירה"></nav>
     <div><a class="home" href="../" hidden>← לכל המשחקים</a></div>
   </div>
 </div>
@@ -195,7 +207,15 @@ $("keysHelp").textContent = isTouch
   ? `גררי אצבע בצד שמאל של המסך להיגוי · 🧹 האצה · ${A.actionIcon} ${A.actionName}`
   : `חיצים / WASD או העכבר להיגוי · Shift, רווח או לחיצת עכבר להאצה · E: ${A.actionName} · P הפסקה`;
 if (isTouch) document.querySelectorAll(".kb").forEach(e => e.hidden = true);
-if (/github\.io$/.test(location.hostname)) document.querySelectorAll(".home").forEach(e => e.hidden = false);
+const onGH = /github\.io$/.test(location.hostname);
+if (onGH) document.querySelectorAll(".home").forEach(e => e.hidden = false);
+{
+  const GAMES = [["potions", "🧪", "מעוף הקוסמת"], ["dragon", "🐉", "מבחן הדרקון"], ["quidditch", "🏆", "גביע הקווידיץ'"], ["castle", "🪜", "מגדל המדרגות"]];
+  const board = GAMES.map(([id, ic, nm]) => id === A.id
+    ? `<span class="arena on" aria-current="page"><span class="ai">${ic}</span>${nm}</span>`
+    : `<a class="arena" href="${onGH ? "../" + id + "/" : "https://roinevo.github.io/wizard-games/" + id + "/"}"${onGH ? "" : ' target="_blank" rel="noopener"'}><span class="ai">${ic}</span>${nm}</a>`).join("");
+  document.querySelectorAll(".arenas").forEach(e => e.innerHTML = board);
+}
 
 /* ---------- renderer ---------- */
 const canvas = $("c");
@@ -908,21 +928,21 @@ function dragonH(x, z) {
 const D = { g: null, body: null, wl: null, wr: null, neck: [], tail: [], head: null, eyes: [], pos: null, dir: null, mode: "guard", blind: 0, fireT: 3, ang: 0 };
 const egg = { mesh: null, carried: false, home: null };
 const fireballs = [];
-let tents = [], target = null, coins = null, eggs = 0, roarT = 0, braziers = [], smokeSpots = [];
+let tents = [], target = null, coins = null, eggs = 0, potions = 0, roarT = 0, braziers = [], smokeSpots = [];
 const tmp = () => new E.V3();
 const t1 = { a: null, b: null };
 
 const A = {
   id: "dragon", title: "מבחן הדרקון",
-  sub: "זירת סלעים בשקיעה, יציעים מלאים בקהל, ובקן שבמרכז דרקון שומר על ביצת זהב.",
+  sub: "זירת סלעים בשקיעה, יציעים מלאים בקהל, ובקן שבמרכז דרקון ששומר על היסודות לשיקוי.",
   howto: [
-    "🥚 <b>חטפי את ביצת הזהב מהקן</b> שבמרכז הזירה.",
-    "⛺ טוסי איתה לאוהל המסומן בקרן זהב. כל ביצה שמגיעה לאוהל מעלה שלב.",
-    "🔥 הדרקון יורק כדורי אש. אם הוא פוגע בך הביצה נופלת וחוזרת לקן.",
+    "🔮 <b>חטפי את היסוד מהקן</b> שבמרכז הזירה. כל פעם הדרקון שומר על יסוד אחר מהמתכון.",
+    "🧪 טוסי איתו לקלחת המסומנת בקרן אור. מתכון שלם = שיקוי ושלב חדש.",
+    "🔥 הדרקון יורק כדורי אש. אם הוא פוגע בך היסוד נופל וחוזר לקן.",
     "👁️ קללת העיוורון מסנוורת את הדרקון לכמה שניות."
   ],
   actionName: "קללת עיוורון", actionIcon: "👁️", actionCD: 14, actionColor: 0xffe08a,
-  levelLabel: "ביצה", startToast: "חטפי את ביצת הזהב מהקן!",
+  levelLabel: "שיקוי", startToast: "חטפי את היסוד מהקן של הדרקון!",
   fog: 0x5a3c4c, fogDensity: .003, far: 2300,
   sky: { hor: 0x5a3c4c, mid: 0x30203f, top: 0x0a0a22, glow: 0x9a5030, band: 0x3a1a10 },
   moonDir: new THREE_V(-.8, .13, -.55), stars: 900, starOpacity: .45,
@@ -935,7 +955,7 @@ const A = {
   floor: dragonH,
   ranks: [[0, "צופה ביציע"], [300, "אלופה צעירה"], [800, "מאלפת דרקונים"], [1600, "גיבורת הטורניר"], [3000, "אלופת שלושת הקוסמים"]],
   overTitle: nm => nm ? `${nm}, הדרקון ניצח הפעם` : "הדרקון ניצח הפעם",
-  overStats: () => [[E.G.score, "נקודות"], [eggs, "ביצים לאוהל"], [E.G.coins, "אוניות זהב"], [E.G.level, "שלב"]],
+  overStats: () => [[E.G.score, "נקודות"], [eggs, "יסודות לקלחת"], [potions, "שיקויים"], [E.G.coins, "אוניות זהב"]],
 
   build(e) {
     E = e; THREE = E.THREE; V3 = E.V3;
@@ -992,25 +1012,24 @@ const A = {
     }
     for (const a of [0, 2.1, 4.2]) { const l = new THREE.PointLight(0xff8a40, 1.2, 160); l.position.set(Math.sin(a) * 110, 18, Math.cos(a) * 110); scene.add(l); }
     for (let i = 0; i < 6; i++) { const a = E.rand(0, 6.283), r = E.rand(40, 120); smokeSpots.push(new V3(Math.sin(a) * r, 0, Math.cos(a) * r)); smokeSpots[i].y = dragonH(smokeSpots[i].x, smokeSpots[i].z); }
-    // tents
-    const stripe = (c1, c2) => { const t = E.canvasTex(128, g => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? c1 : c2; g.fillRect(i * 16, 0, 16, 128); } }); return t; };
-    const tentLooks = [["#a1262b", "#f1e6c8"], ["#1f4a9a", "#d4a017"], ["#6a2a8a", "#e8d8f0"], ["#1f6b3a", "#c9c0a0"]];
-    [.65, 2.25, 3.85, 5.35].forEach((a, i) => {
-      const x = Math.sin(a) * 110, z = Math.cos(a) * 110, h = dragonH(x, z);
-      const tx = stripe(tentLooks[i][0], tentLooks[i][1]);
-      const m = new THREE.MeshLambertMaterial({ map: tx, emissive: 0x1a0c08 });
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 4, 16, 1, true), m); base.position.set(x, h + 2, z); scene.add(base);
-      const top = new THREE.Mesh(new THREE.ConeGeometry(6.5, 6, 16, 1, true), m); top.position.set(x, h + 7, z); scene.add(top);
-      const glow = glowSprite(0xffc070, 12, .4); glow.position.set(x, h + 3, z); scene.add(glow);
-      const beam = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 220, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd35a, transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    // cauldrons (one lit at a time)
+    const prof = [[0, .4], [1.6, .5], [2.6, 1.4], [3.0, 2.6], [2.8, 3.6], [2.4, 4.1], [2.7, 4.3]].map(p => new THREE.Vector2(p[0], p[1]));
+    const cauGeo = new THREE.LatheGeometry(prof, 28), cauMat = new THREE.MeshLambertMaterial({ color: 0x1a1a24, side: THREE.DoubleSide });
+    [.65, 2.25, 3.85, 5.35].forEach(a => {
+      const x = Math.sin(a) * 108, z = Math.cos(a) * 108, h = dragonH(x, z);
+      const cau = new THREE.Group(); cau.position.set(x, h - .3, z); cau.scale.setScalar(1.6); scene.add(cau);
+      cau.add(new THREE.Mesh(cauGeo, cauMat));
+      const liq = new THREE.Mesh(new THREE.CircleGeometry(2.45, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x2a6a40 })); liq.position.y = 3.9; cau.add(liq);
+      const fire = glowSprite(0xff7a2a, 7, .9); fire.position.y = .3; cau.add(fire);
+      const glow = glowSprite(0x4dff8f, 16, .15); glow.position.y = 4.4; cau.add(glow);
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 220, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0x4dff8f, transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
       beam.position.set(x, h + 110, z); beam.visible = false; scene.add(beam);
-      tents.push({ pos: new V3(x, h + 4, z), beam });
-      E.towerCols.push({ x, z, r: 6.5, top: h + 9 });
+      tents.push({ pos: new V3(x, h + 7, z), beam, liq, glow });
     });
-    // egg
-    egg.home = new V3(0, dragonH(0, 0) + 1.6, 0);
-    egg.mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 16), new THREE.MeshLambertMaterial({ color: 0xffcf4a, emissive: 0x8a5a00 }));
-    egg.mesh.scale.set(1, 1.35, 1); egg.mesh.add(glowSprite(0xffc040, 6, .7)); scene.add(egg.mesh); egg.mesh.position.copy(egg.home);
+    // the element the dragon guards
+    egg.home = new V3(0, dragonH(0, 0) + 2.6, 0);
+    egg.mesh = new THREE.Sprite(new THREE.SpriteMaterial({ map: E.elTex("H"), transparent: true, depthWrite: false, fog: false }));
+    egg.mesh.scale.set(6, 6, 1); scene.add(egg.mesh); egg.mesh.position.copy(egg.home);
     // dragon
     buildDragon();
     coins = E.coinTrails(8, out => { const a = rand(0, 6.283), r = rand(25, 112); out.set(Math.sin(a) * r, 0, Math.cos(a) * r); out.y = dragonH(out.x, out.z) + rand(6, 35); return out; }, dragonH);
@@ -1020,7 +1039,7 @@ const A = {
   start(e) {
     const P = e.P;
     P.pos.set(0, 30, 115); P.yaw = Math.PI;
-    eggs = 0; dropEgg(true);
+    eggs = 0; potions = 0; E.setRecipe(); dropEgg(true);
     D.pos.set(0, 24, -30); D.dir.set(1, 0, 0); D.mode = "guard"; D.blind = 0; D.fireT = 4;
     for (const f of fireballs) E.scene.remove(f.spr); fireballs.length = 0;
     coins.reset(); renderPanel();
@@ -1035,16 +1054,17 @@ const A = {
     return true;
   },
 
-  onHit() { if (egg.carried) { dropEgg(); E.toast("🥚 הביצה נפלה וחזרה לקן", 1.8); } },
+  onHit() { if (egg.carried) { dropEgg(); E.toast("🔮 היסוד נפל וחזר לקן", 1.8); } },
 
   update(dt, e) {
     const { P, G } = e;
     const pc = t1.a.copy(P.pos); pc.y += .8;
     coins.update(dt, pc);
     if (!egg.carried && egg.mesh.position.distanceTo(pc) < 5) {
-      egg.carried = true; E.carry.add(egg.mesh); egg.mesh.position.set(0, 0, 0);
-      target = E.pick(tents); target.beam.visible = true; D.mode = "chase"; E.sfx.growl(); roarT = E.T + 5;
-      E.toast("🥚 ביצת הזהב אצלך! טוסי לאוהל עם קרן הזהב", 2.4); renderPanel();
+      egg.carried = true; E.carry.add(egg.mesh); egg.mesh.position.set(0, -.3, 0); egg.mesh.scale.set(3, 3, 1);
+      target = E.pick(tents); target.beam.visible = true; target.liq.material.color.setHex(0x4dff8f); target.glow.material.opacity = .6;
+      D.mode = "chase"; E.sfx.growl(); roarT = E.T + 5;
+      E.toast(`🔮 ${E.EL[egg.sym].name} אצלך! טוסי לקלחת עם קרן האור`, 2.4); renderPanel();
     }
     if (egg.carried && target) {
       const dx = P.pos.x - target.pos.x, dz = P.pos.z - target.pos.z;
@@ -1067,15 +1087,15 @@ const A = {
     if (D.pos.distanceTo(P.pos) < 9 || hd.distanceTo(P.pos) < 5) E.hit("🐉 הדרקון תפס אותך בטופר!");
     if (E.state !== "play") return;
     E.danger = Math.min(D.pos.distanceTo(P.pos) * .8, 1e9);
-    if (egg.carried) { E.arrowTarget = target.pos; E.arrowColor = 0xffd35a; }
-    else { E.arrowTarget = egg.mesh.position; E.arrowColor = 0xffcf4a; }
+    if (egg.carried) { E.arrowTarget = target.pos; E.arrowColor = 0x4dff8f; }
+    else { E.arrowTarget = egg.mesh.position; E.arrowColor = parseInt(E.EL[egg.sym].c.slice(1), 16); }
     if (D.mode === "chase" && E.T > roarT) { roarT = E.T + E.rand(6, 10); E.sfx.growl(); }
   },
 
   world(dt, e) {
     if (e.state !== "play") updateDragon(dt, false);
     coins.animate();
-    if (!egg.carried) { egg.mesh.position.y = egg.home.y + Math.sin(e.T * 2) * .25; egg.mesh.rotation.y += dt; }
+    if (!egg.carried) egg.mesh.position.y = egg.home.y + Math.sin(e.T * 2) * .35;
     for (const b of braziers) {
       b.f.scale.setScalar(8 + Math.sin(e.T * 13 + b.x) * 1.2);
       if (Math.random() < dt * 20) { const c = Math.random() < .6 ? E.COL.FIRE : E.COL.GOLD; E.sparks.spawn(b.x + E.rand(-.8, .8), b.y, b.z + E.rand(-.8, .8), { vy: E.rand(4, 8), life: E.rand(.5, .9), r: c.r, g: c.g, b: c.b, s0: 1.6, s1: 0 }); }
@@ -1095,24 +1115,34 @@ const A = {
 function THREE_V(x, y, z) { return window.THREE ? new window.THREE.Vector3(x, y, z) : null; }
 
 function renderPanel() {
-  const st = egg.carried ? "🥚 הביצה אצלך! טוסי לאוהל המסומן" : "🐉 חטפי את ביצת הזהב מהקן";
-  document.getElementById("panel").innerHTML = `<div class="pname">${st}</div><div class="psub">ביצים שהגיעו לאוהל: ${eggs}</div>`;
+  const nm = E.EL[egg.sym].name;
+  const st = egg.carried ? `🔮 ${nm} (${egg.sym}) אצלך! לקלחת המוארת` : `🐉 הדרקון שומר על ${nm} (${egg.sym})`;
+  E.renderRecipe("", `<div class="psub">${st}</div>`);
   document.getElementById("panel").classList.toggle("ready", egg.carried);
 }
 function dropEgg(silent) {
-  egg.carried = false; E.scene.add(egg.mesh); egg.mesh.position.copy(egg.home);
-  if (target) target.beam.visible = false; target = null;
+  egg.carried = false; E.scene.add(egg.mesh); egg.mesh.position.copy(egg.home); egg.mesh.scale.set(6, 6, 1);
+  const rem = E.remainingNeeded(); egg.sym = rem.length ? E.pick(rem) : E.pick(E.SYMS);
+  egg.mesh.material.map = E.elTex(egg.sym);
+  if (target) { target.beam.visible = false; target.liq.material.color.setHex(0x2a6a40); target.glow.material.opacity = .15; } target = null;
   D.mode = "guard"; if (!silent) E.burst(egg.home, E.COL.GOLD, 30, 8, 1.6, 1);
   if (E.state === "play") renderPanel();
 }
 function deliver() {
-  const G = E.G, bonus = 300 + 50 * (G.level - 1);
-  eggs++; G.level++; E.addScore(bonus); G.lives = Math.min(5, G.lives + 1); E.renderHUD(); E.sfx.win();
-  for (let i = 0; i < 160; i++) {
-    const c = E.pick([E.COL.GOLD, E.COL.RED, E.COL.BLUE, E.COL.GREEN]);
-    E.sparks.spawn(target.pos.x, target.pos.y + 20, target.pos.z, { vx: E.rand(-25, 25), vy: E.rand(-10, 25), vz: E.rand(-25, 25), life: E.rand(1.2, 2), r: c.r, g: c.g, b: c.b, s0: 2.4, s1: 0, drag: 1.2, grav: -6 });
-  }
-  E.toast(`🏆 הביצה בידיים בטוחות! +${bonus} ❤️  הקהל משתגע!`, 2.8);
+  const G = E.G, sym = egg.sym, need = E.R.cur.need[sym] || 0, got = E.R.got[sym] || 0;
+  eggs++; if (got < need) E.R.got[sym] = got + 1;
+  E.addScore(120); E.sfx.good();
+  E.burst(target.pos, E.COL.GREEN, 60, 12, 2, 1.2);
+  if (E.recipeReady()) {
+    const r = E.R.cur, bonus = 300 + 50 * (G.level - 1);
+    potions++; G.level++; E.addScore(bonus); G.lives = Math.min(5, G.lives + 1); E.renderHUD(); E.sfx.win();
+    for (let i = 0; i < 160; i++) {
+      const c = E.pick([E.COL.GOLD, E.COL.RED, E.COL.BLUE, E.COL.GREEN]);
+      E.sparks.spawn(target.pos.x, target.pos.y + 20, target.pos.z, { vx: E.rand(-25, 25), vy: E.rand(-10, 25), vz: E.rand(-25, 25), life: E.rand(1.2, 2), r: c.r, g: c.g, b: c.b, s0: 2.4, s1: 0, drag: 1.2, grav: -6 });
+    }
+    E.toast(`✨ ${r.name} (${r.f}) נרקח! +${bonus} ❤️ הקהל משתגע!`, 2.8);
+    E.setRecipe();
+  } else E.toast(`🧪 ${E.EL[sym].name} בקלחת! +120`, 1.8);
   dropEgg(true);
 }
 

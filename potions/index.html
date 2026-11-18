@@ -87,6 +87,14 @@ label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
 #tPat{bottom:calc(172px + env(safe-area-inset-bottom,0px))}
 #tBoost.on{background:rgba(122,215,255,.35)}
 #nogl{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:24px;font-size:18px;color:var(--soft)}
+.arenas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:14px 0 4px}
+.arena{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:12px;background:rgba(255,255,255,.06);
+  color:var(--soft);text-decoration:none;font-size:12px;border:1px solid transparent;line-height:1.25;text-align:center}
+.arena .ai{font-size:24px}
+.arena.on{border-color:var(--gold);color:var(--gold);background:rgba(255,217,119,.08)}
+a.arena:hover,a.arena:focus-visible{border-color:var(--line);color:var(--ink);outline:none}
+.boardlbl{font-size:13px;color:var(--soft);margin-top:12px}
+@media (max-width:400px){.arenas{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:640px){
   .top{flex-wrap:wrap}
   #recipe{order:3;flex-basis:100%;min-width:0;padding:6px 10px}
@@ -133,6 +141,8 @@ label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
 <div class="screen" id="startScreen">
   <div class="card">
     <h1>מעוף הקוסמת</h1>
+    <div class="boardlbl">בחרי זירה</div>
+    <nav class="arenas" aria-label="בחירת זירה"></nav>
     <p class="sub">לילה מעל הטירה. הקלחת באי שבאמצע האגם מחכה ליסודות, ומישהו בגלימה שחורה כבר יצא מהיער.</p>
     <ul class="howto">
       <li>🧪 <b>אספי את היסודות שבמתכון</b> (למשל H, H ו-O למים), ואז טוסי לקלחת הירוקה שבאי.</li>
@@ -168,6 +178,8 @@ label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
     </div>
     <div class="best" id="oBest"></div>
     <button class="go" id="againBtn">עוד טיסה</button>
+    <div class="boardlbl">או זירה אחרת</div>
+    <nav class="arenas" aria-label="בחירת זירה"></nav>
     <div><a class="home" id="homeLink2" href="../" hidden>← לכל המשחקים</a></div>
   </div>
 </div>
@@ -193,7 +205,15 @@ const rgb = hex => { const c = new THREE.Color(hex); return { r: c.r, g: c.g, b:
 const wrapA = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
 const isTouch = (window.matchMedia && matchMedia("(pointer: coarse)").matches) || ("ontouchstart" in window);
-if (/github\.io$/.test(location.hostname)) { $("homeLink").hidden = false; $("homeLink2").hidden = false; }
+const onGH = /github\.io$/.test(location.hostname);
+if (onGH) { $("homeLink").hidden = false; $("homeLink2").hidden = false; }
+{
+  const GAMES = [["potions", "🧪", "מעוף הקוסמת"], ["dragon", "🐉", "מבחן הדרקון"], ["quidditch", "🏆", "גביע הקווידיץ'"], ["castle", "🪜", "מגדל המדרגות"]];
+  const board = GAMES.map(([id, ic, nm]) => id === "potions"
+    ? `<span class="arena on" aria-current="page"><span class="ai">${ic}</span>${nm}</span>`
+    : `<a class="arena" href="${onGH ? "../" + id + "/" : "https://roinevo.github.io/wizard-games/" + id + "/"}"${onGH ? "" : ' target="_blank" rel="noopener"'}><span class="ai">${ic}</span>${nm}</a>`).join("");
+  document.querySelectorAll(".arenas").forEach(e => e.innerHTML = board);
+}
 if (isTouch) {
   $("keysHelp").textContent = "גררי אצבע בצד שמאל של המסך להיגוי · 🧹 להאצה · ✨ לפטרונוס";
   document.querySelectorAll(".kb").forEach(e => e.hidden = true);
@@ -1159,7 +1179,7 @@ function updatePlay(dt) {
 /* ---------- loop ---------- */
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
   if (state !== "pause") {
     T += dt;
     if (state === "play") updatePlay(dt); else updateCinematic();
