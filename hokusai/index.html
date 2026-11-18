@@ -1424,7 +1424,8 @@ function updateWorld(dt, t) {
 /* ---------- player: on foot, on horseback, on the crane ---------- */
 let state = "menu", T = 0, G = { mode: "walk", boost: 1, boosting: false, boostLock: false, anim: null, spd: 0 };
 const P = { pos: new V3(), fwd: new V3(0, 0, -1), yaw: 0, pitch: 0, roll: 0, speed: 30 };
-const FLY = 34, BOOST = 70, WALK = 8, RUN = 15, TROT = 22, GALLOP = 40;
+// speeds were raised ~1.5x (22:10) so neighbouring places are closer in time: walk 80s -> 53s, gallop 16s -> 11s, fly 19s -> 12s
+const FLY = 52, BOOST = 105, WALK = 12, RUN = 22, TROT = 33, GALLOP = 60;
 // articulated traveler: a woman in a wide straw kasa, tucked-up indigo kimono, staff and bundle
 function makeTraveler(o) {
   o = o || {};
@@ -1638,7 +1639,7 @@ function updatePlay(dt) {
     const a = Math.abs(sp);
     if (onHorse) {
       const fast = a > TROT * .8, prevPh = HORSE.ph;
-      HORSE.ph += dt * (fast ? 2 + a * .16 : a * .55) * Math.sign(sp || 1);
+      HORSE.ph += dt * (fast ? 2 + a * .2 : a * .55) * Math.sign(sp || 1);
       poseHorse(horse, HORSE.ph, clamp(a / 8, 0, 1), fast);
       horse.position.copy(P.pos); horse.rotation.set(0, P.yaw, -ix * Math.min(1, a / 20) * .12);
       walker.position.copy(horse.userData.seat.getWorldPosition(tmp)); walker.position.y -= 1.4; walker.rotation.set(horse.userData.body.rotation.x, P.yaw, 0);
@@ -2256,7 +2257,117 @@ function betSumo(side) {
 PLACES.push({ x: SUMO.x + 4, z: SUMO.z + 9, label: "זירת הסומו", act: () => openShop("זירת הסומו 相撲", "שני מתאבקים, מזרח ומערב. על מי את מהמרת? (2◆, הזוכה מקבלת 4)", [{ name: "המזרח 東 (חגורה כחולה)", color: 0x24467a, price: 2, reuse: true, got: () => betSumo(0) }, { name: "המערב 西 (חגורה אדומה)", color: 0xb3362b, price: 2, reuse: true, got: () => betSumo(1) }]) });
 sfx.clap = () => { if (!AC) return; const t = AC.currentTime; noiseHit(t, 2600, 8, .07, .35); noiseHit(t + .01, 1800, 6, .05, .2); };
 
+/* =====================================================================
+   A DENSER, CLOSER WORLD: wayside life between every pair of neighbouring
+   stations, birds over the fields, boats on the rivers, crane fast travel.
+   ===================================================================== */
+const WAY_LINES = [
+  ["אני הולך לעלות לרגל להר. עוד שבוע של הליכה", "בכל צומת יש ג'יזו קטן ששומר על ההולכים"],
+  ["המשא כבד, אבל העיירה כבר קרובה", "אם תלכי מהר, תגיעי לפני השקיעה"],
+  ["ראיתי את הצייר הזקן יושב פה עם מכחול", "הדרך הזאת מחברת בין כל ההדפסים"],
+  ["פעמון המקדש בעיירה מצלצל רחוק", "מישהו אמר שעל הגגות מסתתרים חותמים"]
+];
+// wayside things every ~110 m along the line between each station and its nearest neighbours
+{
+  const S = STATIONS.filter(s => !s.view.sky), edges = new Set(), W = { jizo: [], lantern: [], shrine: [], stall: [], mound: [] };
+  for (const a of S) S.filter(b => b !== a).sort((p, q) => Math.hypot(p.x - a.x, p.z - a.z) - Math.hypot(q.x - a.x, q.z - a.z)).slice(0, 2).forEach(b => { const k = [a.id, b.id].sort().join("-"); edges.add(k); });
+  const kinds = ["jizo", "lantern", "shrine", "jizo", "stall", "lantern", "mound"]; let n = 0;
+  for (const k of edges) {
+    const [a, b] = k.split("-").map(id => STATIONS.find(s => s.id === +id)); const L = Math.hypot(b.x - a.x, b.z - a.z); if (L > 1500) continue;
+    const nx = -(b.z - a.z) / L, nz = (b.x - a.x) / L;
+    for (let d = 60; d < L - 40; d += 110) {
+      const u = d / L, sd = (n % 2 ? 1 : -1) * 7, x = lerp(a.x, b.x, u) + nx * sd, z = lerp(a.z, b.z, u) + nz * sd, y = landH(x, z);
+      if (y < 1.5 || y > 330 || Math.hypot(x, z) < FUJI_R * .95) continue;
+      W[kinds[n % kinds.length]].push([x, y - .2, z, Math.atan2(-nx * Math.sign(sd), -nz * Math.sign(sd)), 1]); n++;
+    }
+    // a pilgrim or a porter walking that way
+    if (L < 1300) { const p = addPerson(["monk", "porter", "traveler", "woman"][n % 4], a.x, a.z, { path: [[a.x + nx * 3, a.z + nz * 3], [b.x + nx * 3, b.z + nz * 3]], speed: rand(1.6, 2.6) }); p.u = Math.random(); p.line = WAY_LINES[n % WAY_LINES.length]; }
+  }
+  const G2 = {
+    jizo: partsGeo([{ g: G_.cyl(.5, .6, 1.6, 7), c: 0x8a8a7a, m: M4(0, .8, 0) }, { g: G_.sph(.45, 7, 5), c: 0x8a8a7a, m: M4(0, 1.9, 0) }, { g: G_.box(1.1, .5, .3), c: 0xb3362b, m: M4(0, 1.45, .35) }, { g: G_.box(1.4, .4, 1.2), c: 0x6f7c86, m: M4(0, .2, 0) }]),
+    lantern: partsGeo([{ g: G_.box(1.4, .5, 1.4), c: 0x8a8a7a, m: M4(0, .25, 0) }, { g: G_.cyl(.3, .35, 1.6, 6), c: 0x8a8a7a, m: M4(0, 1.3, 0) }, { g: G_.box(1.1, 1, 1.1), c: 0xa9a490, m: M4(0, 2.6, 0) }, { g: G_.cone(1.1, .8, 4), c: 0x6f7c86, m: M4(0, 3.5, 0, 0, Math.PI / 4, 0) }]),
+    shrine: partsGeo([{ g: G_.box(2.4, 2, 2), c: 0xa8482e, m: M4(0, 1.6, 0) }, { g: prism(3.4, 1.4, 2.8), c: 0x3b3a3a, m: M4(0, 2.6, 0) }, { g: G_.box(2.2, .6, 2.2), c: 0x6f7c86, m: M4(0, .3, 0) }, { g: G_.cyl(.15, .15, 3, 5), c: 0xc0442c, m: M4(-1.3, 1.5, 2.6) }, { g: G_.cyl(.15, .15, 3, 5), c: 0xc0442c, m: M4(1.3, 1.5, 2.6) }, { g: G_.box(3.6, .3, .35), c: 0x2a2626, m: M4(0, 3.1, 2.6) }]),
+    stall: partsGeo([{ g: G_.box(4, .2, 3), c: 0x8a7650, m: M4(0, 3, 0, -.15) }, ...[[-1.8, -1.3], [1.8, -1.3], [-1.8, 1.3], [1.8, 1.3]].map(([x, z]) => ({ g: G_.cyl(.1, .1, 3, 4), c: 0x5a4632, m: M4(x, 1.5, z) })), { g: G_.box(3, .4, 1), c: 0xb3362b, m: M4(0, .6, 1.8) }, { g: G_.box(1, 1.4, .05), c: 0x24467a, m: M4(-1, 2.4, 1.5) }]),
+    mound: partsGeo([{ g: G_.sph(3, 10, 6), c: 0x6f9a52, m: M4(0, 0, 0, 0, 0, 0, 1, .5, 1) }, { g: G_.cyl(.3, .4, 4, 5), c: 0x5a4636, m: M4(0, 2.5, 0) }, { g: G_.sph(2.2, 8, 5), c: 0x24443a, m: M4(0, 4.8, 0, 0, 0, 0, 1.2, .55, 1) }])
+  };
+  for (const k in W) if (W[k].length) instances(G2[k], W[k]);
+  if (BOT || /dist/.test(HASH)) console.log(`[wayside] edges=${edges.size} things=${n}`);
+}
+// birds: loose flocks wheeling over the fields and villages (one instanced mesh)
+const BIRDS = (() => {
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, .5, -1.2, .15, -.3, 0, 0, -.2, 0, 0, .5, 1.2, .15, -.3, 0, 0, -.2], 3)); g.computeVertexNormals();
+  const N = 90, im = new THREE.InstancedMesh(g, toon(0x2a2626, { side: THREE.DoubleSide }), N); im.frustumCulled = false; scene.add(im);
+  const centers = VILLAGES.slice(0, 18).map(v => [v[0], v[1]]).concat([[1400, 1120], [2300, -560], [-1200, 1100]]);
+  const L = []; for (let i = 0; i < N; i++) { const c = centers[i % centers.length]; L.push({ cx: c[0], cz: c[1], r: rand(25, 60), h: rand(28, 55), sp: rand(.25, .45) * (Math.random() < .5 ? 1 : -1), ph: rand(0, 6.28), f: rand(7, 10) }); }
+  return { im, L };
+})();
+const _bm = new THREE.Matrix4(), _bq = new THREE.Quaternion(), _bv = new V3(), _bs = new V3(), _be = new THREE.Euler();
+PLAY_HOOKS.push(dt => {
+  for (let i = 0; i < BIRDS.L.length; i++) {
+    const b = BIRDS.L[i], a = T * b.sp + b.ph, x = b.cx + Math.cos(a) * b.r, z = b.cz + Math.sin(a) * b.r;
+    if (Math.abs(x - P.pos.x) > 700 || Math.abs(z - P.pos.z) > 700) { BIRDS.im.setMatrixAt(i, _bm.makeScale(0, 0, 0)); continue; }
+    _bv.set(x, landH(b.cx, b.cz) + b.h + Math.sin(T * .7 + b.ph) * 3, z); _be.set(0, -a + (b.sp > 0 ? Math.PI : 0), 0); _bq.setFromEuler(_be);
+    const fl = .35 + .65 * Math.abs(Math.sin(T * b.f + b.ph)); _bs.set(1.3, fl * 1.3, 1.3);
+    BIRDS.im.setMatrixAt(i, _bm.compose(_bv, _bq, _bs));
+  }
+  BIRDS.im.instanceMatrix.needsUpdate = true;
+});
+// boats travelling up and down the rivers
+const RIVER_BOATS = [];
+for (const [ri, n] of [[0, 4], [1, 3], [2, 1]]) { const R = RIVERS[ri]; for (let k = 0; k < n; k++) { const b = makeBoat(); b.scale.setScalar(.55); scene.add(b); RIVER_BOATS.push({ b, R, u: (k + .5) / n, sp: rand(.006, .012) * (k % 2 ? 1 : -1) }); } }
+PLAY_HOOKS.push(dt => {
+  for (const o of RIVER_BOATS) {
+    o.u += o.sp * dt; if (o.u > 1 || o.u < 0) { o.sp = -o.sp; o.u = clamp(o.u, 0, 1); }
+    const pts = o.R.pts, f = o.u * (pts.length - 1), i = Math.min(pts.length - 2, Math.floor(f)), t = f - i, A = pts[i], B = pts[i + 1];
+    const x = lerp(A[0], B[0], t), z = lerp(A[1], B[1], t); o.b.position.set(x, waterH(x, z, T) + .2, z); o.b.rotation.y = Math.atan2(B[0] - A[0], B[1] - A[1]) + (o.sp < 0 ? Math.PI : 0);
+  }
+});
+
+/* ---------- crane fast travel from the map ---------- */
+const TOWN_PT = { x: 1400, z: roadZ(1400) };
+(function () {
+  const btn = document.createElement("button"); btn.className = "btn red"; btn.id = "travelBtn"; btn.hidden = true; btn.textContent = "🕊️ לעוף לשם"; btn.style.marginInlineStart = "8px";
+  $("mapInfo").after(btn);
+  let dest = null;
+  const _render = renderMap;
+  renderMap = function () {
+    _render();
+    const cv = $("mapCv"), g = cv.getContext("2d"), [x, y] = toMap(TOWN_PT.x, TOWN_PT.z, cv.width, cv.height);
+    g.fillStyle = "#1f3d6d"; g.strokeStyle = "#f3e5c8"; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 8, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = "#f3e5c8"; g.font = "bold 11px serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("市", x, y + 1);
+  };
+  $("mapCv").addEventListener("click", e => {
+    const r = e.target.getBoundingClientRect(), mx = (e.clientX - r.left) / r.width * e.target.width, my = (e.clientY - r.top) / r.height * e.target.height;
+    const [tx, ty] = toMap(TOWN_PT.x, TOWN_PT.z, e.target.width, e.target.height);
+    if (Math.hypot(tx - mx, ty - my) < 16) { dest = { x: TOWN_PT.x, z: TOWN_PT.z + 14, name: "עיירת הדואר" }; $("mapInfo").textContent = "市 עיירת הדואר: שוק, בית תה, מרחץ, קאבוקי, סומו"; }
+    else dest = (target && target.got) ? { x: target.x, z: target.z, name: target.place, s: target } : null;
+    btn.hidden = !dest;
+  });
+  btn.onclick = () => {
+    if (!dest) return; const d = dest; btn.hidden = true; toggleMap();
+    const ox = d.s ? -Math.sign(d.x || 1) * 30 : 0, oz = d.s ? -Math.sign(d.z || 1) * 30 : 0;
+    P.pos.set(d.x + ox, Math.max(landH(d.x + ox, d.z + oz), 0) + (d.s ? 45 : 0), d.z + oz);
+    if (d.s) { setMode("fly"); P.yaw = Math.atan2(d.x - P.pos.x, d.z - P.pos.z); P.pitch = -.2; } else { setMode("walk"); P.yaw = Math.PI / 2; }
+    camera.position.copy(P.pos).add(new V3(-Math.sin(P.yaw) * 14, 8, -Math.cos(P.yaw) * 14));
+    post.uniforms.flash.value = .9; sfx.flap(); toast(`העגור הביא אותך אל ${d.name}`, 2.4);
+  };
+})();
+
 /* ---------- test hooks ---------- */
+if (/fasttravel|mapshow/.test(HASH)) setTimeout(() => {
+  enterWorld(); introT = 6.3; step(.05); state = "play";
+  const s = STATIONS.find(q => q.id === 55237); s.got = true; toggleMap();
+  const cv = $("mapCv"), r = cv.getBoundingClientRect(), [x, y] = toMap(s.x, s.z, cv.width, cv.height);
+  cv.dispatchEvent(new MouseEvent("click", { clientX: r.left + x / cv.width * r.width, clientY: r.top + y / cv.height * r.height, bubbles: true }));
+  console.log(`[travel] dest-btn hidden=${$("travelBtn").hidden} info=${$("mapInfo").textContent}`);
+  if (/fasttravel/.test(HASH)) { $("travelBtn").click(); for (let i = 0; i < 30; i++) step(1 / 30); console.log(`[travel] state=${state} mode=${G.mode} pos=${P.pos.x.toFixed(0)},${P.pos.z.toFixed(0)}`); }
+}, 1200);
+if (/dist/.test(HASH)) setTimeout(() => {
+  const S = STATIONS.filter(s => !s.view.sky), nn = S.map(a => Math.min(...S.filter(b => b !== a).map(b => Math.hypot(a.x - b.x, a.z - b.z))));
+  const avg = nn.reduce((a, b) => a + b, 0) / nn.length, med = nn.slice().sort((a, b) => a - b)[nn.length >> 1];
+  const town = Math.hypot(1400 - 1150, roadZ(1400) - 1050);
+  console.log(`[dist] nn avg=${avg.toFixed(0)} med=${med.toFixed(0)} max=${Math.max(...nn).toFixed(0)} | s: walk ${(avg / WALK).toFixed(0)} run ${(avg / RUN).toFixed(0)} trot ${(avg / TROT).toFixed(0)} gallop ${(avg / GALLOP).toFixed(0)} fly ${(avg / FLY).toFixed(0)} boost ${(avg / BOOST).toFixed(0)} | start->town ${town.toFixed(0)}`);
+}, 1000);
 const mT = HASH.match(/town([a-z]*)/);
 if (mT) setTimeout(() => {
   if (state !== "play") { enterWorld(); introT = 6.3; step(.05); state = "play"; }
