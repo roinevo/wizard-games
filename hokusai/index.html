@@ -919,7 +919,7 @@ function personGeo(type, col) {
 const PEOPLE = [];
 const PLAY_HOOKS = []; let SCENE_HOOK = null; // filled by world_places.js
 const LINES = {
-  generic: ["אוהיו! בוקר טוב לרוכבת העגור", "ההר מסתכל עלינו מכל מקום", "הוקוסאי? הזקן שמצייר את ההר שוב ושוב?", "הדרך ארוכה, אבל הנוף שווה", "פעם ראיתי עגור לבן כמו שלך, ליד האגם", "לאן את רוכבת היום?"],
+  generic: ["אוהיו! בוקר טוב, איזה עגור יפה יש לך", "ההר מסתכל עלינו מכל מקום", "הוקוסאי? הזקן שמצייר את ההר שוב ושוב?", "הדרך ארוכה, אבל הנוף שווה", "פעם ראיתי עגור לבן כמו שלך, ליד האגם", "לאן את רוכבת היום?"],
   hint: s => [`שמעתי שמ${s.place} רואים את ההר הכי יפה`, `הצייר הזקן ישב פעם ב${s.place}`, `לכי ל${s.place}, ותביני למה הוא צייר שם`]
 };
 function addPerson(type, x, z, o) {
@@ -1972,7 +1972,7 @@ function stallGeo(awn, awn2, kind) {
   return partsGeo(p);
 }
 const SELLER_LINES = {
-  kasa: ["מטריות נייר! הכי יפות בכל הטוקאידו", "אדומה? כחולה? מטריה תתאים לך, גברתי", "גשם בהרים? עם מטריה שלי לא תירטבי"],
+  kasa: ["מטריות נייר! הכי יפות בכל הטוקאידו", "אדומה? כחולה? יש לי מטריה לכל מזג אוויר", "גשם בהרים? עם מטריה שלי לא תירטבי"],
   fan: ["מניפה לימי הקיץ החמים?", "כל מניפה מצוירת ביד, אין שתיים דומות", "נפנפי קצת, ותרגישי כמו שחקנית קאבוקי"],
   dye: ["אני צובעת סרטים. רוצה לצבוע את הסמל של העגור שלך?", "אינדיגו, אדום, זהב... איזה צבע את אוהבת?", "את הכחול הזה מביאים מאירופה, קוראים לו כחול פרוסי"],
   dango: ["דנגו טריים! שלושה כדורים על מקל", "לכי לבית התה, שם מגישים אותם עם תה ירוק"],
@@ -1981,7 +1981,7 @@ const SELLER_LINES = {
 };
 const STALLS = [["kasa", 1300, -1, 0xb3362b, 0xf3efe4, "傘"], ["fan", 1308, 1, 0x24467a, 0xf3efe4, "扇"], ["dye", 1322, -1, 0x2f3b55, 0xd9a74a, "染"], ["dango", 1330, 1, 0x7a3b30, 0xf3efe4, "団"], ["fish", 1344, -1, 0x3b5f8a, 0xf3efe4, "魚"], ["veg", 1352, 1, 0x4d5b3a, 0xe9dfc8, "八"]];
 // the post town: rows of shop-houses lining both sides of the road
-{ const hl = []; for (let x = 1236; x <= 1470; x += 12.5) for (const sd of [-1, 1]) { if (x > 1290 && x < 1362) continue; if (sd < 0 && x > 1478) continue; const z = roadZ(x) + sd * 17; hl.push([x, landH(x, z) - .3, z, sd < 0 ? 0 : Math.PI, 1.05]); } instances(KIT.minka(), hl); }
+{ const hl = []; for (let x = 1236; x <= 1470; x += 12.5) for (const sd of [-1, 1]) { if (x > 1290 && x < 1362) continue; if (sd > 0 && x > 1240 && x < 1288) continue; const z = roadZ(x) + sd * 17; hl.push([x, landH(x, z) - .3, z, sd < 0 ? 0 : Math.PI, 1.05]); } instances(KIT.minka(), hl); }
 const STALL_POS = {};
 for (const [kind, x, sd, a1, a2, ch] of STALLS) {
   const z = roadZ(x) + sd * 12, ry = sd < 0 ? 0 : Math.PI, y = landH(x, z);
@@ -2140,15 +2140,132 @@ sfx.coin = () => { if (!AC) return; const t = AC.currentTime; pluck(note(12), t,
 sfx.no = () => { if (!AC) return; const t = AC.currentTime; pluck(note(3), t, .1, .5); pluck(note(1), t + .12, .09, .6); };
 sfx.bell = () => { if (!AC) return; const t = AC.currentTime; for (const [f, v, d] of [[98, .32, 7], [196 * 1.19, .12, 5], [98 * 2.76, .08, 4], [98 * 5.4, .04, 2.5], [98 * .5, .18, 8]]) { const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * .995, t + d); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .01); g.gain.exponentialRampToValueAtTime(.0005, t + d); o.connect(g); out(g, .8); o.start(t); o.stop(t + d + .1); } noiseHit(t, 300, 1, .3, .3, "lowpass"); };
 
+/* ---------- the bathhouse (sento) with an outdoor hot pool ---------- */
+const SENTO = { x: 1262 }; SENTO.z = roadZ(SENTO.x) + 24; SENTO.y = landH(SENTO.x, SENTO.z);
+addMesh(partsGeo([
+  { g: G_.box(14, 5, 9), c: 0xd9cba8, m: M4(0, 2.5, 0) }, { g: G_.box(14.2, 1.4, 9.2), c: 0x5a4632, m: M4(0, .7, 0) },
+  { g: prism(17, 4.5, 11), c: 0x3b3a3a, m: M4(0, 5, 0, 0, Math.PI / 2) }, { g: G_.box(1, .8, 17), c: 0x2a2a2a, m: M4(0, 9.5, 0, 0, Math.PI / 2) },
+  { g: G_.cyl(.8, 1, 9, 8), c: 0x6f7c86, m: M4(5, 8, -2) }, { g: G_.box(4, 3.2, .12), c: 0x24467a, m: M4(-2, 3, -4.6) }
+]), SENTO.x, SENTO.z, 0, 1, SENTO.y - .3);
+{ const sg = signMesh("湯", "#24467a", "#f3efe4", 1.3, 2.4); sg.position.set(SENTO.x + 1.5, SENTO.y + 3.3, SENTO.z - 4.8); sg.rotation.y = Math.PI; scene.add(sg); }
+SENTO.pool = new V3(SENTO.x - 13, SENTO.y, SENTO.z + 2);
+{ const rocks = []; for (let k = 0; k < 14; k++) { const a = k / 14 * 6.283; rocks.push({ g: new THREE.DodecahedronGeometry(rand(1, 1.6), 0), c: k % 2 ? 0x6f7c86 : 0x56636e, m: M4(Math.cos(a) * 5.4, .3, Math.sin(a) * 4.4, rand(0, 2), rand(0, 2), 0) }); }
+  rocks.push({ g: G_.cyl(5.1, 5.1, .6, 20), c: 0x7aa6bf, m: M4(0, .2, 0, 0, 0, 0, 1, 1, .82) });
+  addMesh(partsGeo(rocks), SENTO.pool.x, SENTO.pool.z, 0, 1, SENTO.pool.y - .1); }
+addPerson("woman", SENTO.x - 4, SENTO.z - 6, { ry: Math.PI, col: 0x24467a, line: ["מים חמים מההר! טבילה בשני חותמים", "אחרי יום בדרך, אין כמו האמבט", "בחורף השלג נופל על המים החמים, וזה הכי יפה"] });
+PLACES.push({ x: SENTO.x - 2, z: SENTO.z - 8, label: "בית המרחץ", act: () => openShop("בית המרחץ 湯", "מים חמים מהמעיינות שלמרגלות ההר. מנקים את אבק הדרך.", [{ name: "לטבול במעיין החם", price: 2, reuse: true, got: soak }]) });
+function soak() {
+  const pl = SENTO.pool, keepStaff = walker.userData.arms[1].userData.staff; if (keepStaff) keepStaff.visible = false; umbrella.visible = false;
+  SCN = { t: 0, dur: 5, cam: new V3(pl.x + 6, pl.y + 5, pl.z + 9), look: new V3(pl.x, pl.y + 1.5, pl.z),
+    upd: (dt, t) => { walker.position.set(pl.x, pl.y - 1.9, pl.z); walker.rotation.set(0, .6, 0); poseTraveler(walker, 0, 0, true); walker.userData.body.rotation.x = -.15 + Math.sin(t) * .03; if (Math.random() < dt * 14) foam.spawn(pl.x + rand(-4, 4), pl.y + .6, pl.z + rand(-3, 3), { vx: rand(-.4, .4), vy: rand(1, 2.2), vz: rand(-.4, .4), life: rand(1.4, 2.4), s0: .6, s1: 2.6, r: .97, gg: .96, b: .92 }); },
+    end: () => { if (keepStaff) keepStaff.visible = true; G.boost = 1; G.boostLock = false; P.pos.set(SENTO.x - 2, landH(SENTO.x - 2, SENTO.z - 8), SENTO.z - 8); toast("חם ונעים... אבק הדרך נשטף ♨", 2.2); } };
+  state = "scene"; sfx.splash();
+}
+// the bathhouse chimney steams
+PLAY_HOOKS.push(dt => { if (Math.hypot(P.pos.x - SENTO.x, P.pos.z - SENTO.z) < 300) { if (Math.random() < dt * 5) foam.spawn(SENTO.x + 5, SENTO.y + 12.5, SENTO.z - 2, { vx: rand(-.5, .5), vy: rand(2, 3), vz: rand(-.5, .5), life: rand(2, 3), s0: 1, s1: 3.5, r: .93, gg: .92, b: .88 }); if (Math.random() < dt * 4) foam.spawn(SENTO.pool.x + rand(-4, 4), SENTO.pool.y + .6, SENTO.pool.z + rand(-3, 3), { vx: rand(-.3, .3), vy: rand(1, 2), vz: rand(-.3, .3), life: 2, s0: .6, s1: 2.4, r: .97, gg: .96, b: .92 }); } });
+
+/* ---------- the kabuki playhouse front ---------- */
+const KAB = { x: 1520 }; KAB.z = roadZ(KAB.x) + 24; KAB.y = landH(KAB.x, KAB.z);
+addMesh(partsGeo([
+  { g: G_.box(22, 9, 10), c: 0xd9cba8, m: M4(0, 4.5, 0) }, { g: G_.box(22.4, 1.6, 10.4), c: 0x2a2626, m: M4(0, .8, 0) },
+  { g: prism(25, 4.5, 12), c: 0x3b3a3a, m: M4(0, 9, 0, 0, Math.PI / 2) }, { g: G_.box(1, .9, 25), c: 0x2a2a2a, m: M4(0, 13.5, 0, 0, Math.PI / 2) },
+  // the drum tower (yagura) on the roof
+  { g: G_.box(4, 3, 4), c: 0xf3efe4, m: M4(0, 14, -1) }, { g: G_.box(4.6, .5, 4.6), c: 0x2a2626, m: M4(0, 15.7, -1) }, ...[-1.4, 0, 1.4].map(x => ({ g: G_.cyl(.12, .12, 2.6, 4), c: 0xb3362b, m: M4(x, 17.3, -1) })),
+  // painted board of actors over the doors, and the stage at the front
+  { g: G_.box(16, 3.2, .3), c: 0xb3362b, m: M4(0, 7, -5.1) }, { g: G_.box(15, 2.4, .32), c: 0xf3efe4, m: M4(0, 7, -5.14) },
+  { g: G_.box(12, 1.2, 6), c: 0x8a6a42, m: M4(0, .6, -8.5) }, { g: G_.box(12.4, .15, 6.4), c: 0x5a4632, m: M4(0, 1.25, -8.5) },
+  // rows of lanterns
+  ...Array.from({ length: 9 }, (_, k) => ({ g: G_.sph(.45, 7, 5), c: k % 2 ? 0xc8432c : 0xf3efe4, m: M4(-8 + k * 2, 5.4, -5.4, 0, 0, 0, 1, 1.3, 1) }))
+]), KAB.x, KAB.z, Math.PI, 1, KAB.y - .3);
+// tall nobori banners in front, swaying
+const BANNERS = [];
+for (let k = 0; k < 6; k++) { const x = KAB.x - 10 + k * 4, z = KAB.z - 14; const g = new THREE.Group(); g.position.set(x, landH(x, z), z);
+  const pole = new THREE.Mesh(G_.cyl(.08, .08, 9, 4), toon(0x3d3026)); pole.position.y = 4.5; g.add(pole);
+  const fl = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 6, 1, 6), toon([0xb3362b, 0x24467a, 0xd9a74a, 0x416d63, 0xf3efe4, 0x7a3b6a][k], { side: THREE.DoubleSide })); fl.position.set(.75, 5.2, 0); fl.rotation.y = Math.PI / 2; g.add(fl);
+  scene.add(g); BANNERS.push(fl); }
+const actor = new THREE.Mesh(personGeo("woman", 0xf3efe4), VC); actor.scale.setScalar(1.5); actor.position.set(KAB.x, KAB.y + 1.3, KAB.z - 8.5 * 1); actor.rotation.y = Math.PI; scene.add(actor);
+const actorFace = new THREE.Mesh(G_.box(.5, .16, .05), toon(0xb3362b)); actorFace.position.set(0, 2.98, -.26); actor.add(actorFace);
+addPerson("traveler", KAB.x + 9, KAB.z - 12, { ry: Math.PI, col: 0x7a3b30, line: ["הלהקה הכי טובה באדו מופיעה היום!", "בואי לראות את ה'מיה'! ההקפאה של השחקן", "שלושה חותמים, ואת רואה את כל ההצגה"] });
+PLACES.push({ x: KAB.x, z: KAB.z - 14, label: "תיאטרון הקאבוקי", act: () => openShop("תיאטרון הקאבוקי 歌舞伎", "השחקן הגדול בתפקיד הגיבור. היום: \"הגל שהציל את הדייגים\".", [{ name: "לצפות בהצגה", price: 3, reuse: true, got: watchKabuki }]) });
+function watchKabuki() {
+  const st = new V3(KAB.x, KAB.y + 1.3, KAB.z - 8.5);
+  SCN = { t: 0, dur: 7, cam: new V3(st.x - 2, st.y + 3.2, st.z - 14), look: new V3(st.x, st.y + 3.3, st.z),
+    upd: (dt, t) => {
+      const beat = Math.floor(t * 2); if (beat !== SCN.beat) { SCN.beat = beat; if (beat % 4 === 3) sfx.clap(); else if (beat % 2 === 0) sfx.taiko(); }
+      const mie = t > 5.2; actor.rotation.y = Math.PI + (mie ? .5 : Math.sin(t * 2.1) * .9); actor.position.x = st.x + (mie ? 0 : Math.sin(t * 1.3) * 2.5);
+      actor.rotation.z = mie ? -.15 + Math.sin(t * 30) * .03 * (t < 5.6 ? 1 : 0) : Math.sin(t * 4) * .08; actor.position.y = st.y + Math.abs(Math.sin(t * 4)) * (mie ? 0 : .25);
+      if (t > 5.2 && !SCN.yo) { SCN.yo = true; sfx.clap(); setTimeout(() => sfx.clap(), 120); post.uniforms.flash.value = .25; toast("!יוֹ ... מִיֵה", 1.4); }
+    },
+    end: () => { actor.rotation.set(0, Math.PI, 0); actor.position.copy(st); toast("הקהל מריע! איזו הצגה 👏", 2.2); } };
+  state = "scene";
+}
+PLAY_HOOKS.push(dt => { for (let k = 0; k < BANNERS.length; k++) BANNERS[k].rotation.x = Math.sin(T * 1.7 + k) * .12; if (state === "play") { actor.rotation.y = Math.PI + Math.sin(T * .8) * .4; } });
+
+/* ---------- the kite field: children fly kites; buy one and it follows you ---------- */
+const KITE = { x: 1425, z: 1150 };
+const kiteTex = ch => canvasTex(64, 80, (g) => { g.fillStyle = "#efe3c6"; g.fillRect(0, 0, 64, 80); g.strokeStyle = "#1c2944"; g.lineWidth = 4; g.strokeRect(2, 2, 60, 76); g.fillStyle = "#b3362b"; g.beginPath(); g.arc(32, 36, 20, 0, 7); g.fill(); g.fillStyle = "#1c2944"; g.font = "bold 30px serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(ch, 32, 38); g.fillRect(14, 64, 36, 5); });
+function makeKite(ch) {
+  const g = new THREE.Group();
+  const k = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3), new THREE.MeshBasicMaterial({ map: kiteTex(ch), side: THREE.DoubleSide })); g.add(k);
+  const tail = new THREE.Mesh(new THREE.PlaneGeometry(.25, 4, 1, 6), toon(0xb3362b, { side: THREE.DoubleSide })); tail.position.y = -3.4; g.add(tail);
+  const sg = new THREE.BufferGeometry().setFromPoints([new V3(), new V3()]); const str = new THREE.Line(sg, new THREE.LineBasicMaterial({ color: 0x3b3a3a })); str.frustumCulled = false; scene.add(str);
+  g.userData.str = str; scene.add(g); return g;
+}
+function flyKite(kite, hx, hy, hz, t, ph) {
+  const kx = hx + Math.sin(t * .4 + ph) * 6 - 10, ky = hy + 26 + Math.sin(t * .7 + ph) * 3, kz = hz + Math.cos(t * .3 + ph) * 5 + 8;
+  kite.position.set(kx, ky, kz); kite.lookAt(hx, hy + 4, hz); kite.rotateZ(Math.sin(t * 1.3 + ph) * .3);
+  const pa = kite.userData.str.geometry.attributes.position; pa.setXYZ(0, hx, hy, hz); pa.setXYZ(1, kx, ky - 1.4, kz); pa.needsUpdate = true;
+}
+const KIDS = [];
+for (let k = 0; k < 3; k++) { const x = KITE.x + (k - 1) * 14, z = KITE.z + rand(-6, 6); const p = addPerson(k % 2 ? "woman" : "farmer", x, z, { ry: -1, s: .8, col: [0xb3362b, 0x24467a, 0xd9a74a][k], line: ["תראי כמה גבוה העפיפון שלי!", "הרוח היום מהים, הכי טוב לעפיפונים", "רוצה עפיפון משלך? הזקן שם מוכר"] }); KIDS.push({ p, kite: makeKite(["龍", "鶴", "富"][k]), ph: k * 2.1 }); }
+const myKite = makeKite("北"); myKite.visible = false; myKite.userData.str.visible = false; let kiteT = 0;
+addPerson("monk", KITE.x + 24, KITE.z - 8, { ry: -2, col: 0x6b4a3a, line: ["עפיפונים! הדרקון, העגור, ההר... בשני חותמים", "עפיפון טוב עף עד העננים"] });
+PLACES.push({ x: KITE.x + 22, z: KITE.z - 5, label: "עפיפונים", act: () => openShop("מוכר העפיפונים 凧", "עפיפון נייר עם החותם של הוקוסאי. יעוף אחרייך בדרך.", [{ name: "עפיפון 北 (לכמה דקות)", price: 2, reuse: true, got: () => { kiteT = 180; myKite.visible = myKite.userData.str.visible = true; toast("העפיפון עולה! הוא ילך איתך לאן שתלכי 🪁", 2.4); } }]) });
+PLAY_HOOKS.push(dt => {
+  const near = Math.hypot(P.pos.x - KITE.x, P.pos.z - KITE.z) < 500;
+  for (const K of KIDS) { K.kite.visible = K.kite.userData.str.visible = near; if (near) { const m = K.p.mesh.position; flyKite(K.kite, m.x, m.y + 3, m.z, T, K.ph); } }
+  if (kiteT > 0) { kiteT -= dt; const on = G.mode !== "fly"; myKite.visible = myKite.userData.str.visible = on && kiteT > 0; if (on) { const h = walker.position; flyKite(myKite, h.x, h.y + 3.5, h.z, T, 4); } }
+});
+
+/* ---------- the sumo ring: bet on East or West ---------- */
+const SUMO = { x: 1530 }; SUMO.z = roadZ(SUMO.x) - 36; SUMO.y = landH(SUMO.x, SUMO.z);
+addMesh(partsGeo([
+  { g: G_.box(11, 1.4, 11), c: 0xc9a46a, m: M4(0, .7, 0) }, { g: new THREE.TorusGeometry(3.6, .22, 5, 28), c: 0xd9c98a, m: M4(0, 1.45, 0, Math.PI / 2) },
+  ...[[-6.5, -6.5], [6.5, -6.5], [-6.5, 6.5], [6.5, 6.5]].map(([x, z], i) => ({ g: G_.cyl(.25, .25, 9, 5), c: [0x24467a, 0xb3362b, 0xf3efe4, 0x2a2626][i], m: M4(x, 4.5, z) })),
+  { g: prism(16, 3, 16), c: 0x3b3a3a, m: M4(0, 9, 0) }, { g: G_.box(15.5, .4, 15.5), c: 0x2a2a2a, m: M4(0, 9, 0) }
+]), SUMO.x, SUMO.z, 0, 1, SUMO.y - .2);
+function wrestlerGeo(belt) { return partsGeo([{ g: G_.sph(1.1, 10, 8), c: SKIN, m: M4(0, 2.1, 0, 0, 0, 0, 1, 1.05, .9) }, { g: G_.cyl(1.05, 1.0, .55, 10), c: belt, m: M4(0, 1.35, 0) }, { g: G_.cyl(.28, .24, 1.1, 6), c: SKIN, m: M4(-.5, .55, 0) }, { g: G_.cyl(.28, .24, 1.1, 6), c: SKIN, m: M4(.5, .55, 0) }, { g: G_.sph(.42, 8, 6), c: SKIN, m: M4(0, 3.25, .15) }, { g: G_.sph(.2, 6, 4), c: 0x17171b, m: M4(0, 3.65, -.05) }, { g: G_.cyl(.22, .2, 1.2, 6), c: SKIN, m: M4(-1.05, 2.2, .5, -1.2, 0, 0) }, { g: G_.cyl(.22, .2, 1.2, 6), c: SKIN, m: M4(1.05, 2.2, .5, -1.2, 0, 0) }]); }
+const RIK = [wrestlerGeo(0x24467a), wrestlerGeo(0xb3362b)].map((g, i) => { const m = new THREE.Mesh(g, VC); m.scale.setScalar(1.15); scene.add(m); return m; });
+const gyoji = addPerson("traveler", SUMO.x + 3.5, SUMO.z + 2.5, { y: SUMO.y + 1.2, ry: -2.4, col: 0x7a3b6a, line: ["הִגָּשִׁי! מזרח נגד מערב!", "הימור של שני חותמים, והזוכה מקבלת ארבעה", "המזרח חזק, אבל המערב זריז"] });
+let bout = null;
+function placeRik(t) {
+  const c = new V3(SUMO.x, SUMO.y + 1.2, SUMO.z), push = bout ? clamp(bout.t / 3.2, 0, 1) : 0, win = bout ? bout.win : 0;
+  const shove = bout && bout.t > 1.2 ? (bout.t - 1.2) / 2 * (win ? -1 : 1) : 0, sway = Math.sin(t * 3) * .25;
+  RIK[0].position.set(c.x - 1.6 + sway + shove * 2.4, c.y, c.z); RIK[0].rotation.set(0, Math.PI / 2, (bout ? .25 : 0) + (bout && bout.t > 3 && win ? -.9 * clamp((bout.t - 3) * 2, 0, 1) : 0));
+  RIK[1].position.set(c.x + 1.6 + sway + shove * 2.4, c.y, c.z); RIK[1].rotation.set(0, -Math.PI / 2, -(bout ? .25 : 0) + (bout && bout.t > 3 && !win ? .9 * clamp((bout.t - 3) * 2, 0, 1) : 0));
+  if (!bout) { RIK[0].position.x -= 1; RIK[1].position.x += 1; RIK[0].position.y = RIK[1].position.y = c.y + Math.abs(Math.sin(t * 1.5)) * .2; }
+}
+PLAY_HOOKS.push(dt => { if (!bout && Math.hypot(P.pos.x - SUMO.x, P.pos.z - SUMO.z) < 400) placeRik(T); });
+function betSumo(side) {
+  bout = { t: 0, win: Math.random() < .5 ? 0 : 1, side };
+  SCN = { t: 0, dur: 4.6, cam: new V3(SUMO.x + 1, SUMO.y + 6, SUMO.z + 13), look: new V3(SUMO.x, SUMO.y + 3, SUMO.z),
+    upd: (dt, t) => { bout.t = t; placeRik(T); if (t > 1.15 && !bout.hit) { bout.hit = true; sfx.taiko(); noiseHit(AC ? AC.currentTime : 0, 500, .8, .2, .2); } },
+    end: () => { const won = bout.win === bout.side; if (won) { SAVE.spent = (SAVE.spent || 0) - 4; writeSave(SAVE); renderHUD(); sfx.crest(5); toast(`${bout.side ? "המערב" : "המזרח"} ניצח! זכית ב-4 חותמים ◆`, 2.6); } else toast(`${bout.win ? "המערב" : "המזרח"} ניצח... בפעם הבאה!`, 2.4); bout = null; } };
+  state = "scene";
+}
+PLACES.push({ x: SUMO.x + 4, z: SUMO.z + 9, label: "זירת הסומו", act: () => openShop("זירת הסומו 相撲", "שני מתאבקים, מזרח ומערב. על מי את מהמרת? (2◆, הזוכה מקבלת 4)", [{ name: "המזרח 東 (חגורה כחולה)", color: 0x24467a, price: 2, reuse: true, got: () => betSumo(0) }, { name: "המערב 西 (חגורה אדומה)", color: 0xb3362b, price: 2, reuse: true, got: () => betSumo(1) }]) });
+sfx.clap = () => { if (!AC) return; const t = AC.currentTime; noiseHit(t, 2600, 8, .07, .35); noiseHit(t + .01, 1800, 6, .05, .2); };
+
 /* ---------- test hooks ---------- */
 const mT = HASH.match(/town([a-z]*)/);
 if (mT) setTimeout(() => {
   if (state !== "play") { enterWorld(); introT = 6.3; step(.05); state = "play"; }
   SAVE.crests = SAVE.crests || []; if (/rich/.test(HASH)) { SAVE.spent = -40; renderHUD(); }
   const w = mT[1];
-  const at = w === "tea" ? [CHAYA.x - 1, CHAYA.z + 9] : w === "bell" ? [BELL.x + 5, BELL.z + 4] : w === "dye" ? STALL_POS.dye : [1290, roadZ(1290)];
+  const PL = { tea: [CHAYA.x - 1, CHAYA.z + 9], bell: [BELL.x + 5, BELL.z + 4], dye: STALL_POS.dye, sento: [SENTO.x - 2, SENTO.z - 9], kabuki: [KAB.x, KAB.z - 15], kite: [KITE.x + 22, KITE.z - 6], sumo: [SUMO.x + 4, SUMO.z + 10] };
+  const at = PL[w] || [1290, roadZ(1290)];
   P.pos.set(at[0], landH(at[0], at[1]), at[1]); P.yaw = w ? Math.atan2(0, -1) : Math.PI / 2;
-  if (w === "tea" || w === "bell") P.yaw = Math.PI;
+  if (w === "tea" || w === "bell" || w === "sumo") P.yaw = Math.PI; if (w === "sento" || w === "kabuki") P.yaw = 0; if (w === "kite") P.yaw = -Math.PI / 2;
   for (let i = 0; i < 20; i++) step(1 / 30);
   if (/act/.test(HASH)) { doAct(); for (let i = 0; i < 40; i++) step(1 / 30); }
   if (/buy/.test(HASH)) { const b = document.querySelector("#shopL .it"); if (b) b.click(); for (let i = 0; i < 30; i++) step(1 / 30); }
