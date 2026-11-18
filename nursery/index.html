@@ -1,0 +1,590 @@
+﻿<!doctype html>
+<html lang="he">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} body{margin:0}</style>
+<title>פעוטון הקוסמים</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Varela+Round&display=swap">
+<style>
+/* Layout: one-screen nursery. HUD on top, cribs in a grid, item tray at the bottom like a changing-table shelf. */
+:root {
+  color-scheme: light;
+  --wall: #d7ecf6;
+  --dot: #ffffffb3;
+  --ink: #3a3156;
+  --ink-soft: #6d6590;
+  --coral: #ff6f86;
+  --mint: #5fcfae;
+  --butter: #ffd977;
+  --crib: #fffdf8;
+  --rail: #f1e2cc;
+  --rail-dark: #d8bf9c;
+  --panel: #ffffff;
+  --shadow: #3a315622;
+  --display: "Fredoka", "Varela Round", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --body: "Varela Round", "Fredoka", system-ui, sans-serif;
+}
+html, body { height: 100%; }
+body {
+  background-color: var(--wall);
+  background-image: radial-gradient(var(--dot) 2.5px, transparent 3px);
+  background-size: 28px 28px;
+  color: var(--ink);
+  font-family: var(--body);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 920px;
+  margin: 0 auto;
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  position: relative;
+}
+
+/* HUD */
+.hud {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--panel); border-radius: 18px; padding: 8px 14px;
+  box-shadow: 0 4px 0 var(--shadow);
+}
+.hud h1 { font-family: var(--display); font-weight: 700; font-size: 1.3rem; margin: 0; letter-spacing: .01em; }
+.hearts { display: flex; gap: 2px; font-size: 1.15rem; }
+.hearts span { color: var(--coral); transition: transform .3s, opacity .3s; }
+.hearts span.lost { opacity: .2; transform: scale(.75); filter: grayscale(1); }
+.stats { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pill { background: var(--wall); border-radius: 999px; padding: 3px 10px; font-size: .95rem; white-space: nowrap; }
+.pill b { font-weight: 700; }
+.iconbtn {
+  border: 0; background: var(--wall); color: var(--ink); width: 34px; height: 34px; border-radius: 50%;
+  font-size: 1rem; cursor: pointer; display: grid; place-items: center;
+}
+.iconbtn:focus-visible, .item:focus-visible, .crib:focus-visible, .big:focus-visible { outline: 3px solid var(--coral); outline-offset: 2px; }
+
+/* Room */
+#room { flex: 1; min-height: 0; overflow-y: auto; position: relative; padding: 4px 2px 8px; }
+#grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+@media (max-width: 640px) { #grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } .hud h1 { display: none; } }
+
+.crib {
+  position: relative; aspect-ratio: 1 / 0.92; background: var(--crib);
+  border-radius: 24px; border: 3px solid var(--rail-dark);
+  box-shadow: 0 6px 0 var(--rail-dark); overflow: hidden; cursor: pointer;
+  animation: arrive .5s cubic-bezier(.3,1.6,.5,1);
+}
+.crib::before { /* mattress + blanket */
+  content: ""; position: absolute; inset: auto 0 0 0; height: 34%;
+  background: var(--blanket);
+  background-image: radial-gradient(#ffffff88 3px, transparent 3.5px);
+  background-size: 18px 18px;
+}
+.crib.target { box-shadow: 0 6px 0 var(--rail-dark), inset 0 0 0 4px var(--coral); }
+.crib.shake { animation: shake .35s; }
+.name {
+  position: absolute; top: 8px; inset-inline-end: 10px; z-index: 3;
+  font-family: var(--display); font-weight: 600; font-size: .85rem;
+  background: var(--butter); color: var(--ink); padding: 2px 4px 2px 9px; border-radius: 999px;
+  display: flex; align-items: center; gap: 6px;
+}
+.name .el {
+  direction: ltr; background: var(--panel); border: 1.5px solid var(--ink); border-radius: 6px;
+  font-size: .78rem; font-weight: 700; padding: 0 5px; line-height: 1.35; font-variant-numeric: tabular-nums;
+}
+.name .el sup { font-size: .55rem; font-weight: 600; margin-right: 1px; vertical-align: top; }
+.lumos { position: fixed; inset: 0; z-index: 19; pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, #fff8d6ee, #fff8d600 60%); animation: lumos 1.2s ease-out forwards; }
+@keyframes lumos { from { opacity: 1; } to { opacity: 0; } }
+.babywrap { position: absolute; left: 18%; width: 64%; bottom: 3%; z-index: 1; transform-origin: 50% 90%; }
+.baby { width: 100%; height: auto; display: block; overflow: visible; }
+.rails {
+  position: absolute; inset: auto 0 0 0; height: 24%; z-index: 2; pointer-events: none;
+  border-top: 7px solid var(--rail-dark);
+  background: repeating-linear-gradient(90deg, transparent 0 16px, var(--rail) 16px 25px);
+}
+
+.bubble {
+  position: absolute; top: 8px; inset-inline-start: 8px; z-index: 3;
+  width: 58px; height: 58px; border-radius: 50%; background: var(--panel);
+  display: grid; place-items: center; box-shadow: 0 3px 0 var(--shadow);
+  transform: scale(0); transition: transform .25s cubic-bezier(.3,1.6,.5,1);
+}
+.bubble svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.bubble .want { font-size: 1.65rem; line-height: 1; }
+.bubble .ring-bg { stroke: var(--wall); }
+.bubble .ring { stroke: var(--mint); transition: stroke .3s; }
+.crib[data-s="need"] .bubble, .crib[data-s="cry"] .bubble { transform: scale(1); }
+.crib[data-s="cry"] .bubble .ring { stroke: var(--coral); }
+.crib[data-s="cry"] .bubble { animation: pulse .6s infinite; }
+
+.zzz {
+  position: absolute; top: 22%; inset-inline-start: 14%; z-index: 3; opacity: 0;
+  font-family: var(--display); font-weight: 700; color: var(--ink-soft); font-size: 1.1rem;
+}
+.crib[data-s="sleep"] .zzz { opacity: 1; animation: zz 2.4s infinite ease-in-out; }
+
+/* Baby face states */
+.baby .st { display: none; }
+.crib[data-s="idle"] .e-open, .crib[data-s="idle"] .m-smile,
+.crib[data-s="sleep"] .e-sleep, .crib[data-s="sleep"] .m-o,
+.crib[data-s="need"] .e-open, .crib[data-s="need"] .m-o,
+.crib[data-s="cry"] .e-cry, .crib[data-s="cry"] .m-cry, .crib[data-s="cry"] .tears,
+.crib[data-s="sad"] .e-cry, .crib[data-s="sad"] .m-cry, .crib[data-s="sad"] .tears,
+.crib[data-s="happy"] .e-happy, .crib[data-s="happy"] .m-laugh { display: inline; }
+.crib[data-s="happy"] .cheek { opacity: .8; }
+.crib[data-s="sleep"] .babywrap { animation: breathe 2.4s infinite ease-in-out; }
+.crib[data-s="need"] .babywrap { animation: wiggle 1.2s infinite ease-in-out; }
+.crib[data-s="cry"] .babywrap, .crib[data-s="sad"] .babywrap { animation: wobble .45s infinite; }
+.crib[data-s="happy"] .babywrap { animation: hop .45s 3; }
+.tear { animation: drip .9s infinite ease-in; }
+.tear.t2 { animation-delay: .45s; }
+
+/* Tray */
+#tray {
+  display: flex; gap: 8px; justify-content: center;
+  background: var(--panel); border-radius: 22px; padding: 8px;
+  box-shadow: 0 4px 0 var(--shadow);
+}
+.item {
+  flex: 1; max-width: 104px; border: 3px solid transparent; background: var(--wall); color: var(--ink);
+  border-radius: 16px; padding: 6px 2px 4px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-family: var(--body); font-size: .78rem; transition: transform .15s, border-color .15s, background .15s;
+}
+.item .em { font-size: 1.9rem; line-height: 1.1; }
+.item kbd { font-family: var(--display); font-size: .65rem; color: var(--ink-soft); }
+.item:hover { transform: translateY(-2px); }
+.item.sel { border-color: var(--coral); background: #ffe3e8; transform: translateY(-4px); }
+@media (max-width: 420px) { .item kbd { display: none; } .item .em { font-size: 1.6rem; } }
+
+/* FX */
+#fx { position: fixed; inset: 0; pointer-events: none; z-index: 20; overflow: hidden; }
+.p { position: absolute; font-size: 1.4rem; animation: burst 1s ease-out forwards; }
+.ft {
+  position: absolute; font-family: var(--display); font-weight: 700; font-size: 1.3rem; color: var(--coral);
+  text-shadow: 0 2px 0 #fff; animation: floatup 1s ease-out forwards; transform: translateX(-50%);
+}
+#toast {
+  position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 15;
+  background: var(--ink); color: #fff; font-family: var(--display); font-weight: 600;
+  padding: 8px 18px; border-radius: 999px; white-space: nowrap; animation: toast 2.2s forwards;
+}
+
+/* Overlays */
+.overlay {
+  position: absolute; inset: 0; z-index: 30; display: grid; place-items: center;
+  background: #d7ecf6e6; backdrop-filter: blur(3px); padding: 16px;
+}
+.card {
+  background: var(--panel); border-radius: 28px; padding: 26px 24px; max-width: 420px; width: 100%;
+  text-align: center; box-shadow: 0 8px 0 var(--shadow); display: flex; flex-direction: column; gap: 14px;
+}
+.card h2 { font-family: var(--display); font-weight: 700; font-size: 2.2rem; margin: 0; text-wrap: balance; }
+.card p { margin: 0; line-height: 1.6; color: var(--ink-soft); }
+.legend { display: flex; justify-content: center; gap: 10px; font-size: 1.6rem; }
+.card label { font-size: .85rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 6px; }
+.card input {
+  font: inherit; font-size: 1rem; text-align: center; padding: 10px; border-radius: 14px;
+  border: 2px solid var(--rail); background: var(--crib); color: var(--ink);
+}
+.card input:focus { outline: 3px solid var(--mint); border-color: transparent; }
+.big {
+  font-family: var(--display); font-weight: 700; font-size: 1.25rem; border: 0; cursor: pointer;
+  background: var(--coral); color: #fff; padding: 12px 20px; border-radius: 999px; box-shadow: 0 5px 0 #d94f68;
+}
+.big:active { transform: translateY(3px); box-shadow: 0 2px 0 #d94f68; }
+.score-big { font-family: var(--display); font-weight: 700; font-size: 3rem; color: var(--coral); line-height: 1; font-variant-numeric: tabular-nums; }
+.rank { font-family: var(--display); font-weight: 600; font-size: 1.2rem; color: var(--ink); }
+.small { font-size: .85rem; }
+
+@keyframes arrive { from { transform: scale(.6); opacity: 0; } }
+@keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@keyframes pulse { 50% { transform: scale(1.08); } }
+@keyframes zz { 0%,100% { transform: translateY(0); opacity: .5; } 50% { transform: translateY(-6px); opacity: 1; } }
+@keyframes breathe { 50% { transform: scale(1.03, .98); } }
+@keyframes wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+@keyframes wobble { 0%,100% { transform: rotate(-5deg) translateY(0); } 50% { transform: rotate(5deg) translateY(-3px); } }
+@keyframes hop { 50% { transform: translateY(-12%) scale(1.04); } }
+@keyframes drip { from { transform: translateY(0); opacity: 1; } to { transform: translateY(14px); opacity: 0; } }
+@keyframes burst { to { transform: translate(var(--dx), var(--dy)) scale(.6) rotate(var(--r)); opacity: 0; } }
+@keyframes floatup { to { transform: translate(-50%, -60px); opacity: 0; } }
+@keyframes toast { 0% { opacity: 0; transform: translate(-50%, -10px); } 12%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+}
+</style>
+
+<div id="app" dir="rtl">
+  <header class="hud">
+    <div class="hearts" id="hearts" aria-label="חיים"></div>
+    <h1>פעוטון הקוסמים</h1>
+    <div class="stats">
+      <span class="pill">שלב <b id="lvl">1</b></span>
+      <span class="pill">⭐ <b id="score">0</b></span>
+      <button class="iconbtn" id="mute" aria-label="השתקה">🔊</button>
+    </div>
+  </header>
+
+  <main id="room"><div id="grid"></div></main>
+
+  <nav id="tray" aria-label="מגש פריטים"></nav>
+
+  <div class="overlay" id="start">
+    <div class="card">
+      <h2>פעוטון הקוסמים</h2>
+      <p>התינוקות של בית הספר לקוסמות מתעוררים, וכל אחד רוצה משהו אחר. בחרי פריט מהמגש ולחצי על התינוק שביקש אותו, לפני שהוא פורץ בבכי.</p>
+      <p class="small">כל תינוק הוא יסוד בטבלה המחזורית. 6 תינוקות מאושרים ברצף מפעילים לחש לומוס שמרגיע את כולם.</p>
+      <div class="legend" aria-hidden="true">🍼 🧸 🧪 🪄 🤗</div>
+      <label for="nameInput">איך קוראים למטפלת? (לא חובה)
+        <input id="nameInput" maxlength="20" autocomplete="off" placeholder="השם שלך">
+      </label>
+      <button class="big" id="go">להתחיל משמרת</button>
+      <p class="small">אפשר גם מקלדת: 1–5 בוחרים פריט</p>
+    </div>
+  </div>
+
+  <div class="overlay" id="over" hidden>
+    <div class="card">
+      <h2>המשמרת נגמרה</h2>
+      <div class="score-big" id="finalScore">0</div>
+      <div class="rank" id="rank"></div>
+      <p id="endMsg"></p>
+      <p class="small" id="bestMsg"></p>
+      <button class="big" id="again">עוד משמרת</button>
+    </div>
+  </div>
+
+  <div id="fx"></div>
+</div>
+
+<script>
+(() => {
+  const ITEMS = [
+    { k: "bottle", e: "🍼", n: "בקבוק" },
+    { k: "teddy", e: "🧸", n: "דובי" },
+    { k: "potion", e: "🧪", n: "שיקוי" },
+    { k: "wand", e: "🪄", n: "לחש" },
+    { k: "hug", e: "🤗", n: "חיבוק" },
+  ];
+  // house scarves: [main, stripe]
+  const HOUSE = { gry: ["#9c1c2b", "#e8b53a"], sly: ["#1f6b45", "#c3cbcf"], rav: ["#22407f", "#b07f4f"], huf: ["#f0c419", "#2b2b2b"] };
+  const BABIES = [
+    { name: "נועה", sym: "No", z: 102, skin: "#ffd9c2", hair: "#8a5a3b", style: "curl", onesie: "#ffb3c4", blanket: "#ffd1dc", house: "gry" },
+    { name: "יואב", sym: "Y", z: 39, skin: "#f1c19e", hair: "#3d2a1e", style: "wizard", onesie: "#9fd8f2", blanket: "#c9e9f7", house: "rav", hat: "#3b3170" },
+    { name: "מאיה", sym: "Mg", z: 12, skin: "#c68b63", hair: "#2b1c14", style: "bonnet", onesie: "#ffe08a", blanket: "#fff0bf", bonnet: "#c9b6f2", house: "huf" },
+    { name: "איתי", sym: "I", z: 53, skin: "#ffe2cf", hair: "#e0a64b", style: "tuft", onesie: "#a6e3c9", blanket: "#d2f2e4", house: "sly" },
+    { name: "תמר", sym: "Ta", z: 73, skin: "#8d5a3c", hair: "#1e130d", style: "wizard", onesie: "#d3c2f7", blanket: "#e8defb", house: "gry", hat: "#7a2236" },
+    { name: "עומרי", sym: "O", z: 8, skin: "#f5cfb0", hair: "#b5532c", style: "bonnet", onesie: "#ffc79a", blanket: "#ffe2c9", bonnet: "#8fd3c1", house: "rav" },
+  ];
+  const MAX_LIVES = 5;
+  const RING_C = 2 * Math.PI * 25;
+
+  const $ = (id) => document.getElementById(id);
+  const grid = $("grid"), tray = $("tray"), fx = $("fx"), app = $("app");
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  };
+
+  /* ---------- sound ---------- */
+  let ctx = null, muted = store.get("gan-muted") === "1";
+  function audio() {
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (ctx && ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+  function tone(f, dur, type = "sine", vol = 0.12, delay = 0, slide = null) {
+    if (muted) return;
+    const a = audio(); if (!a) return;
+    const t = a.currentTime + delay;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  const sfx = {
+    pick() { tone(880, 0.06, "sine", 0.08); },
+    giggle() { for (let i = 0; i < 5; i++) { const f = 650 + i * 70 + Math.random() * 60; tone(f, 0.09, "sine", 0.13, i * 0.085, f * 1.35); } },
+    wrong() { tone(260, 0.14, "triangle", 0.1, 0, 200); },
+    cry() { tone(560, 0.35, "triangle", 0.05, 0, 420); tone(520, 0.4, "triangle", 0.05, 0.38, 360); },
+    lose() { tone(440, 0.25, "sine", 0.1, 0, 300); tone(330, 0.35, "sine", 0.1, 0.22, 200); },
+    level() { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.16, "sine", 0.11, i * 0.1)); },
+  };
+
+  /* ---------- baby drawing ---------- */
+  function hairSVG(b) {
+    if (b.style === "curl") return `<path d="M58 25 q-9 -11 2 -13 q9 0 3 9" stroke="${b.hair}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;
+    if (b.style === "tuft") return `<g stroke="${b.hair}" stroke-width="3.5" stroke-linecap="round" fill="none"><path d="M52 24 q2 -9 -3 -13"/><path d="M60 23 q0 -10 2 -14"/><path d="M68 24 q-1 -9 5 -12"/></g>`;
+    if (b.style === "wizard") return `<path d="M26 40 Q60 30 94 40 L66 -14 Q63 -20 58 -12 Z" fill="${b.hat}"/>
+      <ellipse cx="60" cy="40" rx="38" ry="7" fill="${b.hat}"/>
+      <path d="M60 6 l2.4 5 5.4 .6 -4 3.7 1.1 5.3 -4.9 -2.7 -4.9 2.7 1.1 -5.3 -4 -3.7 5.4 -.6z" fill="#ffd977"/>`;
+    return `<path d="M22 60 A38 38 0 0 1 98 60 Q60 38 22 60Z" fill="${b.bonnet}"/><circle cx="60" cy="22" r="5" fill="${b.bonnet}"/><path d="M22 60 Q60 38 98 60" stroke="#ffffff" stroke-width="3" fill="none" opacity=".8"/>`;
+  }
+  function babySVG(b) {
+    const ink = "#2d2440";
+    return `<svg class="baby" viewBox="0 0 120 120" aria-hidden="true">
+      <ellipse cx="60" cy="118" rx="42" ry="28" fill="${b.onesie}"/>
+      <circle cx="60" cy="108" r="3.5" fill="#ffffff" opacity=".8"/>
+      <path d="M30 94 Q60 104 90 94 L92 101 Q60 112 28 101 Z" fill="${HOUSE[b.house][0]}"/>
+      <g fill="${HOUSE[b.house][1]}"><rect x="40" y="96" width="5" height="10" transform="rotate(-8 42 101)"/><rect x="57" y="99" width="5" height="10"/><rect x="74" y="96" width="5" height="10" transform="rotate(8 76 101)"/></g>
+      <path d="M78 99 l6 18 l7 -2 l-4 -17 z" fill="${HOUSE[b.house][0]}"/>
+      <circle cx="24" cy="60" r="8" fill="${b.skin}"/><circle cx="96" cy="60" r="8" fill="${b.skin}"/>
+      <circle cx="60" cy="58" r="36" fill="${b.skin}"/>
+      ${hairSVG(b)}
+      <circle class="cheek" cx="37" cy="72" r="7" fill="#ff8fa3" opacity=".45"/>
+      <circle class="cheek" cx="83" cy="72" r="7" fill="#ff8fa3" opacity=".45"/>
+      <g class="st e-open" fill="${ink}"><circle cx="46" cy="60" r="4.8"/><circle cx="74" cy="60" r="4.8"/>
+        <circle cx="47.6" cy="58.4" r="1.6" fill="#fff"/><circle cx="75.6" cy="58.4" r="1.6" fill="#fff"/></g>
+      <g class="st e-sleep" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"><path d="M40 60 Q46 65 52 60"/><path d="M68 60 Q74 65 80 60"/></g>
+      <g class="st e-happy" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round"><path d="M40 62 Q46 54 52 62"/><path d="M68 62 Q74 54 80 62"/></g>
+      <g class="st e-cry" stroke="${ink}" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M41 55 L50 60 L41 65"/><path d="M79 55 L70 60 L79 65"/></g>
+      <g class="st tears" fill="#7cc6f0"><path class="tear" d="M44 67 c-3 5 -3 9 0 9 c3 0 3 -4 0 -9z"/><path class="tear t2" d="M76 67 c-3 5 -3 9 0 9 c3 0 3 -4 0 -9z"/></g>
+      <path class="st m-smile" d="M52 79 Q60 86 68 79" stroke="${ink}" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <ellipse class="st m-o" cx="60" cy="81" rx="3.2" ry="2.8" fill="#8a3b4f"/>
+      <g class="st m-cry"><ellipse cx="60" cy="84" rx="9" ry="7.5" fill="#8a3b4f"/><ellipse cx="60" cy="88" rx="5" ry="3" fill="#ff8fa3"/></g>
+      <path class="st m-laugh" d="M47 77 Q60 97 73 77 Z" fill="#8a3b4f"/>
+    </svg>`;
+  }
+
+  /* ---------- state ---------- */
+  let babies = [], score = 0, lives = MAX_LIVES, level = 1, served = 0, combo = 0;
+  let selected = null, target = null, running = false, last = 0;
+  let best = Number(store.get("gan-best")) || 0;
+  let player = store.get("gan-name") || "";
+  $("nameInput").value = player;
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const patience = () => Math.max(4.2, 10.5 - (level - 1) * 0.8);
+  const waitTime = () => rand(1.2, 4.2) * Math.max(0.45, 1 - (level - 1) * 0.08);
+  const babyCount = () => Math.min(BABIES.length, 2 + level);
+
+  function renderTray() {
+    tray.innerHTML = "";
+    ITEMS.forEach((it, i) => {
+      const b = document.createElement("button");
+      b.className = "item"; b.dataset.k = it.k; b.type = "button";
+      b.setAttribute("aria-label", it.n);
+      b.innerHTML = `<span class="em">${it.e}</span><span>${it.n}</span><kbd>${i + 1}</kbd>`;
+      b.addEventListener("click", () => onItem(it.k));
+      tray.appendChild(b);
+    });
+  }
+  function renderHearts() {
+    $("hearts").innerHTML = Array.from({ length: MAX_LIVES }, (_, i) => `<span class="${i < lives ? "" : "lost"}">♥</span>`).join("");
+  }
+  function renderHud() { $("score").textContent = score; $("lvl").textContent = level; }
+
+  function addBaby(i, announce) {
+    const cfg = BABIES[i];
+    const el = document.createElement("div");
+    el.className = "crib"; el.tabIndex = 0; el.setAttribute("role", "button");
+    el.style.setProperty("--blanket", cfg.blanket);
+    el.innerHTML = `
+      <div class="name"><span class="el"><sup>${cfg.z}</sup>${cfg.sym}</span>${cfg.name}</div>
+      <div class="bubble"><svg viewBox="0 0 58 58"><circle class="ring-bg" cx="29" cy="29" r="25" fill="none" stroke-width="5"/>
+        <circle class="ring" cx="29" cy="29" r="25" fill="none" stroke-width="5" stroke-linecap="round" stroke-dasharray="${RING_C}" stroke-dashoffset="0"/></svg>
+        <span class="want"></span></div>
+      <div class="zzz">z z z</div>
+      <div class="babywrap">${babySVG(cfg)}</div>
+      <div class="rails"></div>`;
+    grid.appendChild(el);
+    const b = { el, cfg, s: "sleep", t: 0, wait: rand(0.6, 2.4), need: null, lastNeed: null, pat: 0, max: 1,
+      ring: el.querySelector(".ring"), want: el.querySelector(".want") };
+    setState(b, "sleep");
+    el.addEventListener("click", () => onBaby(b));
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onBaby(b); } });
+    babies.push(b);
+    if (announce) toast(`תינוק חדש הגיע: ${cfg.name}`);
+  }
+
+  function setState(b, s) {
+    b.s = s; b.t = 0; b.el.dataset.s = s;
+    const it = ITEMS.find((x) => x.k === b.need);
+    b.el.setAttribute("aria-label", `${b.cfg.name}: ${s === "need" || s === "cry" ? "רוצה " + it.n : s === "sleep" ? "ישן" : s === "happy" ? "צוחק" : "רגוע"}`);
+  }
+  function startNeed(b) {
+    let k;
+    do { k = ITEMS[Math.floor(Math.random() * ITEMS.length)].k; } while (k === b.lastNeed && Math.random() < 0.7);
+    b.need = k; b.lastNeed = k; b.max = patience(); b.pat = b.max;
+    b.want.textContent = ITEMS.find((x) => x.k === k).e;
+    setState(b, "need");
+  }
+  function rest(b) {
+    b.need = null; b.wait = waitTime();
+    setState(b, Math.random() < 0.5 ? "sleep" : "idle");
+  }
+
+  function center(el) {
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height * 0.45 };
+  }
+  function burst(x, y) {
+    const pics = ["💖", "💕", "✨", "💗", "🌸"];
+    for (let i = 0; i < 9; i++) {
+      const s = document.createElement("span");
+      s.className = "p"; s.textContent = pics[i % pics.length];
+      s.style.left = x + "px"; s.style.top = y + "px";
+      const a = rand(0, Math.PI * 2), d = rand(50, 110);
+      s.style.setProperty("--dx", Math.cos(a) * d + "px");
+      s.style.setProperty("--dy", Math.sin(a) * d - 40 + "px");
+      s.style.setProperty("--r", rand(-90, 90) + "deg");
+      fx.appendChild(s); setTimeout(() => s.remove(), 1050);
+    }
+  }
+  function floatText(x, y, txt) {
+    const s = document.createElement("span");
+    s.className = "ft"; s.textContent = txt; s.style.left = x + "px"; s.style.top = y - 30 + "px";
+    fx.appendChild(s); setTimeout(() => s.remove(), 1050);
+  }
+  function toast(txt) {
+    const old = app.querySelector("#toast"); if (old) old.remove();
+    const t = document.createElement("div"); t.id = "toast"; t.textContent = txt;
+    app.appendChild(t); setTimeout(() => t.remove(), 2300);
+  }
+
+  /* ---------- input ---------- */
+  function markSelection() {
+    tray.querySelectorAll(".item").forEach((b) => b.classList.toggle("sel", b.dataset.k === selected));
+    babies.forEach((b) => b.el.classList.toggle("target", b === target));
+  }
+  function onItem(k) {
+    if (!running) return;
+    audio();
+    if (target) { const t = target; target = null; serve(t, k); markSelection(); return; }
+    selected = selected === k ? null : k;
+    sfx.pick(); markSelection();
+  }
+  function onBaby(b) {
+    if (!running) return;
+    audio();
+    if (selected) { serve(b, selected); return; }
+    target = target === b ? null : b;
+    sfx.pick(); markSelection();
+  }
+  function serve(b, k) {
+    if (b.s !== "need" && b.s !== "cry") { sfx.pick(); return; }
+    const p = center(b.el);
+    if (k === b.need) {
+      const frac = b.pat / b.max;
+      combo++;
+      const pts = Math.round((10 + 10 * frac) * (1 + Math.min(combo - 1, 10) * 0.1));
+      score += pts; served++;
+      burst(p.x, p.y); floatText(p.x, p.y, combo > 2 ? `+${pts}  ×${combo}` : `+${pts}`);
+      sfx.giggle(); setState(b, "happy");
+      if (combo % 6 === 0) lumos();
+      checkLevel(); renderHud();
+    } else {
+      combo = 0; b.pat = Math.max(0.3, b.pat - 1.5);
+      b.el.classList.remove("shake"); void b.el.offsetWidth; b.el.classList.add("shake");
+      sfx.wrong();
+    }
+  }
+  // every 6 in a row: a calming spell refills every waiting baby
+  function lumos() {
+    const l = document.createElement("div"); l.className = "lumos"; fx.appendChild(l); setTimeout(() => l.remove(), 1250);
+    for (const b of babies) if (b.s === "need" || b.s === "cry") { b.pat = b.max; if (b.s === "cry") setState(b, "need"); }
+    toast(`לומוס! רצף של ${combo}, כל התינוקות נרגעו`); sfx.level();
+  }
+  function checkLevel() {
+    const nl = 1 + Math.floor(score / 150);
+    if (nl > level) {
+      level = nl; sfx.level();
+      if (babies.length < babyCount()) { const c = BABIES[babies.length]; addBaby(babies.length, false); toast(`יסוד חדש בפעוטון: ${c.name} (${c.sym})`); }
+      else toast(`תגובת שרשרת! שלב ${level}`);
+    }
+  }
+  function fail(b) {
+    lives--; combo = 0; renderHearts(); sfx.lose();
+    if (target === b) { target = null; markSelection(); }
+    setState(b, "sad");
+    if (lives <= 0) gameOver();
+  }
+
+  /* ---------- loop ---------- */
+  function tick(now) {
+    if (!running) return;
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    for (const b of babies) {
+      b.t += dt;
+      if (b.s === "sleep" || b.s === "idle") { if (b.t >= b.wait) startNeed(b); }
+      else if (b.s === "need" || b.s === "cry") {
+        b.pat -= dt;
+        const frac = Math.max(0, b.pat / b.max);
+        b.ring.setAttribute("stroke-dashoffset", String(RING_C * (1 - frac)));
+        if (b.s === "need" && frac < 0.35) { setState(b, "cry"); sfx.cry(); }
+        if (b.pat <= 0) { fail(b); if (!running) return; }
+      }
+      else if (b.s === "happy" && b.t > 1.35) rest(b);
+      else if (b.s === "sad" && b.t > 1.4) rest(b);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function startGame() {
+    player = $("nameInput").value.trim(); store.set("gan-name", player);
+    audio();
+    babies = []; grid.innerHTML = ""; score = 0; lives = MAX_LIVES; level = 1; served = 0; combo = 0;
+    selected = null; target = null;
+    for (let i = 0; i < babyCount(); i++) addBaby(i, false);
+    renderHearts(); renderHud(); markSelection();
+    $("start").hidden = true; $("over").hidden = true;
+    running = true; last = performance.now(); requestAnimationFrame(tick);
+  }
+  function rankFor(s) {
+    if (s < 100) return "תלמידת שנה א'";
+    if (s < 300) return "מדריכה בפעוטון";
+    if (s < 600) return "מרצה לשיקויים";
+    if (s < 1000) return "מנהלת הפעוטון";
+    return "הקוסמת הגדולה של התינוקות 🧙‍♀️";
+  }
+  function gameOver() {
+    running = false;
+    const newBest = score > best;
+    if (newBest) { best = score; store.set("gan-best", String(best)); }
+    $("finalScore").textContent = score;
+    $("rank").textContent = rankFor(score);
+    $("endMsg").textContent = `${player ? player + ", " : ""}הצחקת ${served} תינוקות היום 💕`;
+    $("bestMsg").textContent = newBest ? "שיא חדש!" : `השיא שלך: ${best}`;
+    setTimeout(() => { $("over").hidden = false; $("again").focus(); }, 900);
+  }
+
+  /* ---------- wiring ---------- */
+  renderTray(); renderHearts(); renderHud();
+  // a sleepy preview nursery behind the start card
+  for (let i = 0; i < 3; i++) addBaby(i, false);
+  babies[1].need = "potion"; babies[1].want.textContent = "🧪"; setState(babies[1], "need");
+  babies[2].need = "teddy"; setState(babies[2], "happy");
+
+  $("go").addEventListener("click", startGame);
+  $("again").addEventListener("click", startGame);
+  $("nameInput").addEventListener("keydown", (e) => { if (e.key === "Enter") startGame(); });
+  const muteBtn = $("mute");
+  const paintMute = () => { muteBtn.textContent = muted ? "🔇" : "🔊"; muteBtn.setAttribute("aria-label", muted ? "הפעלת צליל" : "השתקה"); };
+  paintMute();
+  muteBtn.addEventListener("click", () => { muted = !muted; store.set("gan-muted", muted ? "1" : "0"); paintMute(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT") return;
+    const n = Number(e.key);
+    if (n >= 1 && n <= ITEMS.length) onItem(ITEMS[n - 1].k);
+    if (e.key === "Escape") { selected = null; target = null; markSelection(); }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && running) last = performance.now();
+  });
+})();
+</script>
+
+</html>
+

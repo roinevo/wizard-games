@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>משחקי הקוסמת</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Varela+Round&display=swap">
+<style>
+  :root { --bg: #1b1838; --card: #2a2552; --ink: #f6f1ff; --soft: #b9b0e0; --gold: #ffd977; }
+  body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 70% 10%, #3a3270, var(--bg) 60%); color: var(--ink);
+         font-family: "Varela Round", system-ui, sans-serif; display: grid; place-items: center; padding: 24px 16px; box-sizing: border-box; }
+  main { max-width: 520px; width: 100%; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-family: "Fredoka", sans-serif; font-size: 2.4rem; margin: 0; color: var(--gold); }
+  p { margin: 0; color: var(--soft); line-height: 1.6; }
+  a.game { display: flex; gap: 14px; align-items: center; background: var(--card); color: var(--ink); text-decoration: none;
+           padding: 16px 18px; border-radius: 20px; border: 2px solid transparent; transition: border-color .2s, transform .2s; }
+  a.game:hover, a.game:focus-visible { border-color: var(--gold); transform: translateY(-2px); outline: none; }
+  .em { font-size: 2.2rem; }
+  .t { font-family: "Fredoka", sans-serif; font-size: 1.3rem; font-weight: 700; }
+  .d { color: var(--soft); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>משחקי הקוסמת</h1>
+  <p>משחקים קטנים של קסם, כימיה ותינוקות.</p>
+  <a class="game" href="nursery/"><span class="em">🍼</span><span><span class="t">פעוטון הקוסמים</span><br><span class="d">תינוקות-יסודות צריכים בקבוק, שיקוי או חיבוק, לפני שהם בוכים</span></span></a>
+</main>
+</body>
+</html>
