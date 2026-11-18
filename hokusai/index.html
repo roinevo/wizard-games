@@ -450,7 +450,7 @@ let ribbon;
   const rg = new THREE.PlaneGeometry(.22, 2.2, 1, 8); rg.translate(0, -1.1, 0);
   ribbon = new THREE.Mesh(rg, toon(0xb3362b, { side: THREE.DoubleSide })); ribbon.position.set(0, .9, -.1); ribbon.rotation.x = -Math.PI / 2 + .2; rider.add(ribbon);
   ribbon.userData.base = rg.attributes.position.array.slice();
-  player.userData.rider = rider; player.userData.crane = crane;
+  player.userData.rider = rider; player.userData.crane = crane; player.userData.crown = crown;
   player.scale.setScalar(1.1);
 })();
 scene.add(player);
@@ -917,6 +917,7 @@ function personGeo(type, col) {
   return partsGeo(p);
 }
 const PEOPLE = [];
+const PLAY_HOOKS = []; let SCENE_HOOK = null; // filled by world_places.js
 const LINES = {
   generic: ["אוהיו! בוקר טוב לרוכבת העגור", "ההר מסתכל עלינו מכל מקום", "הוקוסאי? הזקן שמצייר את ההר שוב ושוב?", "הדרך ארוכה, אבל הנוף שווה", "פעם ראיתי עגור לבן כמו שלך, ליד האגם", "לאן את רוכבת היום?"],
   hint: s => [`שמעתי שמ${s.place} רואים את ההר הכי יפה`, `הצייר הזקן ישב פעם ב${s.place}`, `לכי ל${s.place}, ותביני למה הוא צייר שם`]
@@ -1672,9 +1673,10 @@ function updatePlay(dt) {
   // people talk
   let near = null, nd = 9;
   for (const p of PEOPLE) { const d = p.mesh.position.distanceTo(P.pos); if (d < nd) { nd = d; near = p; } }
-  if (near && near !== talkP) { talkP = near; talkT = 4; const tgt = nearestStation(near.mesh.position); const pool = tgt && Math.random() < .6 ? LINES.hint(tgt) : LINES.generic; $("bubble").textContent = pool[(near.lineIdx || 0) % pool.length]; sfx.talk(); }
+  if (near && near !== talkP) { talkP = near; talkT = 4; const tgt = nearestStation(near.mesh.position); const pool = near.line ? near.line : tgt && Math.random() < .6 ? LINES.hint(tgt) : LINES.generic; $("bubble").textContent = pool[(near.lineIdx || 0) % pool.length]; sfx.talk(); }
   if (talkP) { talkT -= dt; const v = tmp.copy(talkP.mesh.position); v.y += 5; v.project(camera); const b = $("bubble"); if (talkT > 0 && v.z < 1) { b.hidden = false; const hw = Math.min(135, innerWidth * .36); b.style.left = clamp((v.x * .5 + .5) * innerWidth, hw + 6, innerWidth - hw - 6) + "px"; b.style.top = clamp((-v.y * .5 + .5) * innerHeight, 70, innerHeight - 20) + "px"; } else { b.hidden = true; if (talkT <= 0 && nd > 12) talkP = null; } }
   updateCompass();
+  for (const f of PLAY_HOOKS) f(dt);
 }
 function setMode(m) {
   G.mode = m; G.anim = null; G.spd = 0;
@@ -1847,6 +1849,7 @@ function step(dt) {
   if (state === "play") updatePlay(dt);
   else if (state === "moment") updateMoment(dt);
   else if (state === "intro") updateIntro(dt);
+  else if (state === "scene" && SCENE_HOOK) SCENE_HOOK(dt);
   else if (state === "menu") { const a = T * .03; camera.position.set(Math.sin(a) * 2300, 420, Math.cos(a) * 2300); camera.lookAt(0, 300, 0); }
   updateWorld(dt, T);
   const fl = Math.sin(T * (G.boosting ? 11 : 6.5)); wingL.rotation.z = fl * .55 + .1; wingR.rotation.z = -fl * .55 - .1;
@@ -1933,6 +1936,224 @@ if (/nullchk/.test(HASH)) setTimeout(() => scene.traverse(o => { if (o.isMesh ||
 if (/hdbg/.test(HASH)) setTimeout(() => console.log("[h] " + [[760, 2330], [760, 2100], [1500, 1600], [0, 2000]].map(q => landH(q[0], q[1]).toFixed(1) + "/" + HGRID[Math.round((q[1] - MAP.z0) / GZ) * (GN + 1) + Math.round((q[0] - MAP.x0) / GX)].toFixed(1)).join(" ")), 1500);
 const mH = HASH.match(/hq=([-0-9.,;]+)/); if (mH) setTimeout(() => console.log("[hq] " + mH[1].split(";").map(q => { const [x, z] = q.split(",").map(Number); return q + ":" + landH(x, z).toFixed(1); }).join("  ")), 800);
 window.__dbg = { get state() { return state; }, P, STATIONS, camera };
+/* =====================================================================
+   EDO PLACES: a little post town on the Tokaido, just east of Hodogaya,
+   where the hishi crests are spent: a market street, a teahouse, a temple
+   bell (more places are added below as the town grows).
+   ===================================================================== */
+const roadZ = x => 1050 + (x - 1150) / 450 * 30;      // the Tokaido runs almost east-west here
+const PLACES = [];
+let placeNear = null;
+function addMesh(geo, x, z, ry, sc, y) { const m = new THREE.Mesh(geo, VC); m.position.set(x, y === undefined ? landH(x, z) : y, z); m.rotation.y = ry || 0; if (sc) m.scale.setScalar(sc); scene.add(m); return m; }
+// a hanging shop sign (noren board) with one character, drawn on canvas
+const _signs = {};
+function signMesh(ch, bg, fg, w, h) {
+  const key = ch + bg; const tex = _signs[key] || (_signs[key] = canvasTex(64, 128, (g) => { g.fillStyle = bg; g.fillRect(0, 0, 64, 128); g.strokeStyle = fg; g.lineWidth = 4; g.strokeRect(5, 5, 54, 118); g.fillStyle = fg; g.font = "bold 48px serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(ch, 32, 64); }));
+  return new THREE.Mesh(new THREE.PlaneGeometry(w || 1.2, h || 2.4), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+}
+
+/* ---------- market stalls ---------- */
+function stallGeo(awn, awn2, kind) {
+  const p = [];
+  for (const [x, z] of [[-2.8, -1.8], [2.8, -1.8], [-2.8, 1.9], [2.8, 1.9]]) p.push({ g: G_.cyl(.15, .15, 4.2, 5), c: 0x5a4632, m: M4(x, 2.1, z) });
+  p.push({ g: G_.box(5.8, 1.1, 1.3), c: 0x8a6a42, m: M4(0, .55, 1.3) });
+  p.push({ g: G_.box(5.8, 2.6, .15), c: 0xd9cba8, m: M4(0, 1.3, -1.8) });
+  p.push({ g: G_.box(6.6, .25, 4.6), c: awn, m: M4(0, 4.3, .1, -.16) });
+  p.push({ g: G_.box(6.6, .7, .08), c: awn2, m: M4(0, 3.85, 2.45) });
+  for (let k = 0; k < 3; k++) p.push({ g: G_.box(1.6, 1.1, .05), c: k === 1 ? awn2 : awn, m: M4(-2 + k * 2, 3.1, 2.42) });
+  p.push({ g: G_.sph(.38, 8, 6), c: 0xc8432c, m: M4(3.05, 3.25, 2.5, 0, 0, 0, 1, 1.35, 1) }, { g: G_.cyl(.2, .2, .12, 8), c: 0x2a2626, m: M4(3.05, 3.8, 2.5) });
+  const C = [0xb3362b, 0x24467a, 0xd9a74a, 0x416d63, 0x7a3b6a];
+  if (kind === "kasa") for (let k = 0; k < 3; k++) { p.push({ g: G_.cone(1.05, .45, 14), c: C[k], m: M4(-1.9 + k * 1.9, 1.75, 1.2, .9, 0, 0) }, { g: G_.cyl(.03, .03, 1.2, 4), c: 0x5a4632, m: M4(-1.9 + k * 1.9, 1.3, 1.0, .9, 0, 0) }); }
+  if (kind === "fan") for (let k = 0; k < 4; k++) p.push({ g: new THREE.CylinderGeometry(.55, .55, .05, 10, 1, false, 0, Math.PI), c: C[k], m: M4(-2.1 + k * 1.4, 1.15, 1.3, Math.PI / 2, 0, Math.PI / 2) });
+  if (kind === "dye") { p.push({ g: G_.cyl(.05, .05, 6, 4), c: 0x5a4632, m: M4(0, 3.3, 2.0, 0, 0, Math.PI / 2) }); for (let k = 0; k < 5; k++) p.push({ g: G_.box(.9, 2.1, .04), c: C[k], m: M4(-2.3 + k * 1.15, 2.2, 2.05) }); }
+  if (kind === "dango") for (let k = 0; k < 5; k++) for (let j = 0; j < 3; j++) p.push({ g: G_.sph(.16, 6, 4), c: [0xe9b0bb, 0xf3efe4, 0x8fbf6a][j], m: M4(-1.8 + k * .9, 1.25 + j * .3, 1.3) });
+  if (kind === "fish") for (let k = 0; k < 5; k++) p.push({ g: G_.sph(.3, 7, 4), c: k % 2 ? 0xa9b8c4 : 0x6f7c86, m: M4(-2 + k, 1.2, 1.3, 0, .3, 0, 2.4, .6, .8) });
+  if (kind === "veg") for (let k = 0; k < 7; k++) p.push({ g: G_.sph(.3, 6, 4), c: k % 2 ? 0xd98a3a : 0x6f9a52, m: M4(-2.2 + k * .7, 1.25, 1.3) });
+  return partsGeo(p);
+}
+const SELLER_LINES = {
+  kasa: ["מטריות נייר! הכי יפות בכל הטוקאידו", "אדומה? כחולה? מטריה תתאים לך, גברתי", "גשם בהרים? עם מטריה שלי לא תירטבי"],
+  fan: ["מניפה לימי הקיץ החמים?", "כל מניפה מצוירת ביד, אין שתיים דומות", "נפנפי קצת, ותרגישי כמו שחקנית קאבוקי"],
+  dye: ["אני צובעת סרטים. רוצה לצבוע את הסמל של העגור שלך?", "אינדיגו, אדום, זהב... איזה צבע את אוהבת?", "את הכחול הזה מביאים מאירופה, קוראים לו כחול פרוסי"],
+  dango: ["דנגו טריים! שלושה כדורים על מקל", "לכי לבית התה, שם מגישים אותם עם תה ירוק"],
+  fish: ["דגים מהמפרץ! טריים מהבוקר", "הסירות של קנגאווה הביאו אותם, אם הגל הגדול הרשה"],
+  veg: ["צנוניות! דלעות! הכל מהשדות של הכפר", "הכי טעים מה שגדל בצל של פוג'י"]
+};
+const STALLS = [["kasa", 1300, -1, 0xb3362b, 0xf3efe4, "傘"], ["fan", 1308, 1, 0x24467a, 0xf3efe4, "扇"], ["dye", 1322, -1, 0x2f3b55, 0xd9a74a, "染"], ["dango", 1330, 1, 0x7a3b30, 0xf3efe4, "団"], ["fish", 1344, -1, 0x3b5f8a, 0xf3efe4, "魚"], ["veg", 1352, 1, 0x4d5b3a, 0xe9dfc8, "八"]];
+// the post town: rows of shop-houses lining both sides of the road
+{ const hl = []; for (let x = 1236; x <= 1470; x += 12.5) for (const sd of [-1, 1]) { if (x > 1290 && x < 1362) continue; if (sd < 0 && x > 1478) continue; const z = roadZ(x) + sd * 17; hl.push([x, landH(x, z) - .3, z, sd < 0 ? 0 : Math.PI, 1.05]); } instances(KIT.minka(), hl); }
+const STALL_POS = {};
+for (const [kind, x, sd, a1, a2, ch] of STALLS) {
+  const z = roadZ(x) + sd * 12, ry = sd < 0 ? 0 : Math.PI, y = landH(x, z);
+  addMesh(stallGeo(a1, a2, kind), x, z, ry, 1.15, y - .2);
+  const sg = signMesh(ch, a2 === 0xf3efe4 ? "#efe6d2" : "#d9a74a", "#1c2944", 1, 2); sg.position.set(x - sd * 3.9, y + 2.6, z - sd * 2.7); sg.rotation.y = ry; scene.add(sg);
+  const fx = x, fz = z - sd * 5.2; STALL_POS[kind] = [fx, fz];
+  const p = addPerson(kind === "fish" || kind === "veg" ? "farmer" : "woman", x + .5, z + sd * .6, { ry: ry, line: SELLER_LINES[kind], col: [0x7a3b30, 0x24467a, 0x5a3f62][STALLS.findIndex(q => q[0] === kind) % 3] });
+  p.seller = true;
+}
+// lantern posts along the street
+for (let x = 1280; x <= 1470; x += 38) for (const sd of [-1, 1]) { const z = roadZ(x) + sd * 6.5; addMesh(partsGeo([{ g: G_.cyl(.12, .14, 3.4, 5), c: 0x3d3026, m: M4(0, 1.7, 0) }, { g: G_.box(.8, 1, .8), c: 0xf3efe4, m: M4(0, 3.6, 0) }, { g: G_.box(.95, .18, .95), c: 0x2a2626, m: M4(0, 4.15, 0) }]), x, z); }
+// a crowd on the market street
+for (let k = 0; k < 8; k++) { const x0 = rand(1280, 1460); const p = addPerson(["woman", "traveler", "porter", "monk"][k % 4], x0, roadZ(x0) + rand(-3, 3), { path: [[1275, roadZ(1275) + rand(-3, 3)], [1465, roadZ(1465) + rand(-3, 3)]], speed: rand(.8, 1.5) }); p.u = Math.random(); }
+
+/* ---------- the teahouse (chaya) ---------- */
+const CHAYA = { x: 1490, sd: -1 };
+CHAYA.z = roadZ(CHAYA.x) - 13; CHAYA.y = landH(CHAYA.x, CHAYA.z);
+addMesh(partsGeo([
+  ...[[-4.5, -3], [4.5, -3], [-4.5, 3], [4.5, 3]].map(([x, z]) => ({ g: G_.cyl(.2, .2, 4.4, 5), c: 0x5a4632, m: M4(x, 2.2, z) })),
+  { g: prism(11.5, 3.6, 8.5), c: 0x8a7650, m: M4(0, 4.3, 0, 0, Math.PI / 2) }, { g: G_.box(.7, .6, 11), c: 0x3a3226, m: M4(0, 7.9, 0, 0, Math.PI / 2) },
+  { g: G_.box(9.4, 2.6, .2), c: 0xd9cba8, m: M4(0, 1.3, -3) }, { g: G_.box(9, .2, 6), c: 0x8a6a42, m: M4(0, .5, 0) },
+  { g: G_.box(5, .45, 1.3), c: 0xb3362b, m: M4(-1, .75, 4.6) }, { g: G_.box(5, .3, 1.3), c: 0x5a4632, m: M4(-1, .38, 4.6) },
+  { g: G_.cyl(.08, .08, 5.2, 4), c: 0x5a4632, m: M4(3.6, 2.6, 4.8) }, { g: G_.cone(3.2, 1.1, 16), c: 0xb3362b, m: M4(3.6, 5.3, 4.8) },
+  { g: G_.cyl(.5, .6, .9, 8), c: 0x2a2626, m: M4(-3, 1.1, -1.5) }, { g: G_.sph(.4, 8, 6), c: 0x2a2626, m: M4(2, 1.1, -1.5) }
+]), CHAYA.x, CHAYA.z, 0, 1.1, CHAYA.y - .2);
+{ const sg = signMesh("茶", "#efe6d2", "#1c2944", 1.3, 2.6); sg.position.set(CHAYA.x - 5.6, CHAYA.y + 3, CHAYA.z + 3.6); scene.add(sg); }
+CHAYA.seat = new V3(CHAYA.x - 1.1, CHAYA.y + .75 * 1.1 - .2, CHAYA.z + 4.6 * 1.1);
+const chayaLady = addPerson("woman", CHAYA.x + 1.5, CHAYA.z + 2.5, { ry: 0, col: 0x7a3b30, line: ["שבי, תנוחי. תה ירוק ודנגו בשני חותמים", "מהבית שלי רואים את פוג'י, כשאין עננים", "הנוסעים בדרך עוצרים כאן כבר מאה שנה", "את נראית עייפה. דנגו יחזיר לך את הכוח"] });
+
+/* ---------- the temple bell (shoro) on the knoll north of the road ---------- */
+const BELL = { x: 1335, z: 985 }; BELL.y = landH(BELL.x, BELL.z);
+addMesh(partsGeo([
+  { g: G_.box(8, 1.2, 8), c: 0x8a8a7a, m: M4(0, .3, 0) },
+  ...[[-2.8, -2.8], [2.8, -2.8], [-2.8, 2.8], [2.8, 2.8]].map(([x, z]) => ({ g: G_.cyl(.3, .35, 7.5, 6), c: 0x7a3b30, m: M4(x, 4.6, z) })),
+  { g: G_.box(7, .5, .5), c: 0x5a4632, m: M4(0, 8, 0) }, { g: prism(10.5, 3.2, 10.5), c: 0x3b3a3a, m: M4(0, 8.3, 0) }, { g: G_.box(10.6, .4, 10.6), c: 0x2a2a2a, m: M4(0, 8.3, 0) }
+]), BELL.x, BELL.z, 0, 1, BELL.y - .2);
+const bellMesh = addMesh(partsGeo([{ g: G_.cyl(1.25, 1.55, 2.8, 14), c: 0x4f5a4a, m: M4(0, -1.4, 0) }, { g: G_.sph(1.25, 12, 6), c: 0x4f5a4a, m: M4(0, 0, 0, 0, 0, 0, 1, .5, 1) }, { g: G_.cyl(1.6, 1.6, .2, 14), c: 0x3a4236, m: M4(0, -2.75, 0) }, { g: G_.cyl(.2, .2, .7, 6), c: 0x3a4236, m: M4(0, .8, 0) }]), BELL.x, BELL.z, 0, 1, BELL.y + 7.7);
+const striker = addMesh(partsGeo([{ g: G_.cyl(.28, .28, 3.6, 7), c: 0x8a6a42, m: M4(0, 0, 0, 0, 0, Math.PI / 2) }]), BELL.x + 3.2, BELL.z, 0, 1, BELL.y + 5.6);
+const bellMonk = addPerson("monk", BELL.x + 4.5, BELL.z + 4, { ry: -2.2, col: 0x3b3a3a, line: ["הקישי בפעמון, והקול יגיע עד ההר", "כל צלצול מגרש דאגה אחת", "בסוף השנה מצלצלים כאן מאה ושמונה פעמים"] });
+
+/* ---------- held items and the crane's crest colour ---------- */
+const umbrella = new THREE.Group();
+{ const cv = new THREE.Mesh(G_.cone(1.55, .62, 18), toon(0xb3362b, { side: THREE.DoubleSide })); cv.position.y = 1.15; umbrella.add(cv);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1.5, .04, 4, 24), toon(0xf3efe4)); rim.rotation.x = Math.PI / 2; rim.position.y = .86; umbrella.add(rim);
+  const st = new THREE.Mesh(G_.cyl(.035, .035, 2.4, 4), toon(0x5a4632)); st.position.y = 0; umbrella.add(st);
+  umbrella.position.set(.42, 1.55, .15); umbrella.rotation.set(-.12, 0, -.18); umbrella.visible = false; walker.userData.body.add(umbrella); }
+const fan = new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, .04, 10, 1, false, 0, Math.PI), toon(0xd9a74a, { side: THREE.DoubleSide }));
+fan.rotation.set(Math.PI / 2, 0, 0); fan.position.set(0, -.92, .1); fan.visible = false; walker.userData.arms[0].add(fan);
+const ribbonMat = printMat(PRINT_FS, PRINT_VS, { uCol: { value: new THREE.Color(0xb3362b) } }, { side: THREE.DoubleSide });
+ribbon.material = ribbonMat; player.userData.crown.material = ribbonMat;
+function applyItems() {
+  const it = SAVE.items || [];
+  umbrella.visible = it.includes("kasa"); fan.visible = it.includes("fan");
+  if (SAVE.craneCol) ribbonMat.uniforms.uCol.value.set(SAVE.craneCol);
+}
+applyItems();
+
+/* ---------- shop panel ---------- */
+(function () {
+  const st = document.createElement("style");
+  st.textContent = `#shop .card{max-width:440px;text-align:right}#shop h2{margin:0 0 4px;font-size:26px}#shop .who{color:var(--muted);margin:0 0 12px;font-size:16px;line-height:1.5}
+  #shop .it{display:flex;align-items:center;gap:10px;width:100%;margin:6px 0;padding:9px 12px;background:#f6eedb;border:1px solid #b9a47c;font-size:17px;text-align:right;color:var(--ink)}
+  #shop .it .sw{width:22px;height:22px;border:2px solid #3b3a3a;flex:none}#shop .it b{flex:1;font-weight:normal}#shop .it i{font-style:normal;color:#8a5a20;white-space:nowrap}
+  #shop .it[disabled]{opacity:.55}#shop .purse{margin-top:10px;color:var(--muted)}
+  #actBtn{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);z-index:13;background:var(--red);color:#f6ead2;border:2px solid #f3e5c8;box-shadow:0 3px 0 #6e1d16;padding:9px 18px;font-size:18px;font-family:inherit;pointer-events:auto}
+  #actBtn[hidden]{display:none}`;
+  document.head.appendChild(st);
+  const d = document.createElement("div"); d.className = "scr"; d.id = "shop"; d.hidden = true;
+  d.innerHTML = `<div class="card"><h2 id="shopT"></h2><p class="who" id="shopW"></p><div id="shopL"></div><div class="purse" id="shopP"></div><div class="row"><button class="btn" id="shopX">להמשיך בדרך</button></div></div>`;
+  document.body.appendChild(d);
+  const b = document.createElement("button"); b.id = "actBtn"; b.hidden = true; document.body.appendChild(b);
+  b.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); doAct(); });
+  $("shopX").onclick = closeShop;
+})();
+function hishiTxt(n) { return `◆ ${n}`; }
+function openShop(title, who, items) {
+  if (state !== "play") return;
+  state = "shop"; $("shop").hidden = false; $("actBtn").hidden = true;
+  $("shopT").textContent = title; $("shopW").textContent = who;
+  const L = $("shopL"); L.innerHTML = "";
+  for (const it of items) {
+    const btn = document.createElement("button"); btn.className = "it";
+    const owned = it.owned && it.owned();
+    btn.innerHTML = `${it.color ? `<span class="sw" style="background:#${it.color.toString(16).padStart(6, "0")}"></span>` : ""}<b>${it.name}${owned ? " ✓" : ""}</b><i>${owned ? (it.ownedTxt || "שלך") : hishiTxt(it.price)}</i>`;
+    if (owned && !it.reuse) btn.disabled = true;
+    btn.onclick = () => { if (buy(it)) { closeShop(); } };
+    L.appendChild(btn);
+  }
+  $("shopP").textContent = `בכיס שלך: ◆ ${purse()} חותמים`;
+}
+function closeShop() { $("shop").hidden = true; if (state === "shop") state = "play"; }
+function buy(it) {
+  if (purse() < it.price) { toast(`חסרים לך עוד ${it.price - purse()} חותמים ◆\nאספי עוד בדרכים ועל הגגות`, 2.6); sfx.no(); return false; }
+  SAVE.spent = (SAVE.spent || 0) + it.price; writeSave(SAVE); renderHUD(); sfx.coin();
+  it.got(); return true;
+}
+function own(id) { SAVE.items = SAVE.items || []; if (!SAVE.items.includes(id)) SAVE.items.push(id); writeSave(SAVE); applyItems(); }
+const CREST_COLS = [[0xb3362b, "אדום שני"], [0x24467a, "כחול פרוסי"], [0xd9a74a, "זהב"], [0x416d63, "ירוק אורן"], [0x7a3b6a, "סגול שזיף"]];
+PLACES.push(
+  { x: STALL_POS.kasa[0], z: STALL_POS.kasa[1], label: "דוכן המטריות", act: () => openShop("דוכן המטריות 傘", "מטריית וואגאסה מנייר שמן ובמבוק. תלווה אותך בכל הליכה.", [{ name: "מטריית נייר אדומה", price: 8, owned: () => (SAVE.items || []).includes("kasa"), got: () => { own("kasa"); toast("מטריה חדשה! ☂", 2); } }]) },
+  { x: STALL_POS.fan[0], z: STALL_POS.fan[1], label: "דוכן המניפות", act: () => openShop("דוכן המניפות 扇", "מניפת נייר מצוירת ביד, לימים החמים בדרך.", [{ name: "מניפה מוזהבת", price: 5, owned: () => (SAVE.items || []).includes("fan"), got: () => { own("fan"); toast("מניפה! עכשיו את מנפנפת בדרך", 2); } }]) },
+  { x: STALL_POS.dye[0], z: STALL_POS.dye[1], label: "הצובעת", act: () => openShop("הצובעת 染", "אצבע את הסרט ואת הכתר של העגור שלך בכל צבע.", CREST_COLS.map(([c, n]) => ({ name: n, color: c, price: 6, reuse: true, owned: () => SAVE.craneCol === c, ownedTxt: "עכשיו", got: () => { SAVE.craneCol = c; writeSave(SAVE); applyItems(); toast(`העגור שלך לובש עכשיו ${n}`, 2.2); } }))) },
+  { x: STALL_POS.dango[0], z: STALL_POS.dango[1], label: "דנגו", act: () => openShop("דוכן הדנגו 団", "שלושה כדורי אורז על מקל: ורוד, לבן וירוק.", [{ name: "מקל דנגו (ממלא את הכוח)", price: 1, reuse: true, got: () => { G.boost = 1; G.boostLock = false; toast("ממממ! הכוח מלא", 1.8); } }]) },
+  { x: CHAYA.x - 1, z: CHAYA.z + 8.5, label: "בית התה", act: () => openShop("בית התה 茶", "לשבת על הספסל האדום, לשתות תה ירוק ולאכול דנגו.", [{ name: "לשבת לתה ודנגו", price: 2, reuse: true, got: sitTea }]) },
+  { x: BELL.x + 4, z: BELL.z + 2.5, label: "פעמון המקדש", act: ringBell }
+);
+
+/* ---------- little scenes ---------- */
+let SCN = null;
+SCENE_HOOK = dt => {
+  if (!SCN) { state = "play"; return; }
+  SCN.t += dt; SCN.upd(dt, SCN.t);
+  if (SCN.cam) { camera.position.lerp(SCN.cam, 1 - Math.exp(-dt * 3)); camera.lookAt(SCN.look); }
+  if (SCN.t >= SCN.dur) { const e = SCN.end; SCN = null; state = "play"; if (e) e(); }
+};
+function sitTea() {
+  const seat = CHAYA.seat;
+  const dango = new THREE.Mesh(partsGeo([{ g: G_.cyl(.03, .03, 1, 4), c: 0x8a6a42, m: M4(0, 0, 0) }, ...[0xe9b0bb, 0xf3efe4, 0x8fbf6a].map((c, j) => ({ g: G_.sph(.14, 6, 4), c, m: M4(0, .15 + j * .22, 0) }))]), VC);
+  dango.position.set(0, -.9, .2); walker.userData.arms[1].add(dango);
+  const keepStaff = walker.userData.arms[1].userData.staff; if (keepStaff) keepStaff.visible = false;
+  P.yaw = 0; walker.rotation.set(0, 0, 0);
+  SCN = { t: 0, dur: 4.2, cam: new V3(seat.x + 5, seat.y + 4, seat.z + 9), look: new V3(seat.x, seat.y + 2, seat.z),
+    upd: (dt, t) => { walker.position.set(seat.x, seat.y - 1.15, seat.z); poseTraveler(walker, 0, 0, true); walker.userData.arms[1].rotation.x = -1.2 + Math.sin(t * 3) * .25; if (Math.random() < dt * 6) foam.spawn(seat.x + 1.2, seat.y + .5, seat.z - .2, { vx: rand(-.3, .3), vy: rand(1.5, 2.5), vz: rand(-.3, .3), life: rand(1, 1.6), s0: .3, s1: 1.2, r: .96, gg: .95, b: .9 }); },
+    end: () => { walker.userData.arms[1].remove(dango); if (keepStaff) keepStaff.visible = true; G.boost = 1; G.boostLock = false; P.pos.set(seat.x, landH(seat.x, seat.z + 3), seat.z + 3); toast("מתוק! הכוח מלא ⚡", 2.2); } };
+  state = "scene"; sfx.coin();
+}
+let bellSwing = 0;
+function ringBell() {
+  if (state !== "play") return;
+  SCN = { t: 0, dur: 2.6, cam: new V3(BELL.x + 9, BELL.y + 7, BELL.z + 14), look: new V3(BELL.x, BELL.y + 6, BELL.z),
+    upd: (dt, t) => { striker.position.x = BELL.x + 3.2 - Math.sin(clamp(t / .5, 0, 1) * Math.PI) * 1.2; if (t > .25 && !SCN.hit) { SCN.hit = true; sfx.bell(); bellSwing = .12; for (let k = 0; k < 30; k++) { const a = k / 30 * 6.283; sparks.spawn(BELL.x, BELL.y + 6.5, BELL.z, { vx: Math.cos(a) * 9, vy: 0, vz: Math.sin(a) * 9, life: 1.2, s0: 1, s1: 0, r: 1, gg: .85, b: .55 }); } } },
+    end: () => {
+      SAVE.items = SAVE.items || [];
+      if (!SAVE.items.includes("bellgift")) { SAVE.items.push("bellgift"); SAVE.spent = (SAVE.spent || 0) - 3; writeSave(SAVE); renderHUD(); toast("הנזיר מחייך ונותן לך 3 חותמים ◆", 2.6); }
+      else toast("דונג... הקול מתגלגל עד ההר", 2);
+    } };
+  state = "scene";
+}
+
+/* ---------- per-frame: who is near what ---------- */
+let lineTick = 0;
+PLAY_HOOKS.push(dt => {
+  bellSwing *= Math.exp(-dt * .6); bellMesh.rotation.z = Math.sin(T * 2.2) * bellSwing;
+  if (fan.visible) { walker.userData.arms[0].rotation.x = -1.1; walker.userData.arms[0].rotation.z = .3 + Math.sin(T * 7) * .25; }
+  umbrella.visible = (SAVE.items || []).includes("kasa") && G.mode !== "fly";
+  lineTick += dt; if (lineTick > 5) { lineTick = 0; for (const p of PEOPLE) if (p.line) p.lineIdx = (p.lineIdx || 0) + 1; }
+  let best = null, bd = 1e9;
+  if (G.mode !== "fly") for (const pl of PLACES) { const d = Math.hypot(pl.x - P.pos.x, pl.z - P.pos.z); if (d < 6.5 && d < bd) { bd = d; best = pl; } }
+  if (best !== placeNear) { placeNear = best; const b = $("actBtn"); b.hidden = !best; if (best) { b.textContent = (isTouch ? "👆 " : "E · ") + best.label; sfx.talk(); } }
+});
+function doAct() { if (placeNear && state === "play") placeNear.act(); }
+addEventListener("keydown", e => { if (e.code === "KeyE" && !e.repeat) { if (state === "shop") closeShop(); else doAct(); } else if (e.code === "Escape" && state === "shop") closeShop(); });
+
+/* ---------- sounds for the town ---------- */
+sfx.coin = () => { if (!AC) return; const t = AC.currentTime; pluck(note(12), t, .1, .5); pluck(note(14), t + .06, .09, .6); noiseHit(t, 5200, 6, .08, .05); };
+sfx.no = () => { if (!AC) return; const t = AC.currentTime; pluck(note(3), t, .1, .5); pluck(note(1), t + .12, .09, .6); };
+sfx.bell = () => { if (!AC) return; const t = AC.currentTime; for (const [f, v, d] of [[98, .32, 7], [196 * 1.19, .12, 5], [98 * 2.76, .08, 4], [98 * 5.4, .04, 2.5], [98 * .5, .18, 8]]) { const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * .995, t + d); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .01); g.gain.exponentialRampToValueAtTime(.0005, t + d); o.connect(g); out(g, .8); o.start(t); o.stop(t + d + .1); } noiseHit(t, 300, 1, .3, .3, "lowpass"); };
+
+/* ---------- test hooks ---------- */
+const mT = HASH.match(/town([a-z]*)/);
+if (mT) setTimeout(() => {
+  if (state !== "play") { enterWorld(); introT = 6.3; step(.05); state = "play"; }
+  SAVE.crests = SAVE.crests || []; if (/rich/.test(HASH)) { SAVE.spent = -40; renderHUD(); }
+  const w = mT[1];
+  const at = w === "tea" ? [CHAYA.x - 1, CHAYA.z + 9] : w === "bell" ? [BELL.x + 5, BELL.z + 4] : w === "dye" ? STALL_POS.dye : [1290, roadZ(1290)];
+  P.pos.set(at[0], landH(at[0], at[1]), at[1]); P.yaw = w ? Math.atan2(0, -1) : Math.PI / 2;
+  if (w === "tea" || w === "bell") P.yaw = Math.PI;
+  for (let i = 0; i < 20; i++) step(1 / 30);
+  if (/act/.test(HASH)) { doAct(); for (let i = 0; i < 40; i++) step(1 / 30); }
+  if (/buy/.test(HASH)) { const b = document.querySelector("#shopL .it"); if (b) b.click(); for (let i = 0; i < 30; i++) step(1 / 30); }
+  console.log(`[town] near=${placeNear && placeNear.label} state=${state} purse=${purse()} items=${(SAVE.items || []).join(",")}`);
+}, 1400);
 })();
 </script>
 </body>
