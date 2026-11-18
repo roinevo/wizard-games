@@ -174,7 +174,7 @@ const post = new THREE.ShaderMaterial({
     // woodgrain: each colour block was cut from its own plank, so the grain turns with the block
     float ga=qm*1.7; vec2 gd=vec2(cos(ga),sin(ga));
     float gr=vn(vec2(dot(fc,gd)*.004+vn(fc*.003+qm)*1.5,dot(fc,vec2(-gd.y,gd.x))*.16+vn(fc*.01)*2.));
-    mott*=1.-.055*smoothstep(.55,.9,gr);
+    mott*=1.-.04*smoothstep(.55,.9,gr);
     col=mix(qcol*mott,col,isSky*.85);
     // ichimonji bokashi: the Prussian-blue band printed across the top of the sky
     float topB=smoothstep(.70,.985,uv.y+(vn(vec2(uv.x*4.,0.))-.5)*.02);
@@ -809,7 +809,7 @@ function rawH(x, z) {
   h = lerp(h, 7, sstep(1300, 1800, x) * sstep(-1700, -1200, z) * (1 - sstep(1500, 1900, z)));
   const cz = coastZ(x);
   h -= sstep(cz - 260, cz + 120, z) * (h + 28);
-  for (const [ix, iz, r] of ISLANDS) { const d = Math.hypot(x - ix, z - iz); h = Math.max(h, 28 * sstep(r, r * .25, d) + 6 * Math.sin(x * .05) * sstep(r, 0, d) - 2); }
+  for (const [ix, iz, r] of ISLANDS) { const d = Math.hypot(x - ix, z - iz); if (d < r) h = Math.max(h, 28 * sstep(r, r * .25, d) + 6 * Math.sin(x * .05) * sstep(r, 0, d) - 2); }
   for (const L of LAKES) { const d = Math.hypot(x - L.x, z - L.z) + 30 * Math.sin(Math.atan2(z - L.z, x - L.x) * 3); h = lerp(h, -7, sstep(L.r, L.r * .7, d)); }
   for (const R of RIVERS) { const d = riverDist(R, x, z); if (d < R.w * 2.5) h = lerp(h, -5, sstep(R.w * 1.6, R.w * .55, d)); }
   return h;
@@ -1086,26 +1086,42 @@ function buildWorld() {
   scene.add(TERRAIN);
   // water (sea + lakes + rivers share one sheet at level 0)
   const wg = new THREE.PlaneGeometry(MAP.x1 - MAP.x0 + 4000, MAP.z1 - MAP.z0 + 4000, 360, 360); wg.rotateX(-Math.PI / 2); wg.translate((MAP.x0 + MAP.x1) / 2, 0, (MAP.z0 + MAP.z1) / 2);
+  // the ground under the water, so the water knows how far the shore is (foam lines, shallows)
+  const HT = new Uint8Array((GN + 1) * (GN + 1) * 4);
+  for (let i = 0; i < HGRID.length; i++) { const v = clamp((HGRID[i] + 40) / 80, 0, 1) * 255; HT[i * 4] = v; HT[i * 4 + 3] = 255; }
+  const hTex = new THREE.DataTexture(HT, GN + 1, GN + 1, THREE.RGBAFormat); hTex.minFilter = hTex.magFilter = THREE.LinearFilter; hTex.needsUpdate = true;
   WATER = new THREE.Mesh(wg, printMat(`
-    varying float vH, vSea;
+    varying float vH, vSea; uniform sampler2D tH; uniform vec4 mapR;
     void main(){
-      vec3 deep=vec3(.07,.16,.33), mid=vec3(.13,.3,.55), lite=vec3(.42,.6,.78), foamC=vec3(.95,.93,.86), calm=vec3(.5,.66,.78);
+      vec3 deep=vec3(.106,.184,.341), mid=vec3(.173,.31,.525), lite=vec3(.29,.471,.678), pale=vec3(.51,.631,.62), foamC=vec3(.965,.945,.882), calm=vec3(.45,.62,.74);
       float h=vH; float nh=clamp((h+5.)/10.,0.,1.); float n=fbm(vP.xz*.035);
-      vec3 c=mix(deep,mid,smoothstep(.15,.55,nh));
+      vec2 tuv=((vP.xz-mapR.xy)/mapR.zw*${GN}.+.5)/${GN + 1}.; float ground=texture2D(tH,tuv).r*80.-40.;
+      float depth=max(-ground,0.);
+      // open sea: Prussian body, carved crest lines that ride the swell, deeper toward the horizon
+      vec3 c=mix(deep,mid,step(.38,nh+n*.1));
       float lines=abs(fract(h*.55+n*2.2+vP.x*.004)-.5);
-      c=mix(c,lite,smoothstep(.09,.02,lines)*smoothstep(.2,.6,nh)*.85);
-      float fm=smoothstep(.9,.93,nh+n*.14-.06)*step(.5,vn(vP.xz*vec2(.35,.9)));
-      c=mix(c,foamC,fm);
-      vec3 lake=mix(calm,vec3(.36,.55,.72),fbm(vP.xz*.01));
-      float ln=abs(fract(vP.z*.05+n*1.5)-.5); lake=mix(lake,vec3(.8,.86,.88),smoothstep(.04,.0,ln)*.5);
+      c=mix(c,lite,smoothstep(.09,.03,lines)*smoothstep(.25,.65,nh));
+      float comma=step(.72,vn(vP.xz*vec2(.12,.3)+time*.05))*smoothstep(.7,.9,nh);
+      c=mix(c,foamC,comma*step(.5,vn(vP.xz*vec2(.6,1.6))));
+      c=mix(c,deep*.9,smoothstep(700.,2600.,vDist)*.7);
+      // lakes and rivers: pale calm water with fine horizontal carved lines
+      vec3 lake=mix(calm,vec3(.36,.55,.72),step(.55,fbm(vP.xz*.006)));
+      float ln=abs(fract(vP.z*.09+sin(vP.x*.013)*1.2+n*.8)-.5); lake=mix(lake,vec3(.82,.87,.88),smoothstep(.05,.01,ln)*.55*smoothstep(.2,.6,fbm(vP.xz*.02)));
       c=mix(lake,c,vSea);
+      // shallows: a paler band, then white foam lines running parallel to the shore and rolling in
+      float sh=1.-step(5.,depth+n*1.2);
+      c=mix(c,mix(pale,lite,.35),sh*.8);
+      float roll=fract(depth*.28-time*(.18+.1*vSea)+n*.6);
+      float fl=step(abs(roll-.5),.06)*(1.-smoothstep(3.,12.,depth))*step(.3,vn(vP.xz*.035+vec2(time*.05,0.)));
+      c=mix(c,foamC,fl*.95);
+      c=mix(c,foamC,1.-step(.7,depth+n*.5));
       gl_FragColor=vec4(fogIt(c),.93);
     }`, `${OCEAN_H} uniform float time; varying vec3 vP; varying vec3 vN; varying float vDist; varying float vH, vSea;
     float coastZ(float x){ return 1500.+110.*sin(x*.0023)+60.*sin(x*.0071+1.)+(x>1500.?-(x-1500.)*.35:0.); }
     void main(){ vec4 w=modelMatrix*vec4(position,1.); float cz=coastZ(w.x); float sea=smoothstep(cz-150.,cz+350.,w.z); vSea=sea;
       float h=hgt(w.xz,time)*mix(.06,1.,sea); w.y+=h; vH=h/mix(.06,1.,sea)*sea;
       float e=1.5; float hx=hgt(w.xz+vec2(e,0.),time)*mix(.06,1.,sea), hz=hgt(w.xz+vec2(0.,e),time)*mix(.06,1.,sea);
-      vN=normalize(vec3(h-hx,e,h-hz)); vP=w.xyz; vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`, null, { transparent: true }));
+      vN=normalize(vec3(h-hx,e,h-hz)); vP=w.xyz; vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`, { tH: { value: hTex }, mapR: { value: new THREE.Vector4(MAP.x0, MAP.z0, MAP.x1 - MAP.x0, MAP.z1 - MAP.z0) } }, { transparent: true }));
   WATER.renderOrder = 1; scene.add(WATER);
   // Fuji
   FUJI = makeFuji(FUJI_R, FUJI_H, { low: DEFAULT_MOOD.fLow, mid: DEFAULT_MOOD.fMid, high: DEFAULT_MOOD.fHigh, forest: 1, darkSide: .25 });
@@ -1881,6 +1897,7 @@ if (BOT) {
 if (/stats/.test(HASH)) setTimeout(() => { const L = []; scene.traverse(o => { if (o.isMesh && o.geometry) { const g = o.geometry; const t = (g.index ? g.index.count : g.attributes.position.count) / 3 * (o.count || 1); L.push([Math.round(t), o.type, (o.count || 1), o.frustumCulled]); } }); L.sort((a, b) => b[0] - a[0]); console.log("[tris] " + JSON.stringify(L.slice(0, 12))); }, 3000);
 if (/stats/.test(HASH)) setInterval(() => console.log("[stats] calls=" + renderer.info.render.calls + " tris=" + renderer.info.render.triangles + " progs=" + renderer.info.programs.length), 2500);
 if (/nullchk/.test(HASH)) setTimeout(() => scene.traverse(o => { if (o.isMesh || o.isPoints) o.onBeforeRender = () => { window.__last = o.type + " geo:" + Object.keys(o.geometry.attributes).join("/") + " idx:" + !!o.geometry.index + " mat:" + o.material.type + " vc:" + o.material.vertexColors + " ic:" + !!o.instanceColor + " n:" + o.geometry.attributes.position.count + " at:" + o.getWorldPosition(new V3()).toArray().map(Math.round) + " par:" + (o.parent && o.parent.type) + " box:" + (o.geometry.computeBoundingBox(), o.geometry.boundingBox.getSize(new V3()).toArray().map(v => v.toFixed(1))) + " vis:" + o.visible + " id:" + o.id + " pidx:" + PEOPLE.findIndex(p => p.mesh === o); }; if (o.geometry) { for (const a in o.geometry.attributes) if (!o.geometry.attributes[a]) console.log("[null] " + o.type + " attr " + a + " count " + o.count + " parent " + (o.parent && o.parent.type)); if (o.geometry.index === undefined) console.log("[undefidx] " + o.type); } }), 2000);
+if (/hdbg/.test(HASH)) setTimeout(() => console.log("[h] " + [[760, 2330], [760, 2100], [1500, 1600], [0, 2000]].map(q => landH(q[0], q[1]).toFixed(1) + "/" + HGRID[Math.round((q[1] - MAP.z0) / GZ) * (GN + 1) + Math.round((q[0] - MAP.x0) / GX)].toFixed(1)).join(" ")), 1500);
 window.__dbg = { get state() { return state; }, P, STATIONS, camera };
 })();
 </script>
