@@ -650,7 +650,8 @@ function addScore(n) {
     $("hud").appendChild(p); setTimeout(() => p.remove(), 1000);
   }
 }
-function toast(msg, dur) { const el = $("toast"); el.textContent = msg; el.style.opacity = 1; toastT = dur || 1.8; }
+const BOT = /^#bot/.test(location.hash);
+function toast(msg, dur) { if (BOT) console.log(`[t=${T.toFixed(1)} score=${G.score} lives=${G.lives}] ${msg}`); const el = $("toast"); el.textContent = msg; el.style.opacity = 1; toastT = dur || 1.8; }
 function hit(msg) {
   if (G.invuln > 0 || state !== "play") return false;
   G.lives--; G.invuln = 2.5; G.shake = .6; G.flash = 1; sfx.hit();
@@ -962,10 +963,39 @@ function updatePlay(dt) {
   if (windG) windG.gain.value = muted ? 0 : .02 + (P.speed - BASE) / (BOOSTSP - BASE) * .05;
 }
 
+
+/* BOT driver for automated playtests (#bot): steers toward E.botTarget || E.arrowTarget */
+if (BOT) {
+  setTimeout(() => { $("nameIn").value = "רובוט"; startGame(); }, 400);
+  setInterval(() => { for (let i = 0; i < 15 && state === "play"; i++) { botStep(); T += 1 / 30; updatePlay(1 / 30); animateWorld(1 / 30); sparks.update(1 / 30); smoke.update(1 / 30); } }, 50);
+}
+let stuckT = 0, lastP = new V3(), wander = 0;
+function botStep() {
+  {
+    keys.left = keys.right = keys.up = keys.down = keys.boost = false; lastKeyT = T;
+    const t = E.botTarget || E.arrowTarget;
+    if (P.pos.distanceTo(lastP) < .2) stuckT += 1 / 30; else stuckT = 0; lastP.copy(P.pos);
+    if (stuckT > 1.5) { wander = 1.2; stuckT = 0; }
+    if (wander > 0) { wander -= 1 / 30; keys.left = true; keys.up = true; return; }
+    if (t) {
+      const dx = t.x - P.pos.x, dz = t.z - P.pos.z, dy = t.y - P.pos.y, h = Math.hypot(dx, dz);
+      const diff = wrapA(Math.atan2(dx, dz) - P.yaw);
+      if (diff > .06) keys.left = true; else if (diff < -.06) keys.right = true;
+      const want = Math.atan2(dy, Math.max(h, 1)) * 1.3;
+      if (want > P.pitch + .05) keys.up = true; else if (want < P.pitch - .05) keys.down = true;
+      keys.boost = h > 35 && Math.abs(diff) < .4;
+    }
+    if (E.danger < 16 && G.act <= 0) doAction();
+  }
+}
+
 /* ---------- loop ---------- */
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
+  if (BOT && state === "play") {
+    renderer.render(scene, camera); return;
+  }
   if (state !== "pause") {
     T += dt;
     if (state === "play") updatePlay(dt);
@@ -978,7 +1008,7 @@ function frame(now) {
 A.build(E);
 requestAnimationFrame(frame);
 if (location.hash === "#endtest") setTimeout(() => { $("nameIn").value = "בדיקה"; startGame(); addScore(250); setTimeout(() => endGame(), 300); }, 400);
-if (location.hash === "#autoplay" || location.hash === "#fatlady" || location.hash === "#staff") setTimeout(() => { startGame(); if (location.hash === "#autoplay") { keys.right = true; setTimeout(() => keys.right = false, 1500); } }, 400);
+if (/^#(autoplay|fatlady|staff|stage\d)$/.test(location.hash)) setTimeout(() => { startGame(); if (location.hash === "#autoplay") { keys.right = true; setTimeout(() => keys.right = false, 1500); } }, 400);
 return E;
 };
 
@@ -987,343 +1017,686 @@ return E;
 (() => {
 "use strict";
 let E, THREE, V3;
-/* a vaulted stone chamber under the castle: winged element-keys swarm, a riddle door, and the Philosopher's Stone */
-const RX = 70, RZ = 90, WALL_H = 36, VAULT = 26, NK = 64;
-const LOCK = { x: 0, y: 13, z: -RZ + 2 }, STONE = { x: 0, y: 6, z: 18 };
-const keys = [], torches = [], doorLeaves = [];
-let bowIM, shaftIM, teethIM, wingIM, plaque = null, stoneGem = null, stoneGlow = null;
-let riddle = null, held = null, riddleT = 0, doorAnim = 0, nextRiddleT = 0, doors = 0, transmutes = 0, wrongs = 0, lastPanel = "";
+/* The road to the Philosopher's Stone: six chambers under the trapdoor, each with a chemistry riddle.
+   Every chamber is built at the origin; only the current one is visible and holds the colliders. */
+const ST = [];
+let cur = -1, fading = false, fadeEl = null, whiteEl = null, stageT = 0, lastPanel = "", stats = { stages: 0, wrong: 0 };
 let t1, t2, t3, m4, mBase, q, sc, zAxis;
-const FACTS = [
-  ["H", "היסוד הראשון בטבלה המחזורית"], ["He", "הגז האציל שממלא בלונים מעופפים"], ["O", "הגז שנושמים, ובלעדיו אין אש"],
-  ["C", "היסוד של יהלומים ושל הגרפיט בעיפרון"], ["N", "ממני עשויים 78% מהאוויר"], ["Na", "מתכת רכה שמתלקחת במים, חצי ממלח השולחן"],
-  ["Cl", "גז ירקרק, החצי השני של מלח השולחן"], ["Fe", "המתכת של השריונות, ויש ממני בדם"], ["Cu", "המתכת של מטבעות הקנוט"],
-  ["Ag", "המתכת של מטבעות הסיקל"], ["Au", "המתכת של אוניות הגלאון"], ["Hg", "המתכת היחידה שנוזלית בטמפרטורת החדר"],
-  ["Ne", "הגז האציל שזוהר באדום בשלטים"], ["S", "יסוד צהוב שמריח כמו ביצים רקובות"], ["Mg", "בוער באור לבן מסנוור, כמו לומוס"],
-  ["Ca", "בונה עצמות ושיניים"]
-];
-const FORMULAS = [["O", "ב-H₂O: איזה יסוד מופיע רק פעם אחת?"], ["C", "ב-CO₂: מי היסוד שאינו חמצן?"], ["Na", "ב-NaCl: מי המתכת?"],
-  ["N", "ב-NH₃ (אמוניה): מי היסוד שמופיע פעם אחת?"], ["Fe", "Fe₂O₃ זו חלודה. של איזו מתכת?"], ["S", "H₂SO₄: מי היסוד שבאמצע?"], ["Cu", "CuSO₄ הכחול: מי המתכת?"]];
+// BOTHINT: in #bot mode reveal hidden answers so the bot can be tested end to end
+const BOTMODE = /^#bot/.test(location.hash);
 const POOL = ["H", "He", "O", "C", "N", "Na", "Cl", "Fe", "Cu", "Ag", "Au", "Hg", "Ne", "S", "Mg", "Ca", "Pb"];
 
 const A = {
-  id: "keys", title: "אבן החכמים",
-  sub: "מרתף מקומר מתחת לטירה. מאות מפתחות מכונפים, כל אחד נושא יסוד כימי. הדלת פותחת רק למי שפותרת את החידה.",
+  id: "keys", title: "הדרך לאבן החכמים",
+  sub: "מתחת לדלת הסתרים מחכים שישה חדרים, ובכל אחד מכשול וחידה כימית. בסוף המסע: מראת נפש ואבן החכמים.",
   howto: [
-    "🗝️ <b>קראי את החידה הכימית</b> ותפסי באוויר את המפתח עם היסוד הנכון.",
-    "🚪 טוסי איתו למנעול הזהב שבדלת. כל דלת שנפתחת מעלה שלב, ומהר יותר שווה יותר.",
-    "⚗️ <b>כל דלת שלישית: אלכימיה!</b> הביאי מפתח עופרת (Pb) לאבן החכמים, והיא תהפוך אותו לזהב.",
-    "😠 מפתח לא נכון מרגיז את הלהקה. ❄️ אימוביולוס מקפיא את המפתחות לכמה שניות."
+    "🐶 <b>פלאפי:</b> אספי גזים אצילים לשיר ערש · 🌿 <b>מלכודת השטן:</b> בעירת מגנזיום",
+    "🗝️ <b>המפתחות:</b> חידות כימיה ואלכימיה · ♟️ <b>השחמט:</b> KNO₃ מפיל את המלך",
+    "🧪 <b>השיקויים:</b> הבקבוק הנכון מכבה את האש · 🪞 <b>המראה:</b> החידה של פלאמל",
+    "❄️ אימוביולוס מקפיא כל מה שזז. החץ הקטן מראה לאן לטוס."
   ],
   actionName: "אימוביולוס", actionIcon: "❄️", actionCD: 11, actionColor: 0x9fe0ff,
-  levelLabel: "דלת", startToast: "החידה מעל הדלת! תפסי את המפתח הנכון",
+  levelLabel: "חדר", startToast: "יורדות מתחת לדלת הסתרים...",
   fog: 0x1a120e, fogDensity: .0055, far: 700,
   sky: null, stars: 0, moon: null, moonDir: new THREE_V(.3, 1, .2),
   hemi: [0xd8c8b0, 0x1a1008, .7], dirLight: [0xffd8a0, .25],
   robe: 0x2b1f4a, scarf: 0xa1262b, hat: 0x241a46,
-  music: { beat: .28, key: 2 },
+  music: { beat: .3, key: 2 },
   baseSpeed: 20, boostSpeed: 35, turnRate: 1.95, camDist: 8.5,
-  ceiling: WALL_H + VAULT - 3, floor: () => 0,
-  ranks: [[0, "תלמידה סקרנית"], [400, "פותחת מנעולים"], [1000, "מכשפת כימיה"], [2000, "אלכימאית צעירה"], [3500, "יורשת של ניקולס פלאמל"]],
-  overTitle: nm => nm ? `${nm}, המפתחות ניצחו הפעם` : "המפתחות ניצחו הפעם",
-  overStats: () => [[E.G.score, "נקודות"], [doors, "דלתות נפתחו"], [transmutes, "עופרת שהפכה לזהב"], [wrongs, "מפתחות לא נכונים"]],
+  ceiling: 70, floor: () => 0,
+  ranks: [[0, "תלמידה סקרנית"], [500, "עברה את פלאפי"], [1200, "פותחת מנעולים"], [2200, "אלופת השחמט"], [3500, "יורשת של ניקולס פלאמל"]],
+  overTitle: nm => nm ? `${nm}, המסע נעצר הפעם` : "המסע נעצר הפעם",
+  overStats: () => [[E.G.score, "נקודות"], [`${stats.stages}/6`, "חדרים שעברת"], [stats.wrong, "תשובות שגויות"], [E.G.coins || 0, "אוניות"]],
 
   bounds(e, dt) {
-    const p = e.P.pos;
-    if (clampRoom(p, 3)) { const diff = e.wrapA(Math.atan2(-p.x, -p.z) - e.P.yaw); e.P.yaw += e.clamp(diff, -2.5 * dt, 2.5 * dt); }
+    const p = e.P.pos, s = ST[cur]; if (!s) return;
+    if (clampRoom(p, 3, s)) { const diff = e.wrapA(Math.atan2(-p.x, -p.z) - e.P.yaw); e.P.yaw += e.clamp(diff, -2.5 * dt, 2.5 * dt); }
   },
-  camClamp(p) { clampRoom(p, 1.2); },
+  camClamp(p) { if (ST[cur]) clampRoom(p, 1.2, ST[cur]); },
 
   build(e) {
     E = e; THREE = E.THREE; V3 = E.V3;
     t1 = new V3(); t2 = new V3(); t3 = new V3(); m4 = new THREE.Matrix4(); mBase = new THREE.Matrix4(); q = new THREE.Quaternion(); sc = new V3(1, 1, 1); zAxis = new V3(0, 0, 1);
     Object.assign(E.EL, {
-      He: { n: 2, c: "#ffc0ee", name: "הליום" }, Ne: { n: 10, c: "#ff7a4a", name: "ניאון" }, Ag: { n: 47, c: "#dfe4f0", name: "כסף" },
-      Au: { n: 79, c: "#ffd23a", name: "זהב" }, Hg: { n: 80, c: "#b8d0e0", name: "כספית" }, Pb: { n: 82, c: "#9098b8", name: "עופרת" }
+      He: { n: 2, c: "#ffc0ee", name: "הליום" }, Ne: { n: 10, c: "#ff7a4a", name: "ניאון" }, Ar: { n: 18, c: "#c79bff", name: "ארגון" },
+      K: { n: 19, c: "#e0a0ff", name: "אשלגן" }, Ag: { n: 47, c: "#dfe4f0", name: "כסף" }, Au: { n: 79, c: "#ffd23a", name: "זהב" },
+      Hg: { n: 80, c: "#b8d0e0", name: "כספית" }, Pb: { n: 82, c: "#9098b8", name: "עופרת" }
     });
-    buildRoom();
-    // winged keys
-    const goldM = new THREE.MeshLambertMaterial({ color: 0xd9b24a, emissive: 0x4a3200 });
-    bowIM = new THREE.InstancedMesh(new THREE.TorusGeometry(.5, .14, 8, 16), goldM, NK);
-    shaftIM = new THREE.InstancedMesh(new THREE.BoxGeometry(.18, .18, 1.9), goldM, NK);
-    teethIM = new THREE.InstancedMesh(new THREE.BoxGeometry(.12, .55, .55), goldM, NK);
-    const wg = new THREE.PlaneGeometry(1.5, .75); wg.translate(.75, 0, 0);
-    wingIM = new THREE.InstancedMesh(wg, new THREE.MeshBasicMaterial({ color: 0xf4f0ff, transparent: true, opacity: .85, side: THREE.DoubleSide }), NK * 2);
-    for (const im of [bowIM, shaftIM, teethIM, wingIM]) { im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; E.scene.add(im); }
-    for (let i = 0; i < NK; i++) {
-      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: E.elTex("H"), transparent: true, depthWrite: false, fog: false }));
-      spr.scale.set(3.3, 3.3, 1); E.scene.add(spr);
-      keys.push({ pos: new V3(E.rand(-50, 50), E.rand(10, 45), E.rand(-60, 60)), vel: new V3(E.rand(-1, 1), E.rand(-.3, .3), E.rand(-1, 1)).setLength(12),
-        sym: E.pick(POOL), spr, freeze: 0, angry: 0, ph: E.rand(0, 6.28) });
-      setSym(keys[i], keys[i].sym);
-    }
+    fadeEl = document.createElement("div"); fadeEl.style.cssText = "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .45s;z-index:4";
+    whiteEl = document.createElement("div"); whiteEl.style.cssText = "position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity 1.2s;z-index:4";
+    document.body.append(fadeEl, whiteEl);
+    ST.push(buildFluffy(), buildSnare(), buildKeys(), buildChess(), buildPotions(), buildMirror());
+    ST.forEach(s => { s.g.visible = false; E.scene.add(s.g); });
+    showStage(2); // the key chamber is the menu backdrop
   },
 
-  start(e) {
-    const P = e.P; P.pos.set(0, 12, RZ - 12); P.yaw = Math.PI;
-    doors = 0; transmutes = 0; wrongs = 0; held = null; doorAnim = 0; nextRiddleT = 0;
-    for (const k of keys) { k.angry = 0; k.freeze = 0; k.held = false; }
-    newRiddle();
-  },
+  start(e) { stats = { stages: 0, wrong: 0 }; ST.forEach(s => s.reset && s.reset()); const m = location.hash.match(/^#stage(\d)$/); enterStage(m ? +m[1] : 0); },
 
   action(e) {
-    let n = 0;
-    for (const k of keys) if (!k.held && k.pos.distanceTo(e.P.pos) < 48) { k.freeze = 4.5; k.angry = 0; n++; }
+    const s = ST[cur]; let n = 0;
+    if (s.freeze) n = s.freeze(e.P.pos);
     E.sfx.spell();
     for (let i = 0; i < 80; i++) { const v = new V3(E.rand(-1, 1), E.rand(-1, 1), E.rand(-1, 1)).setLength(E.rand(10, 40)); E.sparks.spawn(e.P.pos.x, e.P.pos.y, e.P.pos.z, { vx: v.x, vy: v.y, vz: v.z, life: 1, r: .7, g: .9, b: 1, s0: 1.4, s1: 0, drag: 1.5 }); }
-    E.toast(n ? `❄️ אימוביולוס! ${n} מפתחות קפאו` : "❄️ אין מפתחות קרובים", 1.5);
+    E.toast(n ? "❄️ אימוביולוס! הכול קפא לכמה שניות" : "❄️ אין פה מה להקפיא", 1.5);
     return n ? true : 3;
   },
 
-  onHit() {},
-
   update(dt, e) {
-    const P = e.P, G = e.G, T = e.T;
-    if (nextRiddleT > 0) { nextRiddleT -= dt; if (nextRiddleT <= 0) newRiddle(); }
-    else {
-      riddleT -= dt;
-      if (riddleT <= 0) {
-        if (E.hit("⏳ הזמן לחידה נגמר! חידה חדשה")) {}
-        if (E.state !== "play") return;
-        dropHeld(); newRiddle();
-      }
-    }
-    updateKeys(dt, true);
+    const s = ST[cur]; if (!s) return; if (BOTMODE && cur !== this._lc) { this._lc = cur; E.botTarget = null; console.log(`[STAGE ${cur + 1}] ${s.name} t=${e.T.toFixed(1)}`); }
+    stageT += dt;
+    E.danger = 1e9; E.arrowTarget = null;
+    s.update(dt, e.P, e.T);
     if (E.state !== "play") return;
-    // catching
-    if (!held && nextRiddleT <= 0) {
-      for (const k of keys) {
-        if (k.held || k.angry > 0) continue;
-        if (k.pos.distanceTo(P.pos) < 3.3) {
-          if (k.sym === riddle.want) {
-            held = k; k.held = true; k.freeze = 0; E.sfx.good(); E.burst(k.pos, E.rgb(E.EL[k.sym].c), 30, 8, 1.6, .8);
-            E.toast(riddle.alchemy && k.sym === "Pb" ? "⚗️ מפתח העופרת אצלך! לאבן החכמים" : `🗝️ ${E.EL[k.sym].name} (${k.sym})! למנעול שבדלת`, 1.8);
-          } else {
-            wrongs++; E.sfx.bonk(); E.G.shake = .3;
-            E.toast(`😠 ${E.EL[k.sym].name} (${k.sym}) זה לא המפתח! הלהקה כועסת`, 1.8);
-            k.vel.copy(k.pos).sub(P.pos).setLength(30);
-            const near = keys.filter(o => !o.held).sort((a, b) => a.pos.distanceTo(P.pos) - b.pos.distanceTo(P.pos)).slice(0, 4 + Math.min(G.level, 6));
-            for (const o of near) o.angry = 5;
-            k.angry = 0;
-          }
-          break;
-        }
-      }
-    }
-    // alchemy at the stone
-    if (held && riddle.alchemy && held.sym === "Pb" && Math.hypot(P.pos.x - STONE.x, P.pos.z - STONE.z) < 9 && P.pos.y < 22) {
-      setSym(held, "Au"); riddle.want = "Au"; transmutes++; E.addScore(150); E.sfx.win();
-      for (let i = 0; i < 140; i++) E.sparks.spawn(STONE.x, STONE.y + 4, STONE.z, { vx: E.rand(-14, 14), vy: E.rand(4, 28), vz: E.rand(-14, 14), life: E.rand(1, 2), r: 1, g: .82, b: .25, s0: 2, s1: 0, drag: 1, grav: -10 });
-      E.toast("✨ טרנסמוטציה! העופרת הפכה לזהב (Au). למנעול!", 2.6); lastPanel = "";
-    }
-    // the lock
-    if (held && held.sym === riddle.want && !(riddle.alchemy && held.sym === "Pb") && t1.set(LOCK.x, LOCK.y, LOCK.z).distanceTo(P.pos) < 9) openDoor();
-    // angry keys sting
-    let nearest = 1e9;
-    for (const k of keys) if (k.angry > 0) {
-      const d = k.pos.distanceTo(P.pos); nearest = Math.min(nearest, d);
-      if (d < 2.4 && E.hit("🔑 מפתח זועם עקץ אותך!")) { k.angry = 0; k.vel.copy(k.pos).sub(P.pos).setLength(28); if (held) dropHeld(); }
-    }
-    E.danger = nearest * 1.6;
-    // arrow
-    if (held) {
-      if (riddle.alchemy && held.sym === "Pb") { E.arrowTarget = t2.set(STONE.x, STONE.y + 3, STONE.z); E.arrowColor = 0xff4a4a; }
-      else { E.arrowTarget = t2.set(LOCK.x, LOCK.y, LOCK.z); E.arrowColor = 0xffd23a; }
-    } else if (nextRiddleT <= 0) {
-      let best = null, bd = 1e9; for (const k of keys) if (!k.held && k.sym === riddle.want) { const d = k.pos.distanceTo(P.pos); if (d < bd) { bd = d; best = k; } }
-      E.arrowTarget = G.level <= 2 && best ? best.pos : null; E.arrowColor = best ? parseInt(E.EL[best.sym].c.slice(1), 16) : 0xffffff;
-    } else E.arrowTarget = null;
+    if (!fading && s.exitOpen && s.exitHit(e.P.pos)) nextStage();
     renderPanel();
   },
 
-  world(dt, e) {
-    const T = e.T;
-    if (e.state !== "play") updateKeys(dt, false);
-    drawKeys(T);
-    for (const t of torches) { t.s.scale.setScalar(5 + Math.sin(T * 14 + t.x) * .6); if (Math.random() < dt * 5) E.sparks.spawn(t.x, t.y + .6, t.z, { vy: 2.5, life: .5, r: 1, g: .55, b: .2, s0: .8, s1: 0 }); }
-    stoneGem.rotation.y += dt * .8; stoneGem.position.y = STONE.y + 3 + Math.sin(T * 1.5) * .3;
-    stoneGlow.material.opacity = .5 + .2 * Math.sin(T * 3);
-    if (Math.random() < dt * 10) E.sparks.spawn(STONE.x + E.rand(-1, 1), STONE.y + 3, STONE.z + E.rand(-1, 1), { vy: E.rand(1, 4), life: 1.2, r: 1, g: .2, b: .25, s0: 1.2, s1: 0 });
-    // door leaves swing open then close
-    if (doorAnim > 0) doorAnim -= dt;
-    const open = doorAnim > 0 ? Math.min(1, (2.6 - doorAnim) * 2, doorAnim * 1.5) : 0;
-    doorLeaves[0].rotation.y = -open * 1.2; doorLeaves[1].rotation.y = open * 1.2;
-  },
+  world(dt, e) { const s = ST[cur]; if (s) s.world(dt, e.T, e.state === "play"); },
 
   cinematic(T, cam) {
-    const a = T * .07;
-    cam.position.set(Math.sin(a) * 45, 22 + Math.sin(T * .2) * 6, Math.cos(a) * 60);
-    cam.lookAt(0, 20, 0);
+    if (cur !== 2) showStage(2);
+    const a = T * .07; cam.position.set(Math.sin(a) * 45, 22 + Math.sin(T * .2) * 6, Math.cos(a) * 60); cam.lookAt(0, 20, 0);
   },
-  onEnd() { held = null; for (const k of keys) { k.held = false; k.angry = 0; } }
+  onEnd() { fadeEl.style.opacity = 0; fading = false; }
 };
 
 function THREE_V(x, y, z) { return window.THREE ? new window.THREE.Vector3(x, y, z) : null; }
 
-function clampRoom(p, pad) {
+/* ---------- stage plumbing ---------- */
+function showStage(i) {
+  if (cur >= 0) ST[cur].g.visible = false;
+  cur = i; const s = ST[i]; s.g.visible = true;
+  E.boxCols.length = 0; E.towerCols.length = 0; (s.cols || []).forEach(c => (c.hw ? E.boxCols : E.towerCols).push(c));
+  E.scene.fog.color.setHex(s.fog[0]); E.scene.fog.density = s.fog[1]; E.scene.background.setHex(s.fog[0]);
+}
+function enterStage(i) {
+  showStage(i); const s = ST[i];
+  s.enter(); stageT = 0; lastPanel = "";
+  const P = E.P; P.pos.copy(s.start); P.yaw = s.yaw; P.pitch = 0;
+  E.camera.position.copy(P.pos).add(t1.set(-Math.sin(s.yaw) * 9, 4, -Math.cos(s.yaw) * 9));
+  E.G.level = i + 1; E.renderHUD();
+  E.toast(`${s.icon} חדר ${i + 1}: ${s.name}`, 2.6);
+}
+function nextStage() {
+  fading = true; fadeEl.style.opacity = 1; E.sfx.ready();
+  const bonus = 300 + Math.max(0, Math.round(180 - stageT)) * 2;
+  E.addScore(bonus); stats.stages++;
+  setTimeout(() => {
+    if (E.state !== "play") { fading = false; fadeEl.style.opacity = 0; return; }
+    E.G.lives = Math.min(5, E.G.lives + 1); E.renderHUD();
+    enterStage(cur + 1); fadeEl.style.opacity = 0; fading = false;
+  }, 500);
+}
+function flashWhite() { whiteEl.style.transition = "none"; whiteEl.style.opacity = .95; requestAnimationFrame(() => { whiteEl.style.transition = "opacity 1.2s"; whiteEl.style.opacity = 0; }); }
+function clampRoom(p, pad, s) {
   let m = false;
-  if (p.x < -RX + pad) { p.x = -RX + pad; m = true; } if (p.x > RX - pad) { p.x = RX - pad; m = true; }
-  if (p.z < -RZ + pad) { p.z = -RZ + pad; m = true; } if (p.z > RZ - pad) { p.z = RZ - pad; m = true; }
-  const top = WALL_H + VAULT * Math.sqrt(Math.max(0, 1 - (p.x / RX) ** 2)) - pad;
+  if (p.x < -s.hx + pad) { p.x = -s.hx + pad; m = true; } if (p.x > s.hx - pad) { p.x = s.hx - pad; m = true; }
+  if (p.z < -s.hz + pad) { p.z = -s.hz + pad; m = true; } if (p.z > s.hz - pad) { p.z = s.hz - pad; m = true; }
+  const top = s.h + s.vault * Math.sqrt(Math.max(0, 1 - (p.x / s.hx) ** 2)) - pad;
   if (p.y > top) { p.y = top; m = true; }
   return m;
 }
-function setSym(k, s) { k.sym = s; k.spr.material.map = E.elTex(s); }
-
-function newRiddle() {
-  const lv = E.G.level;
-  if (lv % 3 === 0) riddle = { want: "Pb", alchemy: true, text: "⚗️ אלכימיה: תפסי מפתח עופרת (Pb), הפכי אותו לזהב באבן החכמים, ופתחי את הדלת" };
-  else if (lv >= 4 && Math.random() < .35) { const n = E.pick(POOL.filter(s => s !== "Pb")); riddle = { want: n, text: `המספר האטומי שלי הוא ${E.EL[n].n}` }; }
-  else if (lv >= 2 && Math.random() < .4) { const f = E.pick(FORMULAS); riddle = { want: f[0], text: f[1] }; }
-  else { const f = E.pick(FACTS.filter(f => !riddle || f[0] !== riddle.want)); riddle = { want: f[0], text: f[1] }; }
-  riddleT = Math.max(30, 60 - lv * 3); nextRiddleT = 0;
-  // make sure enough keys carry the answer, and no other key duplicates too much
-  const wantCount = Math.max(2, 5 - Math.floor(lv / 3));
-  let have = keys.filter(k => !k.held && k.sym === riddle.want).length;
-  for (const k of keys) { if (have >= wantCount) break; if (!k.held && k.sym !== riddle.want && Math.random() < .5) { setSym(k, riddle.want); have++; } }
-  for (const k of keys) { if (have >= wantCount) break; if (!k.held && k.sym !== riddle.want) { setSym(k, riddle.want); have++; } }
-  drawPlaque(); lastPanel = ""; renderPanel();
-}
-function openDoor() {
-  const G = E.G, bonus = 100 + 25 * G.level + Math.round(riddleT * 3);
-  doors++; G.level++; E.addScore(bonus); E.sfx.win();
-  if (doors % 2 === 0) { G.lives = Math.min(5, G.lives + 1); E.renderHUD(); }
-  E.burst(t1.set(LOCK.x, LOCK.y, LOCK.z), E.COL.GOLD, 120, 20, 2.4, 1.4);
-  E.toast(`🚪 הדלת נפתחה! +${bonus}${doors % 2 === 0 ? " ❤️" : ""}`, 2.4);
-  doorAnim = 2.6;
-  held.held = false; held.pos.set(E.rand(-40, 40), 30, E.rand(-20, 40)); setSym(held, E.pick(POOL)); held = null;
-  nextRiddleT = 2.2; lastPanel = "";
-  for (const k of keys) k.angry = 0;
-}
-function dropHeld() { if (held) { held.held = false; held.vel.set(E.rand(-1, 1), 1, E.rand(-1, 1)).setLength(15); if (held.sym === "Au" && riddle && riddle.alchemy) { setSym(held, "Pb"); riddle.want = "Pb"; } held = null; } }
-function renderPanel() {
-  if (!riddle) return;
-  const st = nextRiddleT > 0 ? "🚪 הדלת נפתחת..." : held ? (riddle.alchemy && held.sym === "Pb" ? "⚗️ לאבן החכמים האדומה" : "🗝️ המפתח אצלך! למנעול") : "תפסי את המפתח הנכון";
-  const key = `${riddle.text}|${Math.ceil(riddleT)}|${st}`; if (key === lastPanel) return; lastPanel = key;
+function panel(title, line, extra, ready) {
+  const key = title + line + (extra || "") + ready; if (key === lastPanel) return; lastPanel = key;
   const p = document.getElementById("panel");
-  p.innerHTML = `<div class="pname">🗝️ חידת הדלת</div><div class="pbig" style="font-size:17px;max-width:420px">${riddle.text}</div><div class="psub">⏱ ${Math.ceil(riddleT)} שנ׳ · ${st}</div>`;
-  p.classList.toggle("ready", !!held);
+  p.innerHTML = `<div class="pname">${title}</div><div class="pbig" style="font-size:16px;max-width:430px">${line}</div>${extra || ""}`;
+  p.classList.toggle("ready", !!ready);
 }
-function drawPlaque() {
-  const c = plaque.userData.canvas, g = c.getContext("2d");
-  g.clearRect(0, 0, 1024, 256);
-  g.fillStyle = "rgba(30,20,10,.92)"; g.fillRect(0, 0, 1024, 256);
-  g.strokeStyle = "#d4a83a"; g.lineWidth = 10; g.strokeRect(8, 8, 1008, 240);
-  g.fillStyle = "#ffd977"; g.textAlign = "center"; g.textBaseline = "middle"; try { g.direction = "rtl"; } catch (e) {}
-  g.font = "bold 46px 'Varela Round', Arial, sans-serif"; g.fillText(riddle.text, 512, 128, 960);
-  plaque.needsUpdate = true;
+function renderPanel() { const s = ST[cur]; if (s && s.panel) s.panel(); }
+
+/* ---------- builders ---------- */
+function brickTex(rx, ry, base) {
+  const t = E.canvasTex(256, g => { g.fillStyle = "#2a2420"; g.fillRect(0, 0, 256, 256); for (let r = 0; r < 8; r++) for (let c = 0; c < 6; c++) { const off = r % 2 ? 26 : 0, l = (base || 50) + Math.random() * 20; g.fillStyle = `rgb(${l + 10},${l + 6},${l})`; g.fillRect(c * 52 + off - 26 + 3, r * 32 + 3, 46, 26); } });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t;
+}
+function makeRoom(hx, hz, h, vault, o) {
+  o = o || {};
+  const g = new THREE.Group();
+  let ft = o.floorTex;
+  if (!ft) { ft = E.canvasTex(256, gg => { for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const l = 40 + Math.random() * 14; gg.fillStyle = `rgb(${l},${l - 4},${l - 8})`; gg.fillRect(i * 64 + 2, j * 64 + 2, 60, 60); } }); ft.wrapS = ft.wrapT = THREE.RepeatWrapping; ft.repeat.set(hx / 5, hz / 5); }
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(hx * 2, hz * 2), new THREE.MeshLambertMaterial({ map: ft, color: o.floorTint || 0xffffff })); floor.rotation.x = -Math.PI / 2; g.add(floor);
+  const wall = (w, hh, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, hh), new THREE.MeshLambertMaterial({ map: brickTex(w / 9, hh / 9, o.brick), color: o.tint || 0xffffff })); m.position.set(x, y, z); m.rotation.y = ry; g.add(m); };
+  wall(hz * 2, h, -hx, h / 2, 0, Math.PI / 2); wall(hz * 2, h, hx, h / 2, 0, -Math.PI / 2);
+  wall(hx * 2, h, 0, h / 2, -hz, 0); wall(hx * 2, h, 0, h / 2, hz, Math.PI);
+  const vm = new THREE.Mesh(new THREE.CylinderGeometry(hx, hx, hz * 2, 40, 1, true, Math.PI / 2, Math.PI), new THREE.MeshLambertMaterial({ map: brickTex(hx / 3.5, hz / 3.5, o.brick), color: o.tint || 0xffffff, side: THREE.BackSide }));
+  vm.rotation.x = Math.PI / 2; vm.scale.z = vault / hx; vm.position.y = h; g.add(vm);
+  for (const s of [-1, 1]) { const ew = new THREE.Mesh(new THREE.CircleGeometry(hx, 40, 0, Math.PI), new THREE.MeshLambertMaterial({ map: brickTex(hx / 5, 3, o.brick), color: o.tint || 0xffffff })); ew.scale.y = vault / hx; ew.position.set(0, h, s * hz); ew.rotation.y = s > 0 ? Math.PI : 0; g.add(ew); }
+  const ribM = new THREE.MeshLambertMaterial({ color: 0x5a4c40 });
+  for (let z = -hz + 15; z < hz; z += 30) { const rib = new THREE.Mesh(new THREE.TorusGeometry(hx - .5, 1.1, 6, 40, Math.PI), ribM); rib.scale.y = vault / hx; rib.position.set(0, h, z); g.add(rib); }
+  const torches = [];
+  for (const s of [-1, 1]) for (let z = -hz + 12; z <= hz - 12; z += Math.max(20, hz * .6)) {
+    const x = s * (hx - .6); const f = E.glowSprite(o.torch || 0xff9a40, 5, .9, true); f.position.set(x - s * .4, h * .55, z); g.add(f); torches.push(f);
+  }
+  const lights = o.lights === undefined ? 2 : o.lights;
+  for (let i = 0; i < lights; i++) { const l = new THREE.PointLight(o.light || 0xffb070, 1, Math.max(hx, hz) * 2); l.position.set(0, h * .8, lights === 1 ? 0 : (i ? -hz * .5 : hz * .5)); g.add(l); }
+  return { g, torches };
+}
+function exitArch(g, z, color) {
+  const arch = new THREE.Group(); arch.position.set(0, 0, z); g.add(arch);
+  const fr = new THREE.Mesh(new THREE.BoxGeometry(24, 26, 1.2), new THREE.MeshLambertMaterial({ color: 0x4a4036 })); fr.position.y = 13; arch.add(fr);
+  const hole = new THREE.Mesh(new THREE.PlaneGeometry(18, 22), new THREE.MeshBasicMaterial({ color: 0x050302 })); hole.position.set(0, 11, .7); arch.add(hole);
+  const glow = E.glowSprite(color || 0xffd23a, 26, 0); glow.position.set(0, 11, 1.5); arch.add(glow);
+  return glow;
+}
+function orbSprite(sym, size) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: E.elTex(sym), transparent: true, depthWrite: false, fog: false })); s.scale.set(size || 5, size || 5, 1); return s; }
+function setOrbs(st, want, extra, area) {
+  (st.orbs || []).forEach(o => st.g.remove(o.spr)); st.orbs = []; st.want = want; st.got = {};
+  const list = []; for (const s in want) for (let i = 0; i < want[s]; i++) list.push(s); list.push(...extra);
+  for (const s of list) { const spr = orbSprite(s); const p = area(); spr.position.copy(p); st.g.add(spr); st.orbs.push({ spr, sym: s, base: p.clone(), ph: E.rand(0, 6), alive: true }); }
+}
+function orbsAnimate(st, T) {
+  for (const o of st.orbs || []) if (o.alive) {
+    o.spr.position.set(o.base.x, o.base.y + Math.sin(T * 1.6 + o.ph) * .6, o.base.z);
+    o.spr.material.opacity = E.clamp((o.spr.position.distanceTo(E.camera.position) - 3) / 9, 0, 1);
+  }
+}
+function orbsCollide(st, P, onGood, onBad) {
+  for (const o of st.orbs) if (o.alive && o.spr.position.distanceTo(P) < 4.2) {
+    o.alive = false; o.spr.visible = false; E.burst(o.spr.position, E.rgb(E.EL[o.sym].c), 26, 9, 1.6, .9);
+    if ((st.got[o.sym] || 0) < (st.want[o.sym] || 0)) { st.got[o.sym] = (st.got[o.sym] || 0) + 1; E.addScore(40); E.sfx.good(); onGood(o.sym); }
+    else { stats.wrong++; E.sfx.bonk(); onBad(o.sym); }
+  }
+}
+const wantDone = st => Object.keys(st.want).every(s => (st.got[s] || 0) >= st.want[s]);
+const chips = st => `<div class="chips">${Object.keys(st.want).map(s => { const g = st.got[s] || 0, n = st.want[s]; return `<span class="chip${g >= n ? " done" : ""}" style="--c:${E.EL[s].c}"><b>${s}</b> ${g}/${n}</span>`; }).join("")}</div>`;
+function nearestWanted(st, P) {
+  let best = null, bd = 1e9;
+  for (const o of st.orbs) if (o.alive && (st.got[o.sym] || 0) < (st.want[o.sym] || 0)) { const d = o.spr.position.distanceTo(P); if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+function textSprite(text, w, color, bg) {
+  const tex = E.canvasTex(512, g => {
+    g.font = "bold 60px 'Varela Round', Arial, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; try { g.direction = "rtl"; } catch (e) {}
+    g.fillStyle = bg || "rgba(14,12,40,.75)"; if (g.roundRect) { g.beginPath(); g.roundRect(8, 10, 496, 108, 30); g.fill(); } else g.fillRect(8, 10, 496, 108);
+    g.fillStyle = color || "#ffd977"; g.fillText(text, 256, 66, 480);
+  }, 128);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false })); s.scale.set(w, w / 4, 1); return s;
 }
 
-function buildRoom() {
-  const scene = E.scene;
-  const brick = (rx, ry) => { const t = E.canvasTex(256, g => { g.fillStyle = "#2a2420"; g.fillRect(0, 0, 256, 256); for (let r = 0; r < 8; r++) for (let c = 0; c < 6; c++) { const off = r % 2 ? 26 : 0, l = 50 + Math.random() * 20; g.fillStyle = `rgb(${l + 10},${l + 6},${l})`; g.fillRect(c * 52 + off - 26 + 3, r * 32 + 3, 46, 26); } }); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t; };
-  const floorT = E.canvasTex(256, g => { for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const l = 40 + Math.random() * 14; g.fillStyle = `rgb(${l},${l - 4},${l - 8})`; g.fillRect(i * 64 + 2, j * 64 + 2, 60, 60); } });
-  floorT.wrapS = floorT.wrapT = THREE.RepeatWrapping; floorT.repeat.set(14, 18);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(RX * 2, RZ * 2), new THREE.MeshLambertMaterial({ map: floorT })); floor.rotation.x = -Math.PI / 2; scene.add(floor);
-  const wall = (w, h, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: brick(w / 9, h / 9) })); m.position.set(x, y, z); m.rotation.y = ry; scene.add(m); };
-  wall(RZ * 2, WALL_H, -RX, WALL_H / 2, 0, Math.PI / 2); wall(RZ * 2, WALL_H, RX, WALL_H / 2, 0, -Math.PI / 2);
-  wall(RX * 2, WALL_H, 0, WALL_H / 2, -RZ, 0); wall(RX * 2, WALL_H, 0, WALL_H / 2, RZ, Math.PI);
-  const vault = new THREE.Mesh(new THREE.CylinderGeometry(RX, RX, RZ * 2, 40, 1, true, Math.PI / 2, Math.PI), new THREE.MeshLambertMaterial({ map: brick(20, 26), side: THREE.BackSide }));
-  vault.rotation.x = Math.PI / 2; vault.scale.z = VAULT / RX; vault.position.y = WALL_H; scene.add(vault);
-  for (const s of [-1, 1]) {
-    const endW = new THREE.Mesh(new THREE.CircleGeometry(RX, 40, 0, Math.PI), new THREE.MeshLambertMaterial({ map: brick(14, 3) }));
-    endW.scale.y = VAULT / RX; endW.position.set(0, WALL_H, s * RZ); endW.rotation.y = s > 0 ? Math.PI : 0; scene.add(endW);
+/* ---------- 1. Fluffy ---------- */
+function buildFluffy() {
+  const st = { name: "פלאפי, הכלב בעל שלושת הראשים", icon: "🐶", hx: 40, hz: 60, h: 26, vault: 18, fog: [0x1a120e, .006], start: new V3(0, 10, 50), yaw: Math.PI };
+  const R = makeRoom(st.hx, st.hz, st.h, st.vault); st.g = R.g;
+  const fur = new THREE.MeshLambertMaterial({ color: 0x6a4a2a }), dark = new THREE.MeshLambertMaterial({ color: 0x2a1a10 });
+  const dog = new THREE.Group(); dog.position.set(0, 0, -30); st.g.add(dog);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), fur); body.scale.set(7, 6, 10); body.position.y = 8; dog.add(body);
+  for (const [x, z] of [[-4.5, 6], [4.5, 6], [-4.5, -6], [4.5, -6]]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 7, 10), fur); l.position.set(x, 3.5, z); dog.add(l); const pw = new THREE.Mesh(new THREE.SphereGeometry(2, 10, 8), fur); pw.scale.set(1, .5, 1.3); pw.position.set(x, .6, z + 1); dog.add(pw); }
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(.9, 8, 8), fur); tail.position.set(0, 10, -11); tail.rotation.x = -1.1; dog.add(tail);
+  st.heads = [];
+  [-6, 0, 6].forEach((x, i) => {
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.4, 7, 10), fur); neck.position.set(x * .7, 13, 7); neck.rotation.x = .5; neck.rotation.z = -x * .05; dog.add(neck);
+    const h = new THREE.Group(); const base = new V3(x, 16.5, 10); h.position.copy(base); dog.add(h);
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(2.6, 16, 12), fur); h.add(skull);
+    const snout = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.8, 3), fur); snout.position.set(0, -.6, 2.8); h.add(snout);
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(.5, 8, 6), dark); nose.position.set(0, -.1, 4.3); h.add(nose);
+    const jaw = new THREE.Mesh(new THREE.BoxGeometry(2, .5, 2.6), new THREE.MeshLambertMaterial({ color: 0x8a2a2a })); jaw.position.set(0, -1.7, 2.5); h.add(jaw);
+    for (const s of [-1, 1]) {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(.8, 2, 8), dark); ear.position.set(s * 1.6, 2.2, -.4); ear.rotation.z = -s * .4; h.add(ear);
+      const eye = E.glowSprite(0xffd23a, 1.2, 1); eye.position.set(s * .9, .6, 2.3); h.add(eye); h.userData["e" + s] = eye;
+    }
+    st.heads.push({ h, base, jaw, ph: i * 2.1, lunge: 0 });
+  });
+  const trap = new THREE.Mesh(new THREE.BoxGeometry(10, .3, 10), new THREE.MeshLambertMaterial({ color: 0x3a2414 })); trap.position.set(0, .2, -14); st.g.add(trap); st.trap = trap;
+  st.trapGlow = E.glowSprite(0xffd23a, 18, 0); st.trapGlow.position.set(0, 1, -14); st.g.add(st.trapGlow);
+  // the harp
+  const harp = new THREE.Group(); harp.position.set(-28, 0, 32); harp.rotation.y = .6; st.g.add(harp);
+  const gold = new THREE.MeshLambertMaterial({ color: 0xd4a83a, emissive: 0x3a2400 });
+  const bar = (x1, y1, x2, y2) => { const L = Math.hypot(x2 - x1, y2 - y1), m = new THREE.Mesh(new THREE.CylinderGeometry(.35, .35, L, 8), gold); m.position.set((x1 + x2) / 2, (y1 + y2) / 2, 0); m.rotation.z = Math.atan2(x1 - x2, y2 - y1); harp.add(m); };
+  bar(0, 0, 0, 12); bar(0, 12, 7, 9); bar(0, 0, 7, 9);
+  for (let i = 1; i < 7; i++) { const x = i; const top = 12 - x * 3 / 7, bot = x * 9 / 7; const s = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, top - bot, 4), new THREE.MeshBasicMaterial({ color: 0xfff0c0 })); s.position.set(x, (top + bot) / 2, 0); harp.add(s); }
+  st.harpGlow = E.glowSprite(0xffd977, 16, .1); st.harpGlow.position.set(3, 7, 0); harp.add(st.harpGlow);
+  st.harpPos = new V3(-28, 7, 32);
+  st.cols = [{ x: 0, z: -30, r: 9, top: 16 }];
+  const area = () => new V3(E.rand(-32, 32), E.rand(6, 20), E.rand(-2, 50));
+  st.reset = () => {};
+  st.enter = () => { st.asleep = false; st.rage = 0; st.exitOpen = false; st.lullT = 0; st.trap.rotation.x = 0; st.trap.position.y = .2; st.trapGlow.material.opacity = 0; setOrbs(st, { He: 1, Ne: 1, Ar: 1 }, ["O", "N", "H", "C", "Fe", "Cl"], area); };
+  st.freeze = P => { st.frozen = 4.5; return 1; };
+  st.exitHit = p => Math.hypot(p.x, p.z + 14) < 7 && p.y < 7;
+  st.panel = () => panel("🐶 פלאפי שומר על דלת הסתרים", st.asleep ? "פלאפי ישן! צללי לדלת הסתרים שמתחת לכפות" : "הגזים האצילים מנגנים לו שיר ערש: אספי He, Ne, Ar. גז אחר מעצבן אותו", chips(st), st.asleep);
+  st.update = (dt, P) => {
+    orbsCollide(st, P.pos, s => { E.toast(`🎵 ${E.EL[s].name} (${s}), גז אציל! תו נוסף בנבל`, 1.4); if (wantDone(st)) sleep(); },
+      s => { st.rage = 4; E.toast(`😠 ${E.EL[s].name} הוא לא גז אציל! פלאפי מתעצבן`, 1.6); });
+    st.frozen = Math.max(0, (st.frozen || 0) - dt);
+    if (!st.asleep) {
+      for (const hd of st.heads) {
+        const w = hd.h.getWorldPosition(t1), d = w.distanceTo(P.pos);
+        if (d < 4.5 && st.frozen <= 0) E.hit("🐶 פלאפי נשך!");
+        E.danger = Math.min(E.danger, d * 1.3);
+      }
+      const n = nearestWanted(st, P.pos); if (n) { E.arrowTarget = n.spr.position; E.arrowColor = parseInt(E.EL[n.sym].c.slice(1), 16); }
+    } else { E.arrowTarget = t2.set(0, 2, -14); E.arrowColor = 0xffd23a; }
+  };
+  function sleep() {
+    st.asleep = true; st.exitOpen = true; E.sfx.win(); flashWhite();
+    E.toast("🎶 הנבל מנגן... פלאפי נרדם! לדלת הסתרים", 2.6);
+    st.trapGlow.material.opacity = .8; st.trap.rotation.x = -1.4; st.trap.position.set(0, 5, -19);
   }
-  // vault ribs
-  const ribM = new THREE.MeshLambertMaterial({ color: 0x5a4c40 });
-  for (let z = -RZ + 15; z < RZ; z += 30) { const rib = new THREE.Mesh(new THREE.TorusGeometry(RX - .5, 1.2, 6, 40, Math.PI), ribM); rib.scale.y = VAULT / RX; rib.position.set(0, WALL_H, z); scene.add(rib); }
-  // the riddle door with its golden lock
+  st.world = (dt, T, playing) => {
+    orbsAnimate(st, T);
+    for (const t of R.torches) t.scale.setScalar(5 + Math.sin(T * 14 + t.position.z) * .6);
+    for (const hd of st.heads) {
+      if (st.asleep) { hd.h.position.lerp(t1.set(hd.base.x, hd.base.y - 5, hd.base.z + 1), Math.min(1, dt * 1.5)); hd.h.rotation.x = .6; hd.jaw.rotation.x = 0; hd.h.userData["e1"].material.opacity = hd.h.userData["e-1"].material.opacity = .1; if (Math.random() < dt * .8) { const z = textSprite("Z", 3, "#bfe0ff", "rgba(0,0,0,0)"); const w = hd.h.getWorldPosition(new V3()); z.position.copy(w).sub(st.g.position); z.userData.life = 2.5; st.g.add(z); (st.zz || (st.zz = [])).push(z); } continue; }
+      let tgt = t1.copy(hd.base);
+      if (playing && st.frozen <= 0) {
+        const lp = t2.copy(E.P.pos).sub(t3.set(0, 0, -30)); // player in dog space
+        const d = lp.distanceTo(hd.base), reach = st.rage > 0 ? 34 : 22;
+        if (d < reach) { hd.lunge = Math.min(1, hd.lunge + dt * 1.6); tgt.lerp(lp, hd.lunge * .55); } else hd.lunge = Math.max(0, hd.lunge - dt);
+        hd.jaw.rotation.x = .3 + Math.sin(T * 10 + hd.ph) * .25;
+      } else hd.jaw.rotation.x = .1;
+      tgt.y += Math.sin(T * 1.5 + hd.ph) * .8;
+      hd.h.position.lerp(tgt, Math.min(1, dt * 3));
+      hd.h.lookAt(E.camera.position);
+    }
+    st.rage = Math.max(0, st.rage - dt);
+    for (let i = (st.zz || []).length - 1; i >= 0; i--) { const z = st.zz[i]; z.userData.life -= dt; z.position.y += dt * 2; z.material.opacity = Math.max(0, z.userData.life / 2.5); if (z.userData.life <= 0) { st.g.remove(z); st.zz.splice(i, 1); } }
+    st.harpGlow.material.opacity = st.asleep ? .5 + .3 * Math.sin(T * 4) : .1;
+    if (st.asleep && playing) {
+      st.lullT -= dt; if (st.lullT <= 0) { st.lullT = 2.4; [523, 659, 784, 659, 523].forEach((f, i) => E.tone(f, .9, "triangle", .05, i * .35)); }
+      if (Math.random() < dt * 6) E.sparks.spawn(st.harpPos.x, st.harpPos.y, st.harpPos.z, { vx: E.rand(4, 9), vy: E.rand(1, 3), vz: E.rand(-12, -6), life: 2, r: 1, g: .85, b: .4, s0: 1.4, s1: 0 });
+    }
+  };
+  return st;
+}
+
+/* ---------- 2. Devil's Snare ---------- */
+function buildSnare() {
+  const st = { name: "מלכודת השטן", icon: "🌿", hx: 34, hz: 34, h: 24, vault: 14, fog: [0x0b140a, .016], start: new V3(0, 14, 26), yaw: Math.PI };
+  const R = makeRoom(st.hx, st.hz, st.h, st.vault, { tint: 0x7a9a7a, brick: 36, torch: 0x9aff7a, light: 0x7aff9a, lights: 1 }); st.g = R.g;
+  const NT = 26, SEG = 7;
+  st.vines = [];
+  for (let i = 0; i < NT; i++) { let x, z; do { x = E.rand(-30, 30); z = E.rand(-30, 30); } while (Math.hypot(x, z) < 9); st.vines.push({ root: new V3(x, 0, z), ph: E.rand(0, 6), reach: 0, tip: new V3(), grow: 1 }); }
+  st.vIM = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshLambertMaterial({ color: 0x2a5a1a, emissive: 0x0a1a05 }), NT * SEG);
+  st.vIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage); st.vIM.frustumCulled = false; st.g.add(st.vIM);
+  const moss = new THREE.Mesh(new THREE.CircleGeometry(33, 40), new THREE.MeshLambertMaterial({ color: 0x1a2a10 })); moss.rotation.x = -Math.PI / 2; moss.position.y = .05; st.g.add(moss);
+  st.hole = new THREE.Mesh(new THREE.CircleGeometry(5, 32), new THREE.MeshBasicMaterial({ color: 0x000000 })); st.hole.rotation.x = -Math.PI / 2; st.hole.position.y = .1; st.g.add(st.hole);
+  st.holeGlow = E.glowSprite(0xffffff, 16, 0); st.holeGlow.position.y = 1; st.g.add(st.holeGlow);
+  const area = () => new V3(E.rand(-26, 26), E.rand(5, 18), E.rand(-26, 18));
+  st.enter = () => { st.exitOpen = false; st.burnt = false; st.frozen = 0; st.vines.forEach(v => { v.grow = 1; v.reach = 0; }); st.holeGlow.material.opacity = 0; setOrbs(st, { Mg: 2, O: 2 }, ["N", "H", "C", "S"], area); };
+  st.freeze = () => { st.frozen = 4.5; return 1; };
+  st.exitHit = p => Math.hypot(p.x, p.z) < 6 && p.y < 7;
+  st.panel = () => panel("🌿 מלכודת השטן אוהבת חושך ולחות", st.burnt ? "הקנוקנות נסוגו! צללי לפתח שברצפה" : "רק אור חזק מבריח אותה: <span dir=\"ltr\">2Mg + O₂ → 2MgO</span> בוער באור מסנוור", chips(st), st.burnt);
+  st.update = (dt, P) => {
+    orbsCollide(st, P.pos, s => { if (wantDone(st)) burn(); else E.toast(`🔥 ${E.EL[s].name} (${s}) לבעירה`, 1.2); }, s => E.toast(`${E.EL[s].name} לא יעזור לבעירה`, 1.3));
+    st.frozen = Math.max(0, st.frozen - dt);
+    if (!st.burnt) {
+      for (const v of st.vines) { const d = v.tip.distanceTo(P.pos); E.danger = Math.min(E.danger, d * 1.6); if (d < 2.8 && st.frozen <= 0) E.hit("🌿 מלכודת השטן לופתת אותך!"); }
+      const n = nearestWanted(st, P.pos); if (n) { E.arrowTarget = n.spr.position; E.arrowColor = parseInt(E.EL[n.sym].c.slice(1), 16); }
+    } else { E.arrowTarget = t2.set(0, 1, 0); E.arrowColor = 0xffffff; }
+  };
+  function burn() {
+    st.burnt = true; st.exitOpen = true; flashWhite(); E.sfx.win();
+    for (let i = 0; i < 200; i++) E.sparks.spawn(E.P.pos.x, E.P.pos.y, E.P.pos.z, { vx: E.rand(-40, 40), vy: E.rand(-20, 30), vz: E.rand(-40, 40), life: 1.4, r: 1, g: 1, b: .95, s0: 2.5, s1: 0, drag: 1.2 });
+    E.toast("✨ 2Mg + O₂ → 2MgO! האור המסנוור הבריח את מלכודת השטן", 2.8);
+    st.holeGlow.material.opacity = .8;
+  }
+  st.world = (dt, T, playing) => {
+    orbsAnimate(st, T);
+    const P = E.P.pos;
+    st.vines.forEach((v, i) => {
+      if (st.burnt) v.grow = Math.max(.05, v.grow - dt * .6);
+      const dP = Math.hypot(P.x - v.root.x, P.z - v.root.z);
+      const wantReach = playing && !st.burnt && st.frozen <= 0 && dP < 16 ? 1 : 0;
+      v.reach += (wantReach - v.reach) * Math.min(1, dt * (wantReach ? 1.4 : .8));
+      for (let k = 0; k < SEG; k++) {
+        const f = k / (SEG - 1), sway = st.frozen > 0 ? 0 : Math.sin(T * 1.3 + v.ph + k * .6) * k * .5;
+        t1.set(v.root.x + sway, (1 + k * 2.6) * v.grow, v.root.z + Math.cos(T * 1.1 + v.ph + k * .5) * k * .4);
+        if (v.reach > .01) t1.lerp(t2.copy(P), v.reach * f * f * .9);
+        const s = (1.3 - f * .9) * Math.max(.2, v.grow);
+        m4.makeScale(s, s * 1.4, s).setPosition(t1); st.vIM.setMatrixAt(i * SEG + k, m4);
+        if (k === SEG - 1) v.tip.copy(t1);
+      }
+    });
+    st.vIM.instanceMatrix.needsUpdate = true;
+    for (const t of R.torches) t.scale.setScalar(4 + Math.sin(T * 9 + t.position.z) * .5);
+  };
+  return st;
+}
+
+/* ---------- 3. Flying keys ---------- */
+function buildKeys() {
+  const RX = 70, RZ = 90, WALL_H = 36, VAULT = 26, NK = 60;
+  const st = { name: "המפתחות המעופפים", icon: "🗝️", hx: RX, hz: RZ, h: WALL_H, vault: VAULT, fog: [0x1a120e, .0055], start: new V3(0, 12, RZ - 12), yaw: Math.PI };
+  const R = makeRoom(RX, RZ, WALL_H, VAULT); st.g = R.g;
+  const LOCK = new V3(0, 13, -RZ + 2), STONE = new V3(0, 6, 18);
+  const FACTS = [["H", "היסוד הראשון בטבלה המחזורית"], ["He", "הגז האציל שממלא בלונים מעופפים"], ["O", "הגז שנושמים, ובלעדיו אין אש"],
+    ["C", "היסוד של יהלומים ושל הגרפיט בעיפרון"], ["N", "ממני עשויים 78% מהאוויר"], ["Fe", "המתכת של השריונות, ויש ממני בדם"],
+    ["Cu", "המתכת של מטבעות הקנוט"], ["Ag", "המתכת של מטבעות הסיקל"], ["Au", "המתכת של אוניות הגלאון"], ["Hg", "המתכת היחידה שנוזלית בטמפרטורת החדר"],
+    ["Ne", "הגז האציל שזוהר באדום בשלטים"], ["S", "יסוד צהוב שמריח כמו ביצים רקובות"], ["Ca", "בונה עצמות ושיניים"]];
+  const FORMULAS = [["O", "ב-H₂O: איזה יסוד מופיע רק פעם אחת?"], ["C", "ב-CO₂: מי היסוד שאינו חמצן?"], ["Na", "ב-NaCl: מי המתכת?"],
+    ["N", "ב-NH₃ (אמוניה): מי היסוד שמופיע פעם אחת?"], ["Fe", "Fe₂O₃ זו חלודה. של איזו מתכת?"], ["Cu", "CuSO₄ הכחול: מי המתכת?"]];
+  const keys = []; let riddle = null, held = null, riddleT = 0, doorAnim = 0, nextT = 0, doorsOpen = 0;
+  // door, lock, plaque, stone
   const doorM = new THREE.MeshLambertMaterial({ color: 0x3a2414 }), goldM = new THREE.MeshLambertMaterial({ color: 0xd4a83a, emissive: 0x4a3000 });
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(30, 28, 1.5), new THREE.MeshLambertMaterial({ color: 0x4a4036 })); frame.position.set(0, 14, -RZ + .4); scene.add(frame);
-  const dark = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.MeshBasicMaterial({ color: 0x050302 })); dark.position.set(0, 12, -RZ + 1.2); scene.add(dark);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(30, 28, 1.5), new THREE.MeshLambertMaterial({ color: 0x4a4036 })); frame.position.set(0, 14, -RZ + .4); st.g.add(frame);
+  const dk = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.MeshBasicMaterial({ color: 0x050302 })); dk.position.set(0, 12, -RZ + 1.2); st.g.add(dk);
+  const leaves = [];
   for (const s of [-1, 1]) {
-    const hinge = new THREE.Group(); hinge.position.set(s * 12, 0, -RZ + 1.6); scene.add(hinge);
+    const hinge = new THREE.Group(); hinge.position.set(s * 12, 0, -RZ + 1.6); st.g.add(hinge);
     const leaf = new THREE.Mesh(new THREE.BoxGeometry(12, 24, 1), doorM); leaf.position.set(-s * 6, 12, 0); hinge.add(leaf);
     for (const y of [5, 12, 19]) { const band = new THREE.Mesh(new THREE.BoxGeometry(12, .8, 1.2), goldM); band.position.set(-s * 6, y, 0); hinge.add(band); }
-    doorLeaves.push(hinge);
+    leaves.push(hinge);
   }
-  const lock = new THREE.Group(); lock.position.set(LOCK.x, LOCK.y, LOCK.z); scene.add(lock);
+  const lock = new THREE.Group(); lock.position.copy(LOCK); st.g.add(lock);
   lock.add(new THREE.Mesh(new THREE.BoxGeometry(4.5, 4.5, 1.6), goldM));
   const shackle = new THREE.Mesh(new THREE.TorusGeometry(1.6, .4, 8, 20, Math.PI), goldM); shackle.position.y = 2.2; lock.add(shackle);
-  const hole = new THREE.Mesh(new THREE.CircleGeometry(.5, 12), new THREE.MeshBasicMaterial({ color: 0x000000 })); hole.position.set(0, .4, .82); lock.add(hole);
   lock.add(E.glowSprite(0xffd23a, 14, .45));
-  const pt = E.canvasTex(1024, () => {}, 256); plaque = pt;
-  const pl = new THREE.Mesh(new THREE.PlaneGeometry(40, 10), new THREE.MeshBasicMaterial({ map: pt, transparent: true })); pl.position.set(0, 32, -RZ + 1); scene.add(pl);
-  const dl = new THREE.PointLight(0xffc060, 1.2, 70); dl.position.set(0, 20, -RZ + 12); scene.add(dl);
-  // the Philosopher's Stone
-  const ped = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.2, STONE.y, 12), new THREE.MeshLambertMaterial({ color: 0x6a5f52 })); ped.position.set(STONE.x, STONE.y / 2, STONE.z); scene.add(ped);
-  stoneGem = new THREE.Mesh(new THREE.OctahedronGeometry(1.6, 0), new THREE.MeshLambertMaterial({ color: 0xff2030, emissive: 0x8a0010 })); stoneGem.position.set(STONE.x, STONE.y + 3, STONE.z); scene.add(stoneGem);
-  stoneGlow = E.glowSprite(0xff2a40, 16, .6); stoneGlow.position.copy(stoneGem.position); scene.add(stoneGlow);
-  const sl = new THREE.PointLight(0xff3040, 1.4, 60); sl.position.set(STONE.x, STONE.y + 6, STONE.z); scene.add(sl);
-  E.towerCols.push({ x: STONE.x, z: STONE.z, r: 3.5, top: STONE.y + 2 });
-  const ring = new THREE.Mesh(new THREE.RingGeometry(7, 7.6, 48), new THREE.MeshBasicMaterial({ color: 0xff4050, transparent: true, opacity: .5, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.set(STONE.x, .05, STONE.z); scene.add(ring);
-  // torches and a few lights
-  for (const s of [-1, 1]) for (let z = -70; z <= 70; z += 35) {
-    const x = s * (RX - .6), br = new THREE.Mesh(new THREE.CylinderGeometry(.3, .2, 2, 6), new THREE.MeshLambertMaterial({ color: 0x2a2018 })); br.position.set(x, 15, z); scene.add(br);
-    const f = E.glowSprite(0xff9a40, 5, .9, true); f.position.set(x - s * .4, 16.5, z); scene.add(f); torches.push({ s: f, x: x - s * .4, y: 16.5, z });
+  const plaque = E.canvasTex(1024, () => {}, 256);
+  const pl = new THREE.Mesh(new THREE.PlaneGeometry(40, 10), new THREE.MeshBasicMaterial({ map: plaque, transparent: true })); pl.position.set(0, 32, -RZ + 1); st.g.add(pl);
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.2, STONE.y, 12), new THREE.MeshLambertMaterial({ color: 0x6a5f52 })); ped.position.set(STONE.x, STONE.y / 2, STONE.z); st.g.add(ped);
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(1.6, 0), new THREE.MeshLambertMaterial({ color: 0xff2030, emissive: 0x8a0010 })); gem.position.set(STONE.x, STONE.y + 3, STONE.z); st.g.add(gem);
+  const gemGlow = E.glowSprite(0xff2a40, 16, .6); gemGlow.position.copy(gem.position); st.g.add(gemGlow);
+  const sl = new THREE.PointLight(0xff3040, 1.3, 60); sl.position.set(STONE.x, STONE.y + 6, STONE.z); st.g.add(sl);
+  st.cols = [{ x: STONE.x, z: STONE.z, r: 3.5, top: STONE.y + 2 }];
+  // the key swarm
+  const goldK = new THREE.MeshLambertMaterial({ color: 0xd9b24a, emissive: 0x4a3200 });
+  const bowIM = new THREE.InstancedMesh(new THREE.TorusGeometry(.5, .14, 8, 16), goldK, NK), shaftIM = new THREE.InstancedMesh(new THREE.BoxGeometry(.18, .18, 1.9), goldK, NK);
+  const teethIM = new THREE.InstancedMesh(new THREE.BoxGeometry(.12, .55, .55), goldK, NK);
+  const wg = new THREE.PlaneGeometry(1.5, .75); wg.translate(.75, 0, 0);
+  const wingIM = new THREE.InstancedMesh(wg, new THREE.MeshBasicMaterial({ color: 0xf4f0ff, transparent: true, opacity: .85, side: THREE.DoubleSide }), NK * 2);
+  for (const im of [bowIM, shaftIM, teethIM, wingIM]) { im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; st.g.add(im); }
+  for (let i = 0; i < NK; i++) { const spr = orbSprite("H", 3.3); st.g.add(spr); const k = { pos: new V3(E.rand(-50, 50), E.rand(10, 45), E.rand(-60, 60)), vel: new V3(E.rand(-1, 1), 0, E.rand(-1, 1)).setLength(12), spr, freeze: 0, angry: 0, ph: E.rand(0, 6) }; setSym(k, E.pick(POOL)); keys.push(k); }
+  function setSym(k, s) { k.sym = s; k.spr.material.map = E.elTex(s); }
+  function drawPlaque() {
+    const c = plaque.userData.canvas, g = c.getContext("2d");
+    g.clearRect(0, 0, 1024, 256); g.fillStyle = "rgba(30,20,10,.92)"; g.fillRect(0, 0, 1024, 256);
+    g.strokeStyle = "#d4a83a"; g.lineWidth = 10; g.strokeRect(8, 8, 1008, 240);
+    g.fillStyle = "#ffd977"; g.textAlign = "center"; g.textBaseline = "middle"; try { g.direction = "rtl"; } catch (e) {}
+    g.font = "bold 46px 'Varela Round', Arial, sans-serif"; g.fillText(riddle ? riddle.text : "", 512, 128, 960); plaque.needsUpdate = true;
   }
-  for (const z of [-45, 45]) { const l = new THREE.PointLight(0xffb070, 1, 110); l.position.set(0, 26, z); scene.add(l); }
-  // three old broomsticks by the entrance
-  const bw = new THREE.MeshLambertMaterial({ color: 0x7a4f2a }), bb = new THREE.MeshLambertMaterial({ color: 0xd0a860 });
-  [-8, 0, 8].forEach(x => {
-    const g = new THREE.Group(); g.position.set(x, 0, RZ - 1.5); g.rotation.x = -.18; scene.add(g);
-    const h = new THREE.Mesh(new THREE.CylinderGeometry(.08, .1, 4.6, 8), bw); h.position.y = 3.6; g.add(h);
-    const br2 = new THREE.Mesh(new THREE.ConeGeometry(.45, 1.6, 10), bb); br2.position.y = .8; br2.rotation.x = Math.PI; g.add(br2);
-  });
+  function newRiddle() {
+    if (doorsOpen === 2) riddle = { want: "Pb", alchemy: true, text: "⚗️ אלכימיה: תפסי מפתח עופרת (Pb), הפכי אותו לזהב באבן החכמים, ופתחי את הדלת" };
+    else if (doorsOpen === 1) { const f = E.pick(FORMULAS); riddle = { want: f[0], text: f[1] }; }
+    else { const f = E.pick(FACTS); riddle = { want: f[0], text: f[1] }; }
+    riddleT = 60; nextT = 0;
+    let have = keys.filter(k => k !== held && k.sym === riddle.want).length;
+    for (const k of keys) { if (have >= 4) break; if (k !== held && k.sym !== riddle.want) { setSym(k, riddle.want); have++; } }
+    drawPlaque(); lastPanel = "";
+  }
+  function dropHeld() { if (held) { held.vel.set(E.rand(-1, 1), 1, E.rand(-1, 1)).setLength(15); if (held.sym === "Au" && riddle.alchemy) { setSym(held, "Pb"); riddle.want = "Pb"; } held = null; } }
+  st.enter = () => { held = null; doorAnim = 0; doorsOpen = 0; st.exitOpen = false; keys.forEach(k => { k.angry = 0; k.freeze = 0; }); newRiddle(); };
+  st.freeze = P => { let n = 0; for (const k of keys) if (k !== held && k.pos.distanceTo(P) < 48) { k.freeze = 4.5; k.angry = 0; n++; } return n; };
+  st.exitHit = p => p.z < -RZ + 7 && Math.abs(p.x) < 10 && p.y < 24;
+  st.panel = () => {
+    const s = st.exitOpen ? "🚪 הדלת השלישית פתוחה! עברי דרכה" : nextT > 0 ? "🚪 הדלת נפתחת..." : held ? (riddle.alchemy && held.sym === "Pb" ? "⚗️ לאבן החכמים האדומה" : "🗝️ המפתח אצלך! למנעול") : "תפסי את המפתח הנכון";
+    panel(`🗝️ דלת ${Math.min(3, doorsOpen + 1)} מתוך 3`, st.exitOpen ? "כל הדלתות נפתחו" : riddle.text, `<div class="psub">⏱ ${Math.ceil(riddleT)} שנ׳ · ${s}</div>`, !!held || st.exitOpen);
+  };
+  st.update = (dt, P) => {
+    if (st.exitOpen) { updateKeys(dt, false, P); E.arrowTarget = t2.set(0, 12, -RZ + 2); E.arrowColor = 0xffd23a; return; }
+    if (nextT > 0) { nextT -= dt; if (nextT <= 0) newRiddle(); }
+    else { riddleT -= dt; if (riddleT <= 0) { E.hit("⏳ הזמן לחידה נגמר! חידה חדשה"); if (E.state !== "play") return; dropHeld(); newRiddle(); } }
+    updateKeys(dt, true, P);
+    if (!held && nextT <= 0) for (const k of keys) {
+      if (k.angry > 0 || k.pos.distanceTo(P.pos) > 3.3) continue;
+      if (k.sym === riddle.want) { held = k; k.freeze = 0; E.sfx.good(); E.burst(k.pos, E.rgb(E.EL[k.sym].c), 30, 8, 1.6, .8); E.toast(riddle.alchemy ? "⚗️ מפתח העופרת אצלך! לאבן החכמים" : `🗝️ ${E.EL[k.sym].name} (${k.sym})! למנעול`, 1.8); }
+      else {
+        stats.wrong++; E.sfx.bonk(); E.G.shake = .3; E.toast(`😠 ${E.EL[k.sym].name} (${k.sym}) זה לא המפתח! הלהקה כועסת`, 1.8);
+        k.vel.copy(k.pos).sub(P.pos).setLength(30);
+        keys.filter(o => o !== held).sort((a, b) => a.pos.distanceTo(P.pos) - b.pos.distanceTo(P.pos)).slice(0, 6).forEach(o => o.angry = 5); k.angry = 0;
+      }
+      break;
+    }
+    if (held && riddle.alchemy && held.sym === "Pb" && Math.hypot(P.pos.x - STONE.x, P.pos.z - STONE.z) < 9 && P.pos.y < 22) {
+      setSym(held, "Au"); riddle.want = "Au"; E.addScore(150); E.sfx.win();
+      for (let i = 0; i < 140; i++) E.sparks.spawn(STONE.x, STONE.y + 4, STONE.z, { vx: E.rand(-14, 14), vy: E.rand(4, 28), vz: E.rand(-14, 14), life: E.rand(1, 2), r: 1, g: .82, b: .25, s0: 2, s1: 0, drag: 1, grav: -10 });
+      E.toast("✨ טרנסמוטציה! העופרת הפכה לזהב (Au). למנעול!", 2.6);
+    }
+    if (held && held.sym === riddle.want && !(riddle.alchemy && held.sym === "Pb") && LOCK.distanceTo(P.pos) < 9) {
+      const bonus = 100 + Math.round(riddleT * 3); doorsOpen++; E.addScore(bonus); E.sfx.win(); E.burst(LOCK, E.COL.GOLD, 120, 20, 2.4, 1.4);
+      held.pos.set(E.rand(-40, 40), 30, E.rand(-20, 40)); setSym(held, E.pick(POOL)); held = null; keys.forEach(k => k.angry = 0);
+      if (doorsOpen >= 3) { st.exitOpen = true; doorAnim = 1e9; E.toast("🚪 שלוש הדלתות נפתחו! עברי דרכן", 2.4); }
+      else { doorAnim = 2.6; nextT = 2.2; E.toast(`🚪 הדלת נפתחה! +${bonus}`, 2); }
+    }
+    let nearest = 1e9;
+    for (const k of keys) if (k.angry > 0) { const d = k.pos.distanceTo(P.pos); nearest = Math.min(nearest, d); if (d < 2.4 && E.hit("🔑 מפתח זועם עקץ אותך!")) { k.angry = 0; k.vel.copy(k.pos).sub(P.pos).setLength(28); dropHeld(); } }
+    E.danger = nearest * 1.6;
+    E.botTarget = null;
+    if (BOTMODE && !held && nextT <= 0) { let b = null, bd = 1e9; for (const k of keys) if (k.sym === riddle.want && k.angry <= 0) { const d = k.pos.distanceTo(P.pos); if (d < bd) { bd = d; b = k; } } if (b) E.botTarget = b.pos; }
+    if (held) { if (riddle.alchemy && held.sym === "Pb") { E.arrowTarget = t2.set(STONE.x, STONE.y + 3, STONE.z); E.arrowColor = 0xff4a4a; } else { E.arrowTarget = LOCK; E.arrowColor = 0xffd23a; } }
+  };
+  function updateKeys(dt, playing, P) {
+    const T = E.T, ax = Math.sin(T * .21) * 40, ay = 24 + Math.sin(T * .37) * 8, az = Math.cos(T * .17) * 55;
+    for (const k of keys) {
+      if (k === held) { k.pos.copy(E.carry.getWorldPosition(t3)); continue; }
+      if (k.freeze > 0) { k.freeze -= dt; k.vel.multiplyScalar(Math.max(0, 1 - 3 * dt)); k.pos.addScaledVector(k.vel, dt); continue; }
+      const acc = t1.set(0, 0, 0), ali = t2.set(0, 0, 0), coh = t3.set(0, 0, 0); let n = 0;
+      for (const o of keys) {
+        if (o === k || o === held) continue;
+        const dx = k.pos.x - o.pos.x, dy = k.pos.y - o.pos.y, dz = k.pos.z - o.pos.z, d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < 64) { n++; ali.add(o.vel); coh.add(o.pos); if (d2 < 9) { const f = 6 / Math.max(d2, .3); acc.x += dx * f; acc.y += dy * f; acc.z += dz * f; } }
+      }
+      if (n) { acc.addScaledVector(ali.multiplyScalar(1 / n).sub(k.vel), .8); acc.addScaledVector(coh.multiplyScalar(1 / n).sub(k.pos), .3); }
+      acc.x += (ax + Math.sin(k.ph) * 18 - k.pos.x) * .05; acc.y += (ay + Math.cos(k.ph * 2) * 8 - k.pos.y) * .05; acc.z += (az + Math.cos(k.ph) * 18 - k.pos.z) * .05;
+      if (playing) {
+        const dx = k.pos.x - P.pos.x, dy = k.pos.y - P.pos.y, dz = k.pos.z - P.pos.z, d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+        if (k.angry > 0) { k.angry -= dt; acc.x -= dx / d * 40; acc.y -= dy / d * 40; acc.z -= dz / d * 40; }
+        else if (d < 14) { const f = (riddle && k.sym === riddle.want ? 30 : 10) / d; acc.x += dx * f; acc.y += dy * f; acc.z += dz * f; }
+      }
+      if (k.pos.x < -RX + 6) acc.x += 20; if (k.pos.x > RX - 6) acc.x -= 20; if (k.pos.z < -RZ + 6) acc.z += 20; if (k.pos.z > RZ - 6) acc.z -= 20;
+      if (k.pos.y < 4) acc.y += 20; if (k.pos.y > WALL_H + VAULT * .6) acc.y -= 20;
+      k.vel.addScaledVector(acc, dt);
+      const sp = k.vel.length(), lim = k.angry > 0 ? 27 : 17;
+      if (sp > lim) k.vel.multiplyScalar(lim / sp); else if (sp < 7) k.vel.multiplyScalar(7 / Math.max(sp, .01));
+      k.pos.addScaledVector(k.vel, dt); clampRoom(k.pos, 2, st); if (k.pos.y < 2) k.pos.y = 2;
+    }
+  }
+  st.world = (dt, T, playing) => {
+    if (!playing) updateKeys(dt, false, E.P);
+    const m = st.mm || (st.mm = new THREE.Matrix4()), mir = st.mi || (st.mi = new THREE.Matrix4().makeScale(-1, 1, 1));
+    keys.forEach((k, i) => {
+      const dir = t1; if (k === held) dir.copy(E.P.fwd); else dir.copy(k.vel); if (dir.lengthSq() < 1e-4) dir.set(0, 0, 1); dir.normalize();
+      q.setFromUnitVectors(zAxis, dir); mBase.compose(k.pos, q, sc);
+      m4.makeRotationY(Math.PI / 2).setPosition(0, 0, -1.25); bowIM.setMatrixAt(i, m.multiplyMatrices(mBase, m4));
+      shaftIM.setMatrixAt(i, mBase);
+      m4.makeTranslation(0, -.3, .75); teethIM.setMatrixAt(i, m.multiplyMatrices(mBase, m4));
+      const flap = k.freeze > 0 ? .1 : Math.sin(T * 24 + k.ph) * .7;
+      m4.makeRotationZ(flap).setPosition(.1, .15, -.3); wingIM.setMatrixAt(i * 2, m.multiplyMatrices(mBase, m4));
+      m4.makeRotationZ(flap).premultiply(mir).setPosition(-.1, .15, -.3); wingIM.setMatrixAt(i * 2 + 1, m.multiplyMatrices(mBase, m4));
+      k.spr.position.set(k.pos.x, k.pos.y + 1.8, k.pos.z);
+      k.spr.material.color.setHex(k.freeze > 0 ? 0x9fe0ff : k.angry > 0 ? 0xff7070 : 0xffffff);
+    });
+    for (const im of [bowIM, shaftIM, teethIM, wingIM]) im.instanceMatrix.needsUpdate = true;
+    for (const t of R.torches) t.scale.setScalar(5 + Math.sin(T * 14 + t.position.z) * .6);
+    gem.rotation.y += dt * .8; gem.position.y = STONE.y + 3 + Math.sin(T * 1.5) * .3; gemGlow.material.opacity = .5 + .2 * Math.sin(T * 3);
+    if (doorAnim > 0 && doorAnim < 1e8) doorAnim -= dt;
+    const open = st.exitOpen ? 1 : doorAnim > 0 ? Math.min(1, (2.6 - doorAnim) * 2, doorAnim * 1.5) : 0;
+    leaves[0].rotation.y = -open * 1.3; leaves[1].rotation.y = open * 1.3;
+  };
+  return st;
 }
 
-function updateKeys(dt, playing) {
-  const P = E.P, T = E.T, lv = playing ? E.G.level : 1;
-  const ax = Math.sin(T * .21) * 40, ay = 24 + Math.sin(T * .37) * 8, az = Math.cos(T * .17) * 55;
-  const maxSp = 15 + lv * .9;
-  for (const k of keys) {
-    if (k.held) { k.pos.copy(E.carry.getWorldPosition(t3)); continue; }
-    if (k.freeze > 0) { k.freeze -= dt; k.vel.multiplyScalar(Math.max(0, 1 - 3 * dt)); k.pos.addScaledVector(k.vel, dt); k.pos.y += Math.sin(T * 3 + k.ph) * .01; continue; }
-    const acc = t1.set(0, 0, 0), ali = t2.set(0, 0, 0), coh = t3.set(0, 0, 0); let n = 0;
-    for (const o of keys) {
-      if (o === k || o.held) continue;
-      const dx = k.pos.x - o.pos.x, dy = k.pos.y - o.pos.y, dz = k.pos.z - o.pos.z, d2 = dx * dx + dy * dy + dz * dz;
-      if (d2 < 64) { n++; ali.add(o.vel); coh.add(o.pos); if (d2 < 9) { const f = 6 / Math.max(d2, .3); acc.x += dx * f; acc.y += dy * f; acc.z += dz * f; } }
-    }
-    if (n) { acc.addScaledVector(ali.multiplyScalar(1 / n).sub(k.vel), .8); acc.addScaledVector(coh.multiplyScalar(1 / n).sub(k.pos), .3); }
-    acc.x += (ax + Math.sin(k.ph) * 18 - k.pos.x) * .05; acc.y += (ay + Math.cos(k.ph * 2) * 8 - k.pos.y) * .05; acc.z += (az + Math.cos(k.ph) * 18 - k.pos.z) * .05;
-    if (playing) {
-      const dx = k.pos.x - P.pos.x, dy = k.pos.y - P.pos.y, dz = k.pos.z - P.pos.z, d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-      if (k.angry > 0) { k.angry -= dt; acc.x -= dx / d * 40; acc.y -= dy / d * 40; acc.z -= dz / d * 40; }
-      else if (d < 14) { const f = (riddle && k.sym === riddle.want ? 26 + lv * 2 : 10) / d; acc.x += dx * f; acc.y += dy * f; acc.z += dz * f; }
-    }
-    const top = WALL_H + VAULT * .6;
-    if (k.pos.x < -RX + 6) acc.x += 20; if (k.pos.x > RX - 6) acc.x -= 20;
-    if (k.pos.z < -RZ + 6) acc.z += 20; if (k.pos.z > RZ - 6) acc.z -= 20;
-    if (k.pos.y < 4) acc.y += 20; if (k.pos.y > top) acc.y -= 20;
-    k.vel.addScaledVector(acc, dt);
-    const sp = k.vel.length(), lim = k.angry > 0 ? 27 : maxSp;
-    if (sp > lim) k.vel.multiplyScalar(lim / sp); else if (sp < 7) k.vel.multiplyScalar(7 / Math.max(sp, .01));
-    k.pos.addScaledVector(k.vel, dt);
-    clampRoom(k.pos, 2); if (k.pos.y < 2) k.pos.y = 2;
+/* ---------- 4. Wizard chess ---------- */
+function buildChess() {
+  const SQ = 10;
+  const st = { name: "השחמט של הקוסמים", icon: "♟️", hx: 48, hz: 54, h: 30, vault: 18, fog: [0x141018, .005], start: new V3(0, 18, 50), yaw: Math.PI };
+  const board = E.canvasTex(512, g => { for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { g.fillStyle = (i + j) % 2 ? "#e8e0d0" : "#2a2a34"; g.fillRect(i * 64, j * 64, 64, 64); } });
+  const R = makeRoom(st.hx, st.hz, st.h, st.vault, { lights: 2 }); st.g = R.g;
+  const bm = new THREE.Mesh(new THREE.PlaneGeometry(SQ * 8, SQ * 8), new THREE.MeshLambertMaterial({ map: board })); bm.rotation.x = -Math.PI / 2; bm.position.y = .06; st.g.add(bm);
+  const white = new THREE.MeshLambertMaterial({ color: 0xe8e0d0 }), black = new THREE.MeshLambertMaterial({ color: 0x1c1c26, emissive: 0x0a0a12 });
+  const prof = { p: [[0, 0], [2, 0], [2, .6], [1.2, 1.2], [.8, 3], [1.4, 3.6], [1.2, 4.6], [0, 5]], r: [[0, 0], [2.4, 0], [2.4, .8], [1.6, 1.4], [1.6, 5.4], [2.2, 5.8], [2.2, 7], [0, 7]],
+    b: [[0, 0], [2.3, 0], [2.3, .7], [1.3, 1.4], [.9, 5.5], [1.5, 6.2], [1, 7.6], [.3, 8.4], [0, 8.6]], q: [[0, 0], [2.5, 0], [2.5, .8], [1.4, 1.6], [1, 6.4], [2, 7.4], [1.4, 8.4], [.6, 9.2], [0, 9.4]],
+    k: [[0, 0], [2.6, 0], [2.6, .8], [1.5, 1.6], [1.1, 7], [2, 7.8], [1.6, 9], [0, 9.2]], n: [[0, 0], [2.3, 0], [2.3, .7], [1.4, 1.4], [1.4, 3.4], [0, 3.6]] };
+  const geo = {}; for (const k in prof) geo[k] = new THREE.LatheGeometry(prof[k].map(p => new THREE.Vector2(p[0] * 1.3, p[1] * 1.3)), 20);
+  const row = ["r", "n", "b", "q", "k", "b", "n", "r"];
+  const sqX = c => -35 + c * SQ, sqZ = r => -35 + r * SQ;
+  st.pieces = [];
+  function piece(type, c, r, side) {
+    const g = new THREE.Group(); const m = side ? black : white;
+    g.add(new THREE.Mesh(geo[type], m));
+    if (type === "n") { const head = new THREE.Mesh(new THREE.BoxGeometry(2.2, 4, 4.2), m); head.position.set(0, 6.6, .6); head.rotation.x = -.35; g.add(head); }
+    if (type === "k") { const cr = new THREE.Mesh(new THREE.BoxGeometry(.5, 2.6, .5), m); cr.position.y = 13; g.add(cr); const cr2 = new THREE.Mesh(new THREE.BoxGeometry(1.8, .5, .5), m); cr2.position.y = 13.3; g.add(cr2); }
+    const h = { p: 6.5, r: 9.1, b: 11.2, q: 12.2, k: 14.5, n: 9 }[type];
+    g.position.set(sqX(c), 0, sqZ(r)); g.rotation.y = side ? 0 : Math.PI; st.g.add(g);
+    const pc = { g, type, side, c, r, h, col: { x: 0, z: 0, r: 3.4, top: h }, moving: 0, from: new V3(), to: new V3(), alive: true };
+    st.pieces.push(pc); return pc;
   }
+  row.forEach((t, c) => { piece(t, c, 0, 1); piece("p", c, 1, 1); piece("p", c, 6, 0); piece(t, c, 7, 0); });
+  st.king = st.pieces.find(p => p.type === "k" && p.side === 1);
+  st.kingGlow = E.glowSprite(0xff3040, 18, 0); st.kingGlow.position.y = 8; st.king.g.add(st.kingGlow);
+  st.exitGlow = exitArch(st.g, -st.hz + .6, 0xffd23a);
+  const area = () => new V3(E.rand(-34, 34), E.rand(15, 24), E.rand(-30, 30));
+  const syncCols = () => { st.cols = st.pieces.filter(p => p.alive).map(p => { p.col.x = p.g.position.x; p.col.z = p.g.position.z; return p.col; }); };
+  st.reset = () => { st.pieces.forEach(p => { p.g.position.set(sqX(p.c0 === undefined ? (p.c0 = p.c) : p.c0), 0, sqZ(p.r0 === undefined ? (p.r0 = p.r) : p.r0)); p.c = p.c0; p.r = p.r0; p.moving = 0; p.g.rotation.z = 0; p.alive = true; }); };
+  st.enter = () => { st.reset(); st.exitOpen = false; st.mated = false; st.moveT = 2; st.frozen = 0; st.exitGlow.material.opacity = 0; st.kingGlow.material.opacity = 0; syncCols(); showStage(3); setOrbs(st, { K: 1, N: 1, O: 3 }, ["Na", "C", "H"], area); };
+  st.freeze = () => { st.frozen = 4.5; return 1; };
+  st.exitHit = p => p.z < -st.hz + 6 && Math.abs(p.x) < 10 && p.y < 24;
+  st.panel = () => panel("♟️ השחמט של הקוסמים", st.mated ? "שח מט! עברי בשער שבקיר הרחוק" : wantDone(st) ? "<span dir=\"ltr\">KNO₃</span> מוכן! טוסי למלך השחור והפילי אותו" : "הכלים השחורים זזים לעברך. אספי <span dir=\"ltr\">K, N, O×3</span> ל-<span dir=\"ltr\">KNO₃</span>, אבק השריפה של המלך", chips(st), wantDone(st));
+  st.update = (dt, P) => {
+    orbsCollide(st, P.pos, s => { if (wantDone(st)) { E.toast("💥 KNO₃ מוכן! הפילי את המלך השחור", 2.2); st.kingGlow.material.opacity = .7; } }, s => E.toast(`${E.EL[s].name} לא חלק מ-KNO₃`, 1.3));
+    st.frozen = Math.max(0, st.frozen - dt);
+    if (!st.mated) {
+      st.moveT -= dt;
+      if (st.moveT <= 0 && st.frozen <= 0) { st.moveT = 1.5; movePiece(P); }
+      for (const p of st.pieces) if (p.alive && p.moving > 0) { const d = Math.hypot(p.g.position.x - P.pos.x, p.g.position.z - P.pos.z); E.danger = Math.min(E.danger, d * 2); if (d < 4.6 && P.pos.y < p.h + 1.5) E.hit("♟️ כלי שחמט ריסק אותך!"); }
+      if (wantDone(st)) {
+        const kp = st.king.g.position;
+        E.arrowTarget = t2.set(kp.x, 8, kp.z); E.arrowColor = 0xff3040;
+        if (Math.hypot(kp.x - P.pos.x, kp.z - P.pos.z) < 6.5 && P.pos.y < 18) { st.mated = true; st.exitOpen = true; E.sfx.win(); E.burst(t1.set(kp.x, 8, kp.z), E.COL.GOLD, 120, 18, 2.4, 1.4); E.toast("👑 שח מט! המלך השחור נפל", 2.6); st.exitGlow.material.opacity = .7; }
+      } else { const n = nearestWanted(st, P.pos); if (n) { E.arrowTarget = n.spr.position; E.arrowColor = parseInt(E.EL[n.sym].c.slice(1), 16); } }
+    } else { E.arrowTarget = t2.set(0, 10, -st.hz + 2); E.arrowColor = 0xffd23a; }
+  };
+  function movePiece(P) {
+    const occ = (c, r) => st.pieces.some(p => p.alive && p.c === c && p.r === r);
+    const pc = Math.round((P.pos.x + 35) / SQ), pr = Math.round((P.pos.z + 35) / SQ);
+    const cands = st.pieces.filter(p => p.alive && p.side === 1 && p.type !== "k" && !p.moving).sort((a, b) => (Math.abs(a.c - pc) + Math.abs(a.r - pr)) - (Math.abs(b.c - pc) + Math.abs(b.r - pr))).slice(0, 4);
+    const p = E.pick(cands); if (!p) return;
+    const dc = Math.sign(pc - p.c), dr = Math.sign(pr - p.r), steps = p.type === "p" ? 1 : p.type === "n" ? 1 : 2;
+    let nc = p.c, nr = p.r;
+    for (let i = 0; i < steps; i++) { const tc = E.clamp(nc + dc, 0, 7), tr = E.clamp(nr + dr, 0, 7); if (occ(tc, tr)) break; nc = tc; nr = tr; }
+    if (nc === p.c && nr === p.r) return;
+    p.from.copy(p.g.position); p.to.set(sqX(nc), 0, sqZ(nr)); p.c = nc; p.r = nr; p.moving = .7; E.tone(90, .5, "square", .04, 0, .7); E.hiss(.5, .06, 400);
+  }
+  st.world = (dt, T, playing) => {
+    orbsAnimate(st, T);
+    for (const p of st.pieces) if (p.moving > 0) {
+      p.moving = Math.max(0, p.moving - dt); const k = 1 - p.moving / .7; p.g.position.lerpVectors(p.from, p.to, k * k * (3 - 2 * k)); p.g.position.y = Math.sin(k * Math.PI) * 1.5;
+    }
+    if (st.mated) st.king.g.rotation.z = Math.min(1.5, st.king.g.rotation.z + dt * 1.5);
+    if (st.g.visible && st.cols) st.cols.forEach((c, i) => { const p = st.pieces.filter(q => q.alive)[i]; if (p) { c.x = p.g.position.x; c.z = p.g.position.z; } });
+    st.kingGlow.material.opacity = st.mated ? 0 : wantDone(st) ? .5 + .3 * Math.sin(T * 6) : 0;
+    for (const t of R.torches) t.scale.setScalar(5 + Math.sin(T * 14 + t.position.z) * .6);
+  };
+  return st;
 }
-function drawKeys(T) {
-  const P = E.P;
-  for (let i = 0; i < keys.length; i++) {
-    const k = keys[i];
-    let dir = t1;
-    if (k.held) dir.copy(P.fwd); else dir.copy(k.vel);
-    if (dir.lengthSq() < 1e-4) dir.set(0, 0, 1); dir.normalize();
-    q.setFromUnitVectors(zAxis, dir);
-    mBase.compose(k.pos, q, sc);
-    m4.makeRotationY(Math.PI / 2).setPosition(0, 0, -1.25); bowIM.setMatrixAt(i, t2.m = (t2.m || new THREE.Matrix4()).multiplyMatrices(mBase, m4));
-    shaftIM.setMatrixAt(i, mBase);
-    m4.makeTranslation(0, -.3, .75); teethIM.setMatrixAt(i, t2.m.multiplyMatrices(mBase, m4));
-    const flap = k.freeze > 0 ? .1 : Math.sin(T * 24 + k.ph) * .7;
-    m4.makeRotationZ(flap).setPosition(.1, .15, -.3); wingIM.setMatrixAt(i * 2, t2.m.multiplyMatrices(mBase, m4));
-    m4.makeRotationZ(flap); m4.premultiply(t3.mm = (t3.mm || new THREE.Matrix4()).makeScale(-1, 1, 1)); m4.setPosition(-.1, .15, -.3);
-    wingIM.setMatrixAt(i * 2 + 1, t2.m.multiplyMatrices(mBase, m4));
-    k.spr.position.set(k.pos.x, k.pos.y + 1.8, k.pos.z);
-    k.spr.material.color.setHex(k.freeze > 0 ? 0x9fe0ff : k.angry > 0 ? 0xff7070 : 0xffffff);
-    k.spr.visible = !k.held || true;
-  }
-  for (const im of [bowIM, shaftIM, teethIM, wingIM]) im.instanceMatrix.needsUpdate = true;
+
+/* ---------- 5. Potions riddle ---------- */
+function buildPotions() {
+  const st = { name: "חידת השיקויים", icon: "🧪", hx: 28, hz: 32, h: 22, vault: 12, fog: [0x140a1a, .008], start: new V3(0, 10, 24), yaw: Math.PI };
+  const R = makeRoom(st.hx, st.hz, st.h, st.vault, { torch: 0xb070ff, light: 0xc090ff, lights: 1, brick: 40 }); st.g = R.g;
+  const table = new THREE.Mesh(new THREE.BoxGeometry(36, 1, 5), new THREE.MeshLambertMaterial({ color: 0x4a2a1a })); table.position.set(0, 5, -4); st.g.add(table);
+  for (const x of [-16, 16]) { const l = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 1), new THREE.MeshLambertMaterial({ color: 0x3a2010 })); l.position.set(x, 2.5, -4); st.g.add(l); }
+  const BOT = [["HCl", 0xb8ff9a, "חומצת מלח"], ["NaOH", 0x9ad0ff, "סודה קאוסטית"], ["H₂O", 0xd8f0ff, "מים"], ["H₂SO₄", 0xffe08a, "חומצה גופרתית"], ["NH₃", 0xd0b8ff, "אמוניה"], ["NaCl", 0xffffff, "מי מלח"], ["C₂H₅OH", 0xffb0d0, "כוהל"]];
+  const RIDDLES = [["H₂O", "רק הנוזל הניטרלי, pH 7 וטהור, יעביר אותך דרך האש השחורה"], ["NaOH", "רק הבסיס החזק יכבה את האש השחורה"],
+    ["HCl", "שתי את החומצה שנמצאת גם בקיבה שלנו"], ["NaCl", "שתי את מה שנוצר כשחומצת מלח פוגשת סודה קאוסטית"], ["C₂H₅OH", "הנוזל שבוער בלהבה כחלחלה הוא המפתח"], ["NH₃", "שתי את הבסיס שמריח כמו חומר ניקוי"]];
+  st.bottles = BOT.map(([f, col, nm], i) => {
+    const g = new THREE.Group(); const x = -15 + i * 5; g.position.set(x, 8.2, -4); st.g.add(g);
+    const shape = i % 3 === 0 ? new THREE.SphereGeometry(1.1, 14, 10) : i % 3 === 1 ? new THREE.CylinderGeometry(.8, .9, 2.4, 14) : new THREE.ConeGeometry(1.1, 2.4, 14);
+    const b = new THREE.Mesh(shape, new THREE.MeshLambertMaterial({ color: col, transparent: true, opacity: .7, emissive: col, emissiveIntensity: .25 })); g.add(b);
+    const nk = new THREE.Mesh(new THREE.CylinderGeometry(.25, .3, 1, 8), new THREE.MeshLambertMaterial({ color: 0xd8e8f0, transparent: true, opacity: .6 })); nk.position.y = 1.6; g.add(nk);
+    const cork = new THREE.Mesh(new THREE.CylinderGeometry(.3, .28, .5, 8), new THREE.MeshLambertMaterial({ color: 0x8a5a2a })); cork.position.y = 2.3; g.add(cork);
+    const lb = textSprite(f, 4.6, "#ffffff"); lb.position.y = 3.8; g.add(lb);
+    return { g, f, nm, home: g.position.clone(), alive: true, ph: i };
+  });
+  // purple fire behind, black fire ahead
+  st.fires = [];
+  for (let i = 0; i < 9; i++) { const f = E.glowSprite(0xa050ff, 6, .7, true); f.position.set(-12 + i * 3, 4, st.hz - 1.5); st.g.add(f); st.fires.push({ s: f, purple: true }); }
+  st.exitGlow = exitArch(st.g, -st.hz + .6, 0x9fe0ff);
+  st.blackFire = []; for (let i = 0; i < 7; i++) st.blackFire.push(new V3(-9 + i * 3, 1, -st.hz + 3));
+  st.blocker = { x: 0, z: -st.hz + 3, hw: 13, hd: 2.5, ry: 0, top: 26 };
+  st.enter = () => {
+    st.exitOpen = false; st.solved = false; st.bottles.forEach(b => { b.alive = true; b.g.visible = true; b.g.position.copy(b.home); });
+    const r = E.pick(RIDDLES); st.answer = r[0]; st.text = r[1]; st.cols = [st.blocker, { x: 0, z: -4, hw: 19, hd: 3, ry: 0, top: 6 }]; showStage(4);
+  };
+  st.freeze = () => 0;
+  st.exitHit = p => p.z < -st.hz + 6 && Math.abs(p.x) < 10 && p.y < 24;
+  st.panel = () => panel("🧪 שבעה בקבוקים, רק אחד מעביר באש", st.solved ? "האש השחורה כבתה! עברי בשער" : st.text, `<div class="psub">טוסי לתוך הבקבוק הנכון כדי לשתות ממנו</div>`, st.solved);
+  st.update = (dt, P) => {
+    if (!st.solved) {
+      for (const b of st.bottles) if (b.alive && b.g.position.distanceTo(P.pos) < 3.4) {
+        if (b.f === st.answer) {
+          st.solved = true; st.exitOpen = true; b.g.visible = false; E.sfx.win(); E.burst(b.g.position, E.COL.BLUE, 60, 10, 2, 1.2);
+          st.cols = [{ x: 0, z: -4, hw: 19, hd: 3, ry: 0, top: 6 }]; showStage(4);
+          E.toast(`✅ ${b.f} (${b.nm})! קור עובר בגוף... האש השחורה כבתה`, 2.8); st.exitGlow.material.opacity = .7;
+        } else { b.alive = false; b.g.visible = false; stats.wrong++; E.burst(b.g.position, E.COL.GREEN, 40, 8, 1.6, 1); E.hit(`🤢 ${b.f} (${b.nm}) זה לא הבקבוק הנכון!`); }
+        break;
+      }
+      E.arrowTarget = null; E.botTarget = BOTMODE ? st.bottles.find(b => b.f === st.answer).g.position : null;
+    } else { E.botTarget = null; E.arrowTarget = t2.set(0, 10, -st.hz + 2); E.arrowColor = 0x9fe0ff; }
+  };
+  st.world = (dt, T) => {
+    st.bottles.forEach(b => { if (b.alive) { b.g.position.y = b.home.y + Math.sin(T * 1.8 + b.ph) * .4; b.g.rotation.y += dt * .6; } });
+    for (const f of st.fires) f.s.scale.setScalar(6 + Math.sin(T * 12 + f.s.position.x) * 1.2);
+    if (Math.random() < dt * 30) { const p = E.pick(st.fires).s.position; E.sparks.spawn(p.x + E.rand(-1, 1), p.y, p.z, { vy: E.rand(3, 7), life: .7, r: .7, g: .35, b: 1, s0: 2, s1: 0 }); }
+    if (!st.solved) for (const p of st.blackFire) if (Math.random() < dt * 8) E.smoke.spawn(p.x + E.rand(-1.2, 1.2), p.y, p.z, { vy: E.rand(4, 8), vx: E.rand(-.5, .5), life: 1.6, r: .05, g: .02, b: .08, s0: 4, s1: 9, a0: .85 });
+    for (const t of R.torches) t.scale.setScalar(4 + Math.sin(T * 12 + t.position.z) * .6);
+  };
+  return st;
+}
+
+/* ---------- 6. The Mirror ---------- */
+function buildMirror() {
+  const st = { name: "מראת נפש", icon: "🪞", hx: 34, hz: 40, h: 28, vault: 16, fog: [0x0e0a14, .007], start: new V3(0, 12, 34), yaw: Math.PI };
+  const R = makeRoom(st.hx, st.hz, st.h, st.vault, { lights: 1, light: 0xd0b0ff }); st.g = R.g;
+  const mg = new THREE.Group(); mg.position.set(0, 0, -st.hz + 6); st.g.add(mg);
+  const gold = new THREE.MeshLambertMaterial({ color: 0xd4a83a, emissive: 0x3a2400 });
+  const fr = new THREE.Mesh(new THREE.BoxGeometry(15, 25, 1.2), gold); fr.position.y = 13.5; mg.add(fr);
+  for (const s of [-1, 1]) { const foot = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 5), gold); foot.position.set(s * 6, .75, 0); mg.add(foot); }
+  st.mtex = E.canvasTex(256, () => {}, 400);
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(12.5, 21), new THREE.MeshBasicMaterial({ map: st.mtex })); glass.position.set(0, 13, .65); mg.add(glass);
+  const insc = textSprite("ךבל תולאשמ תא אלא ךינפ תא אל הארמ ינא", 20, "#ffd977", "rgba(40,24,8,.85)"); insc.position.set(0, 28, .8); mg.add(insc);
+  st.mirrorPos = new V3(0, 13, -st.hz + 7);
+  st.cols = [{ x: 0, z: -st.hz + 6, hw: 8, hd: 3, ry: 0, top: 27 }];
+  // the shadow that wants the stone
+  const wr = new THREE.Group(); st.g.add(wr);
+  for (const s of [-1, 1]) { const e = E.glowSprite(0xff2030, 1.2, 1); e.position.set(s * .45, 0, .8); wr.add(e); }
+  wr.add(E.glowSprite(0x6a0010, 10, .35)); st.wraith = { g: wr, pos: new V3(), dir: new V3(0, 0, 1), frozen: 0 };
+  st.stone = E.glowSprite(0xff2030, 3, 1);
+  const OPTS = ["Pb", "Fe", "Cu", "Hg"];
+  st.enter = () => {
+    st.exitOpen = false; st.answered = false; st.hasStone = false; st.wraith.pos.set(0, 15, -10); st.wraith.frozen = 0;
+    (st.orbs || []).forEach(o => st.g.remove(o.spr)); st.orbs = [];
+    E.pick([0]); OPTS.forEach((s, i) => { const spr = orbSprite(s, 6); const p = new V3(-12 + i * 8, 10, -6); spr.position.copy(p); st.g.add(spr); st.orbs.push({ spr, sym: s, base: p, ph: i, alive: true }); });
+  };
+  st.freeze = P => { st.wraith.frozen = 4.5; return 1; };
+  st.exitHit = () => false;
+  st.panel = () => panel("🪞 מראת נפש", st.answered ? "המראה מחכה לך. טוסי אליה, והאבן תופיע בכיס" : "מה ניקולס פלאמל הפך לזהב בעזרת האבן? תפסי את היסוד הנכון", `<div class="psub">צל אפל רוצה את האבן. ❄️ אימוביולוס עוצר אותו</div>`, st.answered);
+  st.update = (dt, P) => {
+    if (!st.answered) for (const o of st.orbs) if (o.alive && o.spr.position.distanceTo(P.pos) < 4.2) {
+      o.alive = false; o.spr.visible = false;
+      if (o.sym === "Pb") { st.answered = true; E.sfx.ready(); E.burst(o.spr.position, E.COL.GOLD, 60, 10, 2, 1.2); E.toast("✨ עופרת! המראה מתחילה לזהור...", 2.2); }
+      else { stats.wrong++; E.hit(`${E.EL[o.sym].name}? לא נכון. הצל מתחזק`); }
+      break;
+    }
+    const w = st.wraith; w.frozen = Math.max(0, w.frozen - dt);
+    if (w.frozen <= 0) {
+      const want = t1.copy(P.pos).sub(w.pos).normalize(), ang = w.dir.angleTo(want);
+      if (ang > 1e-4) { w.dir.lerp(want, Math.min(1, 2.2 * dt / ang)); w.dir.normalize(); }
+      w.pos.addScaledVector(w.dir, E.BASE * .9 * dt); clampRoom(w.pos, 3, st);
+    }
+    const d = w.pos.distanceTo(P.pos); E.danger = d;
+    if (d < 3.4 && w.frozen <= 0 && E.hit("👤 הצל נגע בך!")) w.pos.set(0, 20, -st.hz + 12);
+    if (E.state !== "play") return;
+    if (st.answered && !st.hasStone && P.pos.distanceTo(st.mirrorPos) < 9) {
+      st.hasStone = true; st.wraith.frozen = 99; E.carry.add(st.stone); st.stone.position.set(0, .4, 0); E.sfx.win(); flashWhite();
+      E.addScore(1000); stats.stages++;
+      E.burst(st.mirrorPos, E.COL.RED, 160, 22, 2.6, 1.6);
+      E.toast("🔴 האבן בכיס שלך! השגת את אבן החכמים!", 3);
+      setTimeout(() => { E.carry.remove(st.stone); E.endGame(`${E.playerName() ? E.playerName() + ", " : ""}השגת את אבן החכמים! 🔴`, true); }, 1800);
+    }
+    E.botTarget = null;
+    if (!st.answered) { const o = st.orbs.find(o => o.alive && o.sym === "Pb"); E.arrowTarget = null; if (BOTMODE && o) E.botTarget = o.spr.position; }
+    else if (!st.hasStone) { E.arrowTarget = st.mirrorPos; E.arrowColor = 0xff3040; }
+  };
+  st.world = (dt, T) => {
+    orbsAnimate(st, T);
+    const c = st.mtex.userData.canvas, g = c.getContext("2d"), gr = g.createLinearGradient(0, 0, 256, 400);
+    gr.addColorStop(0, "#b8c0d8"); gr.addColorStop(.5 + Math.sin(T * .7) * .3, "#e8ecf8"); gr.addColorStop(1, "#8a90a8"); g.fillStyle = gr; g.fillRect(0, 0, 256, 400);
+    if (st.answered) { const a = .5 + .4 * Math.sin(T * 3); const rg = g.createRadialGradient(128, 230, 4, 128, 230, 70); rg.addColorStop(0, `rgba(255,40,60,${a})`); rg.addColorStop(1, "rgba(255,40,60,0)"); g.fillStyle = rg; g.fillRect(0, 0, 256, 400); g.fillStyle = "#c01020"; g.beginPath(); g.moveTo(128, 205); g.lineTo(150, 230); g.lineTo(128, 255); g.lineTo(106, 230); g.fill(); }
+    st.mtex.needsUpdate = true;
+    const w = st.wraith; w.g.position.copy(w.pos); w.g.lookAt(E.camera.position);
+    if (Math.random() < dt * 40) E.smoke.spawn(w.pos.x + E.rand(-1.5, 1.5), w.pos.y + E.rand(-2, 1), w.pos.z + E.rand(-1.5, 1.5), { vy: E.rand(-.5, .5), life: 1.6, r: .05, g: .02, b: .05, s0: 5, s1: 2, a0: w.frozen > 0 ? .3 : .8 });
+    for (const t of R.torches) t.scale.setScalar(4 + Math.sin(T * 12 + t.position.z) * .6);
+  };
+  return st;
 }
 
 window.WizGame(A);
