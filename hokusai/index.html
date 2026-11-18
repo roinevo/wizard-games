@@ -1032,8 +1032,8 @@ station(53787, "גשר הסירות בסאנו בשלג", 1350, -1640, { up: 12,
   addPerson("traveler", 1450, -1555, { y: 1, path: [[1380, -1600], [1560, -1500]], speed: 1 });
   VILLAGES.push([1300, -1700, 5]);
 });
-station(56142, "המפל שבו רחץ יושיצונה את סוסו", 760, -2200, { up: 6, d: [0, 50], look: [760, 70, -2290], fov: 55 }, null, s => { FALLS.push([760, -2290, 80]); });
-station(36484, "מפל רובן באויאמה", -200, -2420, { up: 5, d: [0, 60], look: [-200, 90, -2520], fov: 55 }, null, s => { FALLS.push([-200, -2520, 110]); for (let k = 0; k < 5; k++) addPerson("farmer", -200 + rand(-14, 14), -2500 + rand(-6, 6), { y: landH(-200, -2500) - 1 }); });
+station(56142, "המפל שבו רחץ יושיצונה את סוסו", 760, -2200, { up: 6, d: [0, 50], look: [760, 70, -2290], fov: 55 }, null, s => { FALLS.push([760, -2290, 80]); fallView(s, 760, -2290, 80, 95); });
+station(36484, "מפל רובן באויאמה", -200, -2420, { up: 5, d: [0, 60], look: [-200, 90, -2520], fov: 55 }, null, s => { FALLS.push([-200, -2520, 110]); fallView(s, -200, -2520, 110, 120); for (let k = 0; k < 5; k++) addPerson("farmer", -200 + rand(-14, 14), -2500 + rand(-6, 6), { y: landH(-200, -2500) - 1 }); });
 station(37362, "שקיעה מעל גשר ריוגוקו", 2000, 560, { up: 4, d: [0, 0], look: [2010, 20, 380], fov: 55 }, { top: 0x2b2f3d, mid: 0xead9b6, hor: 0xe7c9a0, fog: 0xd9c7a6 }, s => { BRIDGES.push([2030, 400, 260, 0]); const b = makeBoat(); b.scale.setScalar(.9); b.position.set(2010, 0, 520); b.rotation.y = Math.PI / 2; scene.add(b); BOATS.push(b); });
 station(44981, "שלג על נהר סומידה", 2160, -240, { up: 10, d: [0, 0], look: [2060, 0, -250], fov: 55 }, { top: 0x26344a, mid: 0xece6da, hor: 0xc9c3b4, fog: 0xdcd8ce }, s => { const h = new THREE.Mesh(KIT.minka(), VC); h.position.set(2110, landH(2110, -230), -230); scene.add(h); });
 station(56138, "פריחת הדובדבן ביושינו", -900, -2050, { up: 55, d: [0, 170], look: [-900, 185, -2180], fov: 58 }, null, s => {
@@ -1053,6 +1053,8 @@ RYU.forEach(([id, name, x, z], k) => station(id, "איי ריוקיו: " + name,
 }));
 station(54433, "הציפור המיסטית מעל הפסגה", 0, 0, { up: 0, look: [0, 760, 0], fov: 60, sky: true }, { top: 0x2a3d6e, mid: 0xf0e2c4, hor: 0xe0d2b5, fog: 0xe0d6c0 }, s => { s.y = FUJI_H + 120; });
 
+// a waterfall station: stand back from the fall and look at its middle, whatever the ground height is
+function fallView(s, x, z, h, dist) { const base = landH(x, z + 30); s.view.d = [x - s.x, z + dist - s.z]; s.view.y = base + h * .45; s.view.look = [x, base + h * .45, z]; s.view.fov = 62; }
 /* ---------- shared world collections filled by station dressers ---------- */
 var WAVES = [], BOATS = [], MACKEREL = [], CUMULUS = [], VILLAGES = [], PINEGROVES = [], ROADPINES = [], FALLS = [], BRIDGES = [], FOAMSPOTS = [];
 var STORM = { x: 0, z: 0, bolts: [] }, EDO = { x: 0, z: 0 }, MIRROR_FUJI = { on: false };
@@ -1180,7 +1182,16 @@ function buildWorld() {
   // waterfalls
   for (const [x, z, h] of FALLS) {
     const base = landH(x, z + 30);
-    const cliff = new THREE.Mesh(partsGeo([{ g: G_.box(70, h, 30), c: 0x5d6c63, m: M4(0, h / 2, -12) }, { g: G_.box(40, h * .7, 20), c: 0x4b5a52, m: M4(-38, h * .35, -6, 0, .3) }, { g: G_.box(36, h * .8, 20), c: 0x4b5a52, m: M4(38, h * .4, -6, 0, -.3) }]), VC);
+    // a cliff of stacked, tilted rocks with moss and shrubs (instead of boxes)
+    const cp = [{ g: G_.box(60, h, 24), c: 0x3f4e48, m: M4(0, h / 2, -16) }];
+    const rc = [0x5d6c63, 0x6f7c86, 0x7a5a3a, 0x56636e, 0x8a6a42];
+    for (const sd of [-1, 1]) for (let k = 0; k < 9; k++) {
+      const yy = (k + .5) / 9 * h, r = rand(9, 15) * (1 - k / 14), xx = sd * (12 + r * .7 + rand(0, 8));
+      cp.push({ g: new THREE.DodecahedronGeometry(r, 0), c: rc[(k + (sd > 0 ? 2 : 0)) % 5], m: M4(xx, yy, rand(-6, 2), rand(0, 3), rand(0, 3), 0, 1, rand(1, 1.5), .8) });
+      if (k % 2 === 0) cp.push({ g: G_.sph(r * .6, 7, 4), c: k % 4 ? 0x416d63 : 0x6f9a52, m: M4(xx + rand(-3, 3), yy + r * .75, rand(-2, 4), 0, 0, 0, 1.3, .45, 1) });
+    }
+    for (let k = 0; k < 6; k++) cp.push({ g: G_.sph(rand(6, 10), 7, 4), c: k % 2 ? 0x24443a : 0x3f6b55, m: M4(rand(-35, 35), h + rand(-2, 4), rand(-14, 0), 0, 0, 0, 1.4, .5, 1) });
+    const cliff = new THREE.Mesh(partsGeo(cp), VC);
     cliff.position.set(x, base - 2, z); scene.add(cliff);
     const fall = new THREE.Mesh(new THREE.PlaneGeometry(14, h), printMat(`void main(){ float s=abs(fract(vP.x*.35+sin(vP.y*.05)*.3)-.5); float f=fract(vP.y*.03+time*1.2+vn(vec2(vP.x*.3,0.))); vec3 c=mix(vec3(.3,.5,.75),vec3(.95,.95,.92),smoothstep(.25,.1,s)); c=mix(c,vec3(.97),step(.85,f)*.6); gl_FragColor=vec4(fogIt(c),1.);}`));
     fall.position.set(x, base - 2 + h / 2, z + 3.2); scene.add(fall);
