@@ -1014,7 +1014,7 @@ station(56132, "ביצות אושיבורי", 2350, -620, { up: 16, d: [74, 40],
   const reeds = []; for (let k = 0; k < 500; k++) { const a = rand(0, 6.28), r = rand(20, 140); const x = s.x + Math.cos(a) * r + 30, z = s.z + Math.sin(a) * r + 50; reeds.push([x, Math.max(-1, landH(x, z)), z, rand(0, 6), rand(.8, 1.4)]); }
   instances(KIT.reed(), reeds);
 });
-station(36498, "אגם האקונה", -1250, 900, { up: 40, d: [0, 0], look: [-1450, 0, 600], fov: 60 }, null, s => { VILLAGES.push([-1300, 420, 10]); });
+station(36498, "אגם האקונה", -1250, 900, { up: 0, y: 120, d: [40, -300], look: [-1450, 0, 650], fov: 62 }, null, s => { VILLAGES.push([-1300, 420, 10]); });
 station(36496, "חוף שיצ'יריגהאמה", -1000, 1650, { up: 18, d: [0, 0], look: [-300, 120, 600], fov: 58 }, null, s => { PINEGROVES.push([s.x + 80, s.z - 60, 60, 25]); });
 station(54868, "השתקפות באגם מיסאקה", -150, -1760, { up: 12, d: [0, 60], look: [-130, 70, -800], fov: 60 }, null, s => { MIRROR_FUJI.on = true; VILLAGES.push([-380, -1650, 8]); });
 station(56786, "מעבר מישימה", -1700, 1050, { up: 3, d: [0, 40], look: [-1500, 180, 600], fov: 58 }, null, s => {
@@ -1038,7 +1038,7 @@ station(55741, "האי צוקודה", 2150, 1450, { up: 5, d: [0, 0], look: [230
   for (let k = 0; k < 7; k++) { const b = makeBoat(); b.scale.setScalar(rand(.5, .8)); b.position.set(2300 + rand(-120, 120), 0, 1600 + rand(-80, 60)); b.rotation.y = rand(0, 6); scene.add(b); BOATS.push(b); }
   VILLAGES.push([2300, 1650, 9, "kura"]);
 });
-station(55236, "מעבר נהר אוי בקנאיה", -650, 1250, { up: 22, d: [0, 0], look: [-200, 160, 300], fov: 58 }, null, s => {
+station(55236, "מעבר נהר אוי בקנאיה", -650, 1250, { up: 0, y: 70, d: [90, 30], look: [-700, 60, 900], fov: 62 }, null, s => {
   for (let k = 0; k < 14; k++) { const z = 1150 + k * 14 + rand(-4, 4); addPerson(k % 3 ? "porter" : "traveler", -760 + k * 6, z, { path: [[-830, z], [-600, z + 30]], speed: rand(.8, 1.4), wade: true }); }
 });
 station(55458, "שדרת האורנים בהודוגאיה", 1150, 1050, { up: 3, d: [0, 0], look: [0, 200, 0], fov: 58 }, null, s => {
@@ -1049,16 +1049,20 @@ station(55237, "הגשר ניהונבאשי באדו", 1920, 820, { up: 25, d: [
   EDO.x = s.x; EDO.z = s.z;
   for (const [t, ry] of [[70, .1], [150, -.15], [230, .05]]) { const b = makeBoat(); b.scale.setScalar(.75); b.position.set(s.x - .92 * t + rand(-3, 3), 0, s.z - .39 * t); b.rotation.y = Math.atan2(-.92, -.39) + ry; scene.add(b); BOATS.push(b); }
 });
-station(53787, "גשר הסירות בסאנו בשלג", 1350, -1640, { up: 12, d: [0, 0], look: [1520, 0, -1520], fov: 58 }, { top: 0x2c3242, mid: 0xe9e3d6, hor: 0xb8b3a8, fog: 0xd8d4cc }, s => {
+station(53787, "גשר הסירות בסאנו בשלג", 1350, -1640, { up: 14, d: [18, 22], look: [1540, 2, -1500], fov: 60 }, { top: 0x2c3242, mid: 0xe9e3d6, hor: 0xb8b3a8, fog: 0xd8d4cc }, s => {
   const pts = [[1380, -1600], [1430, -1560], [1490, -1530], [1560, -1500]];
   const pp = []; for (let k = 0; k < 18; k++) { const u = k / 17; const x = lerp(1380, 1560, u), z = lerp(-1600, -1500, u) + Math.sin(u * 3) * 10; pp.push({ g: G_.box(5, 1.2, 9), c: 0x7a5f3a, m: M4(x, 0, z, 0, Math.atan2(180, 100) + Math.PI / 2, 0) }); } scene.add(new THREE.Mesh(partsGeo(pp), VC));
   addPerson("traveler", 1450, -1555, { y: 1, path: [[1380, -1600], [1560, -1500]], speed: 1 });
+  // the snowy farmhouse and tall pine on the near bank (right side of the print)
+  { const hx = s.x + 40, hz = s.z - 8, hy = landH(hx, hz); const h = new THREE.Mesh(KIT.minka(), VC); h.position.set(hx, hy - .3, hz); h.rotation.y = -.5; h.scale.setScalar(1.6); scene.add(h);
+    const sn = new THREE.Mesh(prism(19.5, 10.8, 15.4), toon(0xf2eee4)); sn.position.set(hx, hy + 6.7, hz); sn.rotation.y = -.5 + Math.PI / 2; scene.add(sn);
+    const pn = new THREE.Mesh(KIT.pine(), VC); pn.position.set(hx - 8, hy - 1, hz - 14); pn.scale.set(1.5, 2.2, 1.5); scene.add(pn); }
   VILLAGES.push([1300, -1700, 5]);
 });
 station(56142, "המפל שבו רחץ יושיצונה את סוסו", 760, -2200, { up: 6, d: [0, 50], look: [760, 70, -2290], fov: 55 }, null, s => { FALLS.push([760, -2290, 80]); fallView(s, 760, -2290, 80, 95); });
 station(36484, "מפל רובן באויאמה", -200, -2420, { up: 5, d: [0, 60], look: [-200, 90, -2520], fov: 55 }, null, s => { FALLS.push([-200, -2520, 110]); fallView(s, -200, -2520, 110, 120); for (let k = 0; k < 5; k++) addPerson("farmer", -200 + rand(-14, 14), -2500 + rand(-6, 6), { y: landH(-200, -2500) - 1 }); });
 station(37362, "שקיעה מעל גשר ריוגוקו", 2000, 560, { up: 4, d: [0, 0], look: [2010, 20, 380], fov: 55 }, { top: 0x2b2f3d, mid: 0xead9b6, hor: 0xe7c9a0, fog: 0xd9c7a6 }, s => { BRIDGES.push([2030, 400, 260, 0]); const b = makeBoat(); b.scale.setScalar(.9); b.position.set(2010, 0, 520); b.rotation.y = Math.PI / 2; scene.add(b); BOATS.push(b); });
-station(44981, "שלג על נהר סומידה", 2160, -240, { up: 10, d: [0, 0], look: [2060, 0, -250], fov: 55 }, { top: 0x26344a, mid: 0xece6da, hor: 0xc9c3b4, fog: 0xdcd8ce }, s => { const h = new THREE.Mesh(KIT.minka(), VC); h.position.set(2110, landH(2110, -230), -230); scene.add(h); });
+station(44981, "שלג על נהר סומידה", 2160, -240, { up: 14, d: [40, 30], look: [1900, 30, -120], fov: 66 }, { top: 0x26344a, mid: 0xece6da, hor: 0xc9c3b4, fog: 0xdcd8ce }, s => { const h = new THREE.Mesh(KIT.minka(), VC); h.position.set(2110, landH(2110, -230), -230); scene.add(h); });
 station(56138, "פריחת הדובדבן ביושינו", -900, -2050, { up: 55, d: [0, 170], look: [-900, 185, -2180], fov: 58 }, null, s => {
   const list = []; for (let k = 0; k < 300; k++) { const x = s.x + rand(-200, 200), z = s.z + rand(-270, 60); list.push([x, landH(x, z) - .5, z, rand(0, 6), rand(1.6, 2.6)]); }
   instances(KIT.cherry(), list);
