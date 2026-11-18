@@ -2345,6 +2345,65 @@ PLAY_HOOKS.push(dt => {
   }
 });
 
+/* ---------- weather and light: rain at the storm, petals at Yoshino, lanterns at Edo ---------- */
+// rain: straight diagonal ink streaks, as in "Storm below the summit"; a box of streaks follows the camera near the storm
+const RAIN = (() => {
+  const N = 500, pos = new Float32Array(N * 6), seed = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) { seed[i * 3] = rand(-60, 60); seed[i * 3 + 1] = rand(0, 60); seed[i * 3 + 2] = rand(-60, 60); }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x3a4a66, transparent: true, opacity: .55 })); l.frustumCulled = false; l.visible = false; scene.add(l);
+  return { l, pos, seed, N };
+})();
+// petals: pink drifting flakes around the camera at Yoshino (and a few under any cherry)
+const PETALS = (() => {
+  const N = 420, g = new THREE.BufferGeometry(), pos = new Float32Array(N * 3), seed = new Float32Array(N * 4);
+  for (let i = 0; i < N; i++) { seed[i * 4] = rand(-30, 30); seed[i * 4 + 1] = rand(0, 30); seed[i * 4 + 2] = rand(-30, 30); seed[i * 4 + 3] = rand(0, 6.28); }
+  g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const m = new THREE.ShaderMaterial({ uniforms: { scale: { value: 400 } }, transparent: true, depthWrite: false,
+    vertexShader: `uniform float scale; varying float vR; void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); vR=fract(position.x*.37+position.z*.13); gl_PointSize=(.9+.5*vR)*scale/-mv.z; gl_Position=projectionMatrix*mv; }`,
+    fragmentShader: `varying float vR; void main(){ vec2 q=gl_PointCoord-.5; q=mat2(.8,-.6,.6,.8)*q; float d=length(q*vec2(1.,1.9)); if(d>.5) discard; gl_FragColor=vec4(mix(vec3(.9,.68,.7),vec3(.93,.74,.75),vR),1.); }` });
+  const p = new THREE.Points(g, m); p.frustumCulled = false; p.visible = false; scene.add(p); particles.push({ mat: m }); m.uniforms.scale.value = post.uniforms.res.value.y / 2;
+  return { p, pos, seed, N };
+})();
+// lanterns: warm glows along the Edo canal, on Ryogoku bridge and the town street; brighter in the sunset light
+const LANTERNS = (() => {
+  const L = [];
+  for (let x = 1280; x <= 1470; x += 38) for (const sd of [-1, 1]) { const z = roadZ(x) + sd * 6.5; L.push([x, landH(x, z) + 3.6, z]); }
+  for (let k = 0; k < 12; k++) for (const sd of [-1, 1]) { const t = 35 + k * 30, x = EDO.x - .92 * t + .39 * sd * 21, z = EDO.z - .39 * t - .92 * sd * 21; L.push([x, Math.max(landH(x, z), 1) + 4, z]); }
+  for (let k = 0; k <= 10; k++) { const u = k / 10 - .5; L.push([2030 + u * 260, 6 + 5 * (1 - 4 * u * u) + 3, 400 - 4.6], [2030 + u * 260, 6 + 5 * (1 - 4 * u * u) + 3, 400 + 4.6]); }
+  for (let k = 0; k < 9; k++) L.push([KAB.x - 8 + k * 2, KAB.y + 5.4, KAB.z - 5.6]);
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(L.flat(), 3));
+  const m = new THREE.ShaderMaterial({ uniforms: { scale: { value: 400 }, tex: { value: glowTex }, amt: { value: .5 }, time: TIME }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: `uniform float scale,time; varying float vF; void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); vF=.85+.15*sin(time*3.+position.x); gl_PointSize=7.*scale/-mv.z; gl_Position=projectionMatrix*mv; }`,
+    fragmentShader: `uniform sampler2D tex; uniform float amt; varying float vF; void main(){ vec4 t=texture2D(tex,gl_PointCoord); gl_FragColor=vec4(vec3(1.,.6,.3)*t.rgb,t.a*amt*vF); }` });
+  const p = new THREE.Points(g, m); p.frustumCulled = false; p.renderOrder = 4; scene.add(p); particles.push({ mat: m }); m.uniforms.scale.value = post.uniforms.res.value.y / 2;
+  return { p, m };
+})();
+PLAY_HOOKS.push(dt => {
+  const c = camera.position;
+  // rain within 650 of the storm, heaviest at its heart
+  const sd = Math.hypot(c.x - STORM.x, c.z - STORM.z), rainAmt = sstep(650, 250, sd);
+  RAIN.l.visible = rainAmt > .02;
+  if (RAIN.l.visible) {
+    RAIN.l.material.opacity = .55 * rainAmt; const fall = (T * 70) % 60;
+    for (let i = 0; i < RAIN.N; i++) { const s = RAIN.seed, x = c.x + s[i * 3], z = c.z + s[i * 3 + 2], y = c.y + 30 - ((s[i * 3 + 1] + fall) % 60);
+      RAIN.pos.set([x, y, z, x - 1.6, y - 6, z + .6], i * 6); }
+    RAIN.l.geometry.attributes.position.needsUpdate = true;
+  }
+  // petals near Yoshino's cherry hillside
+  const ys = STATIONS.find(s => s.id === 56138), pd = Math.hypot(c.x - ys.x, c.z - ys.z + 120);
+  PETALS.p.visible = pd < 520;
+  if (PETALS.p.visible) {
+    for (let i = 0; i < PETALS.N; i++) { const s = PETALS.seed, ph = s[i * 4 + 3], h = (s[i * 4 + 1] - T * 2.2 + 400) % 40;
+      PETALS.pos[i * 3] = c.x + ((s[i * 4] + T * 4 + 30) % 60) - 30 + Math.sin(T * 1.3 + ph) * 2; PETALS.pos[i * 3 + 1] = c.y - 10 + h; PETALS.pos[i * 3 + 2] = c.z + s[i * 4 + 2] + Math.cos(T * 1.1 + ph) * 2; }
+    PETALS.p.geometry.attributes.position.needsUpdate = true;
+  }
+  // lanterns glow more in the sunset light around Ryogoku and Edo
+  const ed = Math.min(Math.hypot(P.pos.x - 2000, P.pos.z - 560), Math.hypot(P.pos.x - EDO.x, P.pos.z - EDO.z));
+  LANTERNS.m.uniforms.amt.value = lerp(.35, 1, sstep(700, 150, ed));
+});
+// rain also when standing still in the scene / moment states would be nice, but keep it to play for cost
+
 /* ---------- crane fast travel from the map ---------- */
 const TOWN_PT = { x: 1400, z: roadZ(1400) };
 (function () {
@@ -2376,6 +2435,13 @@ const TOWN_PT = { x: 1400, z: roadZ(1400) };
 })();
 
 /* ---------- test hooks ---------- */
+const mG = HASH.match(/goto=(-?\d+),(-?\d+)(?:,(-?[\d.]+))?/);
+if (mG) setTimeout(() => {
+  enterWorld(); introT = 6.3; step(.05); state = "play";
+  const x = +mG[1], z = +mG[2]; P.pos.set(x, landH(x, z), z); P.yaw = mG[3] !== undefined ? +mG[3] : Math.atan2(-x, -z);
+  if (/gofly/.test(HASH)) { P.pos.y += 25; setMode("fly"); }
+  for (let i = 0; i < 40; i++) step(1 / 30);
+}, 1200);
 if (/fasttravel|mapshow/.test(HASH)) setTimeout(() => {
   enterWorld(); introT = 6.3; step(.05); state = "play";
   const s = STATIONS.find(q => q.id === 55237); s.got = true; toggleMap();
