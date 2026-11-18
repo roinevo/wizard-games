@@ -1,0 +1,1335 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} body{margin:0}</style>
+</head>
+<body>
+<title>אבן החכמים</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Suez+One&family=Varela+Round&display=swap">
+<style>
+/* layout: full-bleed WebGL arena, glassy HUD pills on top, centered dark cards for menus */
+:root{
+  --night:#070918; --ink:#f6f1ff; --soft:#c9c0ee; --gold:#ffd977; --panel:rgba(14,12,40,.62);
+  --line:rgba(255,217,119,.32); --green:#7dffb0; --danger:#ff4d6d;
+  --display:"Suez One","Varela Round",Georgia,serif; --body:"Varela Round",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--night);color:var(--ink);font-family:var(--body);
+  touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hud{position:fixed;inset:0;pointer-events:none;z-index:2}
+.top{position:absolute;top:max(10px,env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));
+  display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:8px 12px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.stats{display:flex;flex-direction:column;gap:2px;font-size:15px;font-variant-numeric:tabular-nums;min-width:120px}
+.hearts{font-size:17px;letter-spacing:1px;min-height:22px}
+#score{font-family:var(--display);color:var(--gold);font-size:19px;display:inline-block;transition:transform .15s}
+#score.bump{transform:scale(1.25)}
+#panel{text-align:center;min-width:210px;transition:border-color .3s,box-shadow .3s}
+#panel.ready{border-color:var(--green);box-shadow:0 0 22px rgba(125,255,176,.35)}
+.pname{font-family:var(--display);color:var(--gold);font-size:16px}
+.pform{font-size:13px;color:var(--soft);direction:ltr;unicode-bidi:isolate}
+.phint{font-size:13px;color:var(--green)}
+.pbig{font-family:var(--display);font-size:20px;color:#fff;font-variant-numeric:tabular-nums}
+.psub{font-size:13px;color:var(--soft)}
+.chips{display:flex;gap:6px;justify-content:center;margin-top:6px;direction:ltr;flex-wrap:wrap}
+.chip{padding:3px 8px;border-radius:10px;background:rgba(255,255,255,.08);font-size:14px;border:1px solid transparent;font-variant-numeric:tabular-nums}
+.chip b{color:var(--c)}
+.chip.done{border-color:var(--green);color:var(--green)}
+.btns{display:flex;gap:6px}
+.icon-btn{pointer-events:auto;width:42px;height:42px;border-radius:14px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:18px;cursor:pointer}
+.icon-btn:focus-visible,.go:focus-visible,.act:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.bottom{position:absolute;bottom:max(14px,env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;gap:10px;align-items:stretch}
+.gauge{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--soft);min-width:140px}
+.meter{height:9px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden}
+.meter i{display:block;height:100%;width:100%;border-radius:6px}
+#boostBar{background:linear-gradient(90deg,#7ad7ff,#d6f6ff)}
+#actBar{background:linear-gradient(90deg,#b9c8ff,#ffffff)}
+.act{pointer-events:auto;cursor:pointer;color:var(--soft);font:inherit;text-align:right}
+.act.ok{color:#fff;border-color:#cfe0ff;box-shadow:0 0 16px rgba(200,220,255,.35)}
+#toast{position:absolute;top:31%;left:50%;transform:translate(-50%,-50%);font-family:var(--display);font-size:clamp(19px,3.8vw,32px);
+  color:var(--gold);text-shadow:0 0 18px rgba(255,190,80,.6),0 2px 6px rgba(0,0,0,.7);opacity:0;transition:opacity .3s;text-align:center;width:min(92vw,720px)}
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at center,transparent 42%,rgba(150,0,30,.8));opacity:0}
+#flash{position:fixed;inset:0;pointer-events:none;z-index:1;background:rgba(255,40,70,.45);opacity:0}
+.screen{position:fixed;inset:0;z-index:5;display:grid;place-items:center;overflow:auto;
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:linear-gradient(rgba(5,6,20,.15),rgba(5,6,20,.78))}
+.card{max-width:470px;width:100%;background:rgba(18,15,48,.86);border:1px solid var(--line);border-radius:26px;padding:24px 22px;text-align:center;
+  box-shadow:0 24px 70px rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+h1{font-family:var(--display);font-weight:400;color:var(--gold);font-size:clamp(34px,8vw,50px);margin:0;line-height:1.15;text-shadow:0 0 26px rgba(255,200,80,.45);text-wrap:balance}
+h2{font-family:var(--display);font-weight:400;color:var(--gold);font-size:clamp(24px,6vw,32px);margin:0 0 8px;text-wrap:balance}
+.sub{color:var(--soft);margin:6px 0 0;line-height:1.6}
+.howto{text-align:right;color:var(--soft);line-height:1.65;font-size:15px;margin:16px 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.howto b{color:var(--ink);font-weight:400}
+.keys{font-size:13px;color:var(--soft);background:rgba(255,255,255,.05);border-radius:12px;padding:8px 10px;line-height:1.7}
+label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
+#nameIn{margin-top:6px;width:100%;max-width:260px;font:inherit;font-size:17px;text-align:center;color:var(--ink);background:rgba(255,255,255,.07);
+  border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+#nameIn:focus{outline:2px solid var(--gold)}
+.go{font-family:var(--display);font-size:21px;background:linear-gradient(#ffe7a6,#f0b447);color:#2a1a00;border:0;border-radius:16px;
+  padding:12px 30px;cursor:pointer;margin-top:16px;box-shadow:0 6px 24px rgba(240,180,71,.35)}
+.go:hover{filter:brightness(1.07)}
+.best{margin-top:12px;color:var(--soft);font-size:14px}
+.statgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0;font-variant-numeric:tabular-nums}
+.statgrid div{background:rgba(255,255,255,.06);border-radius:14px;padding:10px}
+.statgrid b{display:block;font-family:var(--display);font-weight:400;font-size:24px;color:var(--gold)}
+.statgrid span{font-size:13px;color:var(--soft)}
+.rank{font-family:var(--display);font-size:20px;color:#fff}
+.home{display:inline-block;margin-top:12px;color:var(--soft);font-size:14px}
+#touch{position:fixed;inset:0;pointer-events:none;z-index:3}
+#stickBase{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.05)}
+#stickKnob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:rgba(255,217,119,.55)}
+.tbtn{pointer-events:auto;position:absolute;right:max(18px,env(safe-area-inset-right,0px));width:76px;height:76px;border-radius:50%;
+  border:2px solid var(--line);background:var(--panel);color:#fff;font-size:30px}
+#tBoost{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+#tAct{bottom:calc(172px + env(safe-area-inset-bottom,0px))}
+#tBoost.on{background:rgba(122,215,255,.35)}
+#nogl{position:fixed;inset:0;display:grid;place-items:center;text-align:center;padding:24px;font-size:18px;color:var(--soft)}
+.arenas{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:14px 0 4px}
+.arena{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border-radius:12px;background:rgba(255,255,255,.06);
+  color:var(--soft);text-decoration:none;font-size:12px;border:1px solid transparent;line-height:1.25;text-align:center}
+.arena .ai{font-size:24px}
+.arena.on{border-color:var(--gold);color:var(--gold);background:rgba(255,217,119,.08)}
+a.arena:hover,a.arena:focus-visible{border-color:var(--line);color:var(--ink);outline:none}
+.boardlbl{font-size:13px;color:var(--soft);margin-top:12px}
+@media (max-width:480px){.arenas{grid-template-columns:repeat(3,1fr)}}
+.board{margin-top:14px;text-align:right;background:rgba(255,255,255,.05);border-radius:14px;padding:10px 12px}
+.lbhead{display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:var(--display);color:var(--gold);font-size:16px}
+.tabs{display:flex;gap:4px}
+.lbtab{font-family:var(--body);font-size:12px;color:var(--soft);background:transparent;border:1px solid var(--line);border-radius:10px;padding:3px 8px;cursor:pointer}
+.lbtab.on{background:rgba(255,217,119,.15);color:var(--gold)}
+.lb{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:3px;font-variant-numeric:tabular-nums}
+.lb li{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:8px;font-size:14px}
+.lb .r{width:20px;text-align:center;color:var(--soft)}
+.lb li:nth-child(-n+3) .r{color:var(--gold)}
+.lb .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb .dt{font-size:11px;color:var(--soft)}
+.lb .sc{font-family:var(--display);color:var(--ink);min-width:44px;text-align:left}
+.lb li.me{background:rgba(125,255,176,.12);outline:1px solid var(--green)}
+.lbempty{font-size:13px;color:var(--soft);margin-top:8px}
+.pop{position:absolute;top:44%;font-family:var(--display);font-size:26px;color:var(--gold);text-shadow:0 2px 8px rgba(0,0,0,.7);pointer-events:none;animation:popup 1s ease-out forwards}
+@keyframes popup{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-70px)}}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}}
+@media (max-width:640px){
+  .top{flex-wrap:wrap}
+  #panel{order:3;flex-basis:100%;min-width:0;padding:6px 10px}
+  .stats{min-width:0}
+  .gauge{min-width:110px;font-size:12px}
+  .chip{font-size:13px}
+}
+@media (prefers-reduced-motion:reduce){#score{transition:none}#toast{transition:none}}
+</style>
+
+<canvas id="c" aria-label="אבן החכמים"></canvas>
+<div id="vignette"></div><div id="flash"></div>
+
+<div class="hud" id="hud" hidden>
+  <div class="top">
+    <div class="pill stats">
+      <div class="hearts" id="hearts" aria-label="לבבות"></div>
+      <div><span id="score">0</span> נק׳ · <span id="levelLabel">שלב</span> <span id="level">1</span></div>
+    </div>
+    <div class="pill" id="panel"></div>
+    <div class="btns">
+      <button class="icon-btn" id="muteBtn" aria-label="השתקה">🔊</button>
+      <button class="icon-btn" id="pauseBtn" aria-label="הפסקה">⏸</button>
+    </div>
+  </div>
+  <div id="toast" role="status"></div>
+  <div class="bottom">
+    <div class="pill gauge"><span>🧹 האצה <span class="kb">(Shift)</span></span><div class="meter"><i id="boostBar"></i></div></div>
+    <button class="pill gauge act" id="actBtn"><span><span id="actLabel"></span> <span class="kb">(E)</span></span><div class="meter"><i id="actBar"></i></div></button>
+  </div>
+</div>
+
+<div id="touch" hidden>
+  <div id="stickBase" hidden><div id="stickKnob"></div></div>
+  <button class="tbtn" id="tAct"></button>
+  <button class="tbtn" id="tBoost" aria-label="האצה">🧹</button>
+</div>
+
+<div class="screen" id="startScreen">
+  <div class="card">
+    <h1 id="hTitle"></h1>
+    <div class="boardlbl">בחרי זירה</div>
+    <nav class="arenas" aria-label="בחירת זירה"></nav>
+    <p class="sub" id="hSub"></p>
+    <ul class="howto" id="howto"></ul>
+    <div class="keys" id="keysHelp"></div>
+    <label for="nameIn">איך קוראים לקוסמת?</label>
+    <input id="nameIn" maxlength="16" autocomplete="off">
+    <div><button class="go" id="startBtn">המריאי! 🧹</button></div>
+    <div class="best" id="bestLine"></div>
+    <section class="board"><div class="lbhead"><span>🏆 לוח המנצחים</span><span class="tabs"><button class="lbtab" data-tab="here">הזירה הזו</button><button class="lbtab" data-tab="all">כל הזירות</button></span></div><div class="lbwrap"></div></section>
+    <a class="home" href="../" hidden>← לכל המשחקים</a>
+  </div>
+</div>
+
+<div class="screen" id="pauseScreen" hidden>
+  <div class="card">
+    <h2>הפסקה קטנה</h2>
+    <p class="sub">המטאטא מרחף במקום.</p>
+    <button class="go" id="resumeBtn">ממשיכים לעוף</button>
+  </div>
+</div>
+
+<div class="screen" id="overScreen" hidden>
+  <div class="card">
+    <h2 id="overTitle"></h2>
+    <div class="rank" id="overRank"></div>
+    <div class="statgrid" id="statgrid"></div>
+    <div class="best" id="oBest"></div>
+    <section class="board"><div class="lbhead"><span>🏆 לוח המנצחים</span><span class="tabs"><button class="lbtab" data-tab="here">הזירה הזו</button><button class="lbtab" data-tab="all">כל הזירות</button></span></div><div class="lbwrap"></div></section>
+    <button class="go" id="againBtn">עוד טיסה</button>
+    <div class="boardlbl">או זירה אחרת</div>
+    <nav class="arenas" aria-label="בחירת זירה"></nav>
+    <div><a class="home" href="../" hidden>← לכל המשחקים</a></div>
+  </div>
+</div>
+
+<div id="nogl" hidden>הדפדפן הזה לא מצליח להריץ תלת ממד (WebGL). נסי בכרום או בספארי מעודכן.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* Wizard games shared flight engine (three.js r128). Each arena calls WizGame(A). */
+window.WizGame = function (A) {
+"use strict";
+const $ = id => document.getElementById(id);
+const fail = () => { $("nogl").hidden = false; $("startScreen").hidden = true; };
+if (!window.THREE) { fail(); return; }
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
+};
+const V3 = THREE.Vector3;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const rgb = hex => { const c = new THREE.Color(hex); return { r: c.r, g: c.g, b: c.b }; };
+const wrapA = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
+const isTouch = (window.matchMedia && matchMedia("(pointer: coarse)").matches) || ("ontouchstart" in window);
+const E = { THREE, V3, isTouch, towerCols: [], boxCols: [], arrowTarget: null, arrowColor: 0x4dff8f, danger: 1e9, clamp, rand, smooth, pick, rgb, wrapA, hexA, store };
+
+/* ---------- texts ---------- */
+$("hTitle").textContent = A.title; $("hSub").textContent = A.sub;
+$("howto").innerHTML = A.howto.map(h => "<li>" + h + "</li>").join("");
+$("actLabel").textContent = A.actionIcon + " " + A.actionName;
+$("tAct").textContent = A.actionIcon; $("tAct").setAttribute("aria-label", A.actionName);
+$("levelLabel").textContent = A.levelLabel || "שלב";
+$("keysHelp").textContent = isTouch
+  ? `גררי אצבע בצד שמאל של המסך להיגוי · 🧹 האצה · ${A.actionIcon} ${A.actionName}`
+  : `חיצים / WASD או העכבר להיגוי · Shift, רווח או לחיצת עכבר להאצה · E: ${A.actionName} · P הפסקה`;
+if (isTouch) document.querySelectorAll(".kb").forEach(e => e.hidden = true);
+const onGH = /github\.io$/.test(location.hostname);
+if (onGH) document.querySelectorAll(".home").forEach(e => e.hidden = false);
+{
+  const GAMES = [["potions", "🧪", "מעוף הקוסמת"], ["dragon", "🐉", "מבחן הדרקון"], ["quidditch", "🏆", "גביע הקווידיץ'"], ["castle", "🏰", "הוגוורטס"], ["keys", "🗝️", "אבן החכמים"]];
+  const board = GAMES.map(([id, ic, nm]) => id === A.id
+    ? `<span class="arena on" aria-current="page"><span class="ai">${ic}</span>${nm}</span>`
+    : `<a class="arena" href="${onGH ? "../" + id + "/" : "https://roinevo.github.io/wizard-games/" + id + "/"}"${onGH ? "" : ' target="_blank" rel="noopener"'}><span class="ai">${ic}</span>${nm}</a>`).join("");
+  document.querySelectorAll(".arenas").forEach(e => e.innerHTML = board);
+}
+
+/* ---------- renderer ---------- */
+const canvas = $("c");
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" }); } catch (e) { fail(); return; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(A.fog, A.fogDensity);
+scene.background = new THREE.Color(A.fog);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.1, A.far || 2300);
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener("resize", resize); resize();
+Object.assign(E, { scene, camera, renderer });
+
+/* ---------- textures ---------- */
+function canvasTex(s, draw, h) { const c = document.createElement("canvas"); c.width = s; c.height = h || s; draw(c.getContext("2d"), s, h || s); const t = new THREE.CanvasTexture(c); t.userData = { canvas: c }; return t; }
+const glowTex = canvasTex(128, (g, s) => {
+  const r = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(.2, "rgba(255,255,255,.6)");
+  r.addColorStop(.5, "rgba(255,255,255,.15)"); r.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = r; g.fillRect(0, 0, s, s);
+});
+const smokeTex = canvasTex(128, (g, s) => {
+  for (let i = 0; i < 8; i++) {
+    const x = s / 2 + rand(-20, 20), y = s / 2 + rand(-14, 14), rr = rand(24, 42);
+    const r = g.createRadialGradient(x, y, 0, x, y, rr);
+    r.addColorStop(0, "rgba(255,255,255,.5)"); r.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = r; g.fillRect(0, 0, s, s);
+  }
+});
+function glowSprite(color, size, opacity, fog) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color, transparent: true, opacity: opacity === undefined ? 1 : opacity,
+    blending: THREE.AdditiveBlending, depthWrite: false, fog: !!fog }));
+  s.scale.set(size, size, 1); return s;
+}
+Object.assign(E, { canvasTex, glowTex, smokeTex, glowSprite });
+
+/* ---------- sky ---------- */
+const moonDir = (A.moonDir || new V3(.3, .34, -1)).clone().normalize();
+E.moonDir = moonDir;
+let sky = null, stars = null, starMat = null, moon = null, moonGlow = null;
+const clouds = [];
+if (A.sky) {
+  const S = A.sky;
+  sky = new THREE.Mesh(new THREE.SphereGeometry(1700, 32, 16), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false,
+    uniforms: { md: { value: moonDir }, hor: { value: new THREE.Color(S.hor) }, mid: { value: new THREE.Color(S.mid) }, top: { value: new THREE.Color(S.top) },
+      gc: { value: new THREE.Color(S.glow || 0x4d5479) }, band: { value: new THREE.Color(S.band || 0x000000) } },
+    vertexShader: "varying vec3 vP;void main(){vP=normalize(position);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+    fragmentShader: "varying vec3 vP;uniform vec3 md;uniform vec3 hor;uniform vec3 mid;uniform vec3 top;uniform vec3 gc;uniform vec3 band;" +
+      "void main(){float h=vP.y;vec3 c=mix(hor,mid,smoothstep(0.0,.28,h));c=mix(c,top,smoothstep(.28,.95,h));float m=max(dot(vP,md),0.0);" +
+      "c+=gc*pow(m,40.0)+gc*.35*pow(m,6.0);c+=band*(1.0-smoothstep(0.0,.14,abs(h)));gl_FragColor=vec4(c,1.0);}"
+  }));
+  sky.renderOrder = -10; scene.add(sky);
+}
+if (A.stars) {
+  const NS = A.stars, sp = new Float32Array(NS * 3), ss = new Float32Array(NS), sph = new Float32Array(NS);
+  const band = new V3(.35, .55, .75).normalize(), v = new V3();
+  for (let i = 0; i < NS; i++) {
+    if (i < NS * .62) {
+      do { v.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)); } while (v.lengthSq() > 1 || v.lengthSq() < .01);
+      v.normalize(); if (v.y < .02) v.y = Math.abs(v.y) * .5 + .02; v.normalize();
+    } else {
+      v.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)); v.addScaledVector(band, -v.dot(band)).normalize();
+      v.addScaledVector(band, (Math.random() + Math.random() + Math.random() - 1.5) * .12).normalize();
+      if (v.y < .02) { v.y = Math.abs(v.y) + .02; v.normalize(); }
+    }
+    v.multiplyScalar(1400); sp[i * 3] = v.x; sp[i * 3 + 1] = v.y; sp[i * 3 + 2] = v.z;
+    ss[i] = Math.random() > .985 ? rand(3, 4.5) : (i < NS * .62 ? rand(1, 2.3) : rand(.8, 1.6)); sph[i] = rand(0, 6.28);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.BufferAttribute(sp, 3)); g.setAttribute("size", new THREE.BufferAttribute(ss, 1)); g.setAttribute("ph", new THREE.BufferAttribute(sph, 1));
+  starMat = new THREE.ShaderMaterial({
+    uniforms: { t: { value: 0 }, pr: { value: renderer.getPixelRatio() }, op: { value: A.starOpacity || 1 } },
+    vertexShader: "attribute float size;attribute float ph;uniform float t;uniform float pr;varying float vA;void main(){vA=.6+.4*sin(t*(.8+fract(ph)*2.0)+ph*7.0);vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=size*pr*(.85+.25*vA);gl_Position=projectionMatrix*mv;}",
+    fragmentShader: "uniform float op;varying float vA;void main(){vec2 p=gl_PointCoord-.5;float d=length(p);float a=1.0-smoothstep(0.0,.5,d);a*=a;gl_FragColor=vec4(vec3(.82,.88,1.0)*a*vA*op,1.0);}",
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  stars = new THREE.Points(g, starMat); stars.frustumCulled = false; scene.add(stars);
+}
+if (A.moon) {
+  const M = A.moon;
+  const tex = canvasTex(256, g => {
+    const r = g.createRadialGradient(112, 108, 10, 128, 128, 120);
+    if (M.sun) { r.addColorStop(0, "#ffffff"); r.addColorStop(.6, "#fff4d8"); r.addColorStop(1, "#ffd9a0"); }
+    else { r.addColorStop(0, "#fffbe8"); r.addColorStop(.85, "#ebe5cf"); r.addColorStop(1, "#cfc7ad"); }
+    g.beginPath(); g.arc(128, 128, 118, 0, 7); g.fillStyle = r; g.fill();
+    if (!M.sun) {
+      g.globalAlpha = .13; g.fillStyle = "#6b6a7c";
+      [[90, 100, 26], [160, 80, 16], [150, 160, 30], [80, 170, 14], [120, 135, 10], [185, 130, 12]].forEach(([x, y, rr]) => { g.beginPath(); g.arc(x, y, rr, 0, 7); g.fill(); });
+    }
+  });
+  moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: M.color || 0xffffff, transparent: true, depthWrite: false, fog: false }));
+  moon.scale.set(M.size || 85, M.size || 85, 1);
+  moonGlow = glowSprite(M.glow || 0xa8b8ff, M.glowSize || 540, M.glowOp || .3);
+  scene.add(moonGlow, moon);
+}
+if (A.clouds) {
+  for (let i = 0; i < A.clouds.n; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, color: A.clouds.color, transparent: true, opacity: rand(.25, .5), depthWrite: false, fog: false }));
+    const sc = rand(220, 380); s.scale.set(sc, sc * .45, 1);
+    clouds.push({ s, a: rand(0, 6.28), r: rand(520, 820), y: rand(110, 230), sp: rand(.004, .01) }); scene.add(s);
+  }
+}
+const hemi = A.hemi || [0x5a6ab0, 0x0c0c18, .75];
+scene.add(new THREE.HemisphereLight(hemi[0], hemi[1], hemi[2]));
+const dl = A.dirLight || [0xc4d0ff, .95];
+const dirLight = new THREE.DirectionalLight(dl[0], dl[1]); dirLight.position.copy(moonDir).multiplyScalar(300); scene.add(dirLight);
+
+/* ---------- particles ---------- */
+function makeParticles(n, additive) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), siz = new Float32Array(n), alp = new Float32Array(n);
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute("pcolor", new THREE.BufferAttribute(col, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute("psize", new THREE.BufferAttribute(siz, 1).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute("palpha", new THREE.BufferAttribute(alp, 1).setUsage(THREE.DynamicDrawUsage));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { scale: { value: 600 }, map: { value: additive ? glowTex : smokeTex } },
+    vertexShader: "attribute vec3 pcolor;attribute float psize;attribute float palpha;uniform float scale;varying vec3 vC;varying float vA;void main(){vC=pcolor;vA=palpha;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=psize*scale/max(-mv.z,0.5);gl_Position=projectionMatrix*mv;}",
+    fragmentShader: additive
+      ? "uniform sampler2D map;varying vec3 vC;varying float vA;void main(){float a=texture2D(map,gl_PointCoord).a*vA;gl_FragColor=vec4(vC*a,1.0);}"
+      : "uniform sampler2D map;varying vec3 vC;varying float vA;void main(){float a=texture2D(map,gl_PointCoord).a*vA;if(a<0.01)discard;gl_FragColor=vec4(vC,a);}",
+    transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending
+  });
+  const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; scene.add(pts);
+  const PP = []; for (let i = 0; i < n; i++) PP.push({ life: 0, max: 1, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, r: 1, g: 1, b: 1, s0: 1, s1: 0, a0: 1, drag: 0, grav: 0 });
+  let idx = 0;
+  return {
+    mat,
+    spawn(x, y, z, o) {
+      const p = PP[idx]; idx = (idx + 1) % n;
+      p.x = x; p.y = y; p.z = z; p.vx = o.vx || 0; p.vy = o.vy || 0; p.vz = o.vz || 0;
+      p.life = p.max = o.life || 1; p.r = o.r; p.g = o.g; p.b = o.b;
+      p.s0 = o.s0 || 1; p.s1 = o.s1 === undefined ? 0 : o.s1; p.a0 = o.a0 === undefined ? 1 : o.a0; p.drag = o.drag || 0; p.grav = o.grav || 0;
+    },
+    update(dt) {
+      for (let i = 0; i < n; i++) {
+        const p = PP[i];
+        if (p.life <= 0) { alp[i] = 0; continue; }
+        p.life -= dt; const k = Math.max(p.life / p.max, 0), dr = Math.max(0, 1 - p.drag * dt);
+        p.vx *= dr; p.vy = p.vy * dr + p.grav * dt; p.vz *= dr;
+        p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+        pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z;
+        col[i * 3] = p.r; col[i * 3 + 1] = p.g; col[i * 3 + 2] = p.b;
+        siz[i] = p.s1 + (p.s0 - p.s1) * k; alp[i] = p.a0 * k;
+      }
+      for (const a of ["position", "pcolor", "psize", "palpha"]) geo.attributes[a].needsUpdate = true;
+    }
+  };
+}
+const sparks = makeParticles(2000, true);
+const smoke = makeParticles(420, false);
+function burst(p, c, n, speed, size, life) {
+  for (let i = 0; i < n; i++) {
+    const v = new V3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize().multiplyScalar(rand(.3, 1) * speed);
+    sparks.spawn(p.x, p.y, p.z, { vx: v.x, vy: v.y, vz: v.z, life: rand(.6, 1) * life, r: c.r, g: c.g, b: c.b, s0: size, s1: 0, drag: 1.6 });
+  }
+}
+const COL = { GOLD: rgb(0xffc94a), SILVER: rgb(0xdfeeff), GREEN: rgb(0x4dff8f), RED: rgb(0xff3355), BLUE: rgb(0x8fd8ff), FIRE: rgb(0xff7a2a) };
+Object.assign(E, { sparks, smoke, burst, COL });
+
+/* ---------- elements, recipes, orb fields, coins ---------- */
+const EL = {
+  H: { n: 1, c: "#cfe8ff", name: "מימן" }, O: { n: 8, c: "#ff5a5a", name: "חמצן" }, C: { n: 6, c: "#a7adc4", name: "פחמן" },
+  N: { n: 7, c: "#5b8cff", name: "חנקן" }, Na: { n: 11, c: "#b57bff", name: "נתרן" }, Cl: { n: 17, c: "#5dff8a", name: "כלור" },
+  S: { n: 16, c: "#ffe14d", name: "גופרית" }, Ca: { n: 20, c: "#ff9f43", name: "סידן" }, Fe: { n: 26, c: "#e0703a", name: "ברזל" },
+  Cu: { n: 29, c: "#ff8c5a", name: "נחושת" }, Mg: { n: 12, c: "#a8ffef", name: "מגנזיום" }
+};
+const SYMS = Object.keys(EL);
+const RECIPES = A.recipes || [
+  { name: "מי חיים", f: "H₂O", need: { H: 2, O: 1 } },
+  { name: "אש קרה", f: "CO₂", need: { C: 1, O: 2 } },
+  { name: "שיקוי המלח המרפא", f: "NaCl", need: { Na: 1, Cl: 1 } },
+  { name: "ניצוץ המגנזיום", f: "MgO", need: { Mg: 1, O: 1 } },
+  { name: "אדי האמוניה המעוררים", f: "NH₃", need: { N: 1, H: 3 } },
+  { name: "נשימת דרקון", f: "CH₄", need: { C: 1, H: 4 } },
+  { name: "עשן הגופרית", f: "SO₂", need: { S: 1, O: 2 } },
+  { name: "שיקוי הגיר המחזק", f: "CaCO₃", need: { Ca: 1, C: 1, O: 3 } },
+  { name: "אבקת החלודה האדומה", f: "Fe₂O₃", need: { Fe: 2, O: 3 } },
+  { name: "שיקוי הנחושת הכחול", f: "CuSO₄", need: { Cu: 1, S: 1, O: 4 } }
+];
+const elTexCache = {};
+function elTex(sym) {
+  if (elTexCache[sym]) return elTexCache[sym];
+  const col = EL[sym].c;
+  return elTexCache[sym] = canvasTex(256, g => {
+    const r = g.createRadialGradient(128, 128, 40, 128, 128, 128);
+    r.addColorStop(0, hexA(col, .9)); r.addColorStop(.55, hexA(col, .32)); r.addColorStop(1, hexA(col, 0));
+    g.fillStyle = r; g.fillRect(0, 0, 256, 256);
+    g.beginPath(); g.arc(128, 128, 66, 0, 7); g.fillStyle = "rgba(12,10,36,.92)"; g.fill();
+    g.lineWidth = 7; g.strokeStyle = col; g.stroke();
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillStyle = "#fff"; g.font = "bold " + (sym.length > 1 ? 56 : 66) + "px Arial, sans-serif"; g.fillText(sym, 128, 136);
+    g.fillStyle = col; g.font = "bold 24px Arial, sans-serif"; g.fillText(String(EL[sym].n), 128, 86);
+  });
+}
+const R = { cur: RECIPES[0], got: {} };
+const recipeReady = () => Object.keys(R.cur.need).every(s => (R.got[s] || 0) >= R.cur.need[s]);
+const remainingNeeded = () => Object.keys(R.cur.need).filter(s => (R.got[s] || 0) < R.cur.need[s]);
+function renderRecipe(hint, extra) {
+  const r = R.cur;
+  const chips = Object.keys(r.need).map(s => {
+    const g = R.got[s] || 0, n = r.need[s];
+    return `<span class="chip${g >= n ? " done" : ""}" style="--c:${EL[s].c}"><b>${s}</b> ${g}/${n}</span>`;
+  }).join("");
+  const ready = recipeReady();
+  $("panel").innerHTML = (extra || "") + `<div class="pname">🧪 ${r.name}</div><div class="pform">${r.f}</div><div class="chips">${chips}</div>` +
+    `<div class="phint">${ready ? (hint || "הכול מוכן! טוסי לקלחת") : ""}</div>`;
+  $("panel").classList.toggle("ready", ready);
+}
+function setRecipe() { R.cur = G.level <= RECIPES.length ? RECIPES[G.level - 1] : pick(RECIPES); R.got = {}; }
+const fields = [];
+function orbField(n, spawn) {
+  const orbs = [];
+  for (let i = 0; i < n; i++) {
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: elTex("H"), transparent: true, depthWrite: false, fog: false }));
+    spr.scale.set(6, 6, 1); scene.add(spr);
+    orbs.push({ spr, sym: "H", base: new V3(), ph: rand(0, 6.28) });
+  }
+  const setSym = (o, s) => { o.sym = s; o.spr.material.map = elTex(s); };
+  const F = {
+    orbs,
+    relocate(o) {
+      spawn(o.base); let k = 0;
+      while (state === "play" && o.base.distanceTo(P.pos) < 45 && k++ < 12) spawn(o.base);
+      const rem = remainingNeeded(); setSym(o, rem.length && Math.random() < .5 ? pick(rem) : pick(SYMS));
+    },
+    ensure() {
+      for (const s of Object.keys(R.cur.need)) {
+        let have = orbs.filter(o => o.sym === s).length; const want = R.cur.need[s] + 2;
+        for (const o of orbs) { if (have >= want) break; if (!R.cur.need[o.sym]) { setSym(o, s); have++; } }
+      }
+    },
+    reset() { orbs.forEach(o => F.relocate(o)); F.ensure(); },
+    animate() {
+      for (const o of orbs) {
+        o.spr.position.set(o.base.x, o.base.y + Math.sin(T * 1.6 + o.ph) * .7, o.base.z); o.spr.material.rotation = Math.sin(T * .8 + o.ph) * .15;
+        o.spr.material.opacity = clamp((o.spr.position.distanceTo(camera.position) - 3) / 9, 0, 1);
+      }
+    },
+    collide(pc, onReady) {
+      for (const o of orbs) if (o.spr.position.distanceToSquared(pc) < 17) {
+        const sym = o.sym, need = R.cur.need[sym] || 0, got = R.got[sym] || 0;
+        burst(o.spr.position, rgb(EL[sym].c), 28, 10, 1.7, .9);
+        if (got < need) {
+          R.got[sym] = got + 1; addScore(25); sfx.good();
+          if (recipeReady()) { toast(onReady || "🧪 כל היסודות אצלך! טוסי לקלחת", 2.4); sfx.ready(); }
+          else toast(`${EL[sym].name} (${sym}) ✓`, 1.1);
+        } else { addScore(5); sfx.soft(); toast(`${EL[sym].name} לא במתכון הזה · +5`, 1.1); }
+        G.elements++; F.relocate(o); F.dirty = true;
+      }
+    },
+    nearestNeeded() {
+      const rem = remainingNeeded(); let best = 1e9, t = null, c = 0;
+      for (const o of orbs) if (rem.includes(o.sym)) { const d = o.spr.position.distanceToSquared(P.pos); if (d < best) { best = d; t = o.spr.position; c = parseInt(EL[o.sym].c.slice(1), 16); } }
+      return t ? { t, c } : null;
+    },
+    dirty: false
+  };
+  fields.push(F);
+  return F;
+}
+const coinGeo = new THREE.CylinderGeometry(1.1, 1.1, .22, 22); coinGeo.rotateX(Math.PI / 2);
+const coinMat = new THREE.MeshLambertMaterial({ color: 0xffc93c, emissive: 0x8a5a00 });
+function coinTrails(n, spawn, floorFn) {
+  const trails = [];
+  for (let t = 0; t < n; t++) {
+    const tr = { coins: [], got: 0, firstT: 0, respawn: 0 };
+    for (let k = 0; k < 6; k++) {
+      const mesh = new THREE.Mesh(coinGeo, coinMat); mesh.add(glowSprite(0xffb52e, 4.2, .5)); scene.add(mesh);
+      tr.coins.push({ mesh, alive: true, ph: k * .5 });
+    }
+    trails.push(tr);
+  }
+  const place = tr => {
+    const s = spawn(new V3()); let h = rand(0, 6.283); const turn = rand(-.16, .16);
+    tr.coins.forEach((c, k) => {
+      const x = s.x + Math.sin(h) * k * 6.5, z = s.z + Math.cos(h) * k * 6.5; h += turn;
+      const y = Math.max(s.y + Math.sin(k * .8) * 3, floorFn(x, z) + 4);
+      c.mesh.position.set(x, y, z); c.alive = true; c.mesh.visible = true;
+    });
+    tr.got = 0; tr.respawn = 0; tr.firstT = 0;
+  };
+  return {
+    trails, reset() { trails.forEach(place); },
+    animate() { for (const tr of trails) for (const c of tr.coins) if (c.alive) c.mesh.rotation.y = T * 2.4 + c.ph; },
+    update(dt, pc) {
+      for (const tr of trails) {
+        for (const c of tr.coins) if (c.alive && c.mesh.position.distanceToSquared(pc) < 11) {
+          c.alive = false; c.mesh.visible = false; if (!tr.got) tr.firstT = T;
+          tr.got++; G.coins++; addScore(10); sfx.coin(tr.got - 1); burst(c.mesh.position, COL.GOLD, 14, 7, 1.2, .7);
+          if (tr.got === tr.coins.length) { addScore(40); toast("🪙 שרשרת אוניות שלמה! +40", 1.5); tr.respawn = 12; }
+        }
+        if (tr.respawn > 0) { tr.respawn -= dt; if (tr.respawn <= 0) place(tr); }
+        else if (tr.got > 0 && T - tr.firstT > 45) place(tr);
+      }
+    }
+  };
+}
+Object.assign(E, { EL, SYMS, RECIPES, elTex, R, recipeReady, remainingNeeded, renderRecipe, setRecipe, orbField, coinTrails });
+
+/* ---------- riders ---------- */
+function makeRider(robe, scarf, hatColor, noHat) {
+  const grp = new THREE.Group(); grp.rotation.order = "YXZ";
+  const L = c => new THREE.MeshLambertMaterial({ color: c });
+  const add = (geo, mat, x, y, z, rx) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (rx) m.rotation.x = rx; grp.add(m); return m; };
+  add(new THREE.CylinderGeometry(.07, .09, 3.4, 8), L(0x7a4f2a), 0, 0, .5, Math.PI / 2);
+  add(new THREE.ConeGeometry(.38, 1.3, 12), L(0xd0a860), 0, 0, -1.6, Math.PI / 2);
+  add(new THREE.TorusGeometry(.14, .05, 6, 12), L(0x8a5a2a), 0, 0, -.95);
+  add(new THREE.ConeGeometry(.55, 1.5, 12), L(robe), 0, .75, .05);
+  add(new THREE.TorusGeometry(.22, .08, 8, 14), L(scarf), 0, 1.45, 0, Math.PI / 2);
+  add(new THREE.SphereGeometry(.28, 14, 10), L(0xf2c9a5), 0, 1.72, .02);
+  const hair = add(new THREE.SphereGeometry(.31, 14, 10), L(0x5a3520), 0, 1.7, -.08); hair.scale.set(1, 1.15, .9);
+  if (!noHat) {
+    add(new THREE.CylinderGeometry(.52, .52, .04, 18), L(hatColor), 0, 1.92, 0);
+    const hat = add(new THREE.ConeGeometry(.33, 1.0, 14), L(hatColor), 0, 2.4, -.08); hat.rotation.x = -.28;
+  }
+  return grp;
+}
+E.makeRider = makeRider;
+const player = makeRider(A.robe || 0x2b1f4a, A.scarf || 0xa1262b, A.hat || 0x241a46);
+{
+  const tip = glowSprite(0xbfe6ff, 1.2, 1); tip.position.set(.35, 1.0, 1.25); player.add(tip);
+  const wl = new THREE.PointLight(0xbfe6ff, .9, 28); wl.position.set(0, 2, 1); player.add(wl);
+}
+player.visible = false; scene.add(player);
+const carry = new THREE.Group(); carry.position.set(0, -.9, 1.2); player.add(carry);
+const arrow = new THREE.Mesh(new THREE.ConeGeometry(.32, 1.2, 10).rotateX(Math.PI / 2),
+  new THREE.MeshBasicMaterial({ color: 0x4dff8f, transparent: true, opacity: .9, depthTest: false }));
+arrow.renderOrder = 20; arrow.visible = false; scene.add(arrow);
+const actSphere = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 18), new THREE.MeshBasicMaterial({
+  color: A.actionColor || 0xbfe0ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+actSphere.visible = false; scene.add(actSphere);
+Object.assign(E, { player, carry, actSphere });
+
+/* ---------- audio ---------- */
+let AC = null, master = null, windG = null, noiseBuf = null;
+let muted = store.get("wiz-muted", "0") === "1";
+function ac() {
+  if (!AC) {
+    try {
+      const C = window.AudioContext || window.webkitAudioContext; if (!C) return null;
+      AC = new C(); master = AC.createGain(); master.gain.value = muted ? 0 : .55; master.connect(AC.destination);
+      noiseBuf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+      const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 420;
+      windG = AC.createGain(); windG.gain.value = 0; src.connect(lp); lp.connect(windG); windG.connect(master); src.start();
+    } catch (e) { AC = null; }
+  }
+  if (AC && AC.state === "suspended") AC.resume();
+  return AC;
+}
+function tone(f, dur, type, vol, when, slide) {
+  if (!AC || muted) return;
+  const t = AC.currentTime + (when || 0), o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || "sine"; o.frequency.setValueAtTime(f, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, t + dur);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .03);
+}
+function hiss(dur, vol, freq) {
+  if (!AC || muted || !noiseBuf) return;
+  const t = AC.currentTime, s = AC.createBufferSource(); s.buffer = noiseBuf;
+  const f = AC.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = freq || 800;
+  const g = AC.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(master); s.start(t); s.stop(t + dur + .05);
+}
+const sfx = {
+  coin(i) { const f = 1046 * Math.pow(2, (i || 0) * 2 / 12); tone(f, .12, "triangle", .12); tone(f * 1.5, .2, "triangle", .08, .05); },
+  good() { tone(523, .18, "sine", .16); tone(784, .22, "sine", .13, .07); tone(1046, .3, "sine", .1, .14); },
+  soft() { tone(392, .18, "sine", .1); },
+  ready() { [523, 659, 784, 1046].forEach((f, i) => tone(f, .4, "triangle", .1, i * .08)); },
+  win() { [392, 523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, .7, "triangle", .11, i * .07)); hiss(1.2, .1, 2500); },
+  hit() { tone(140, .5, "sawtooth", .18, 0, .35); hiss(.4, .25, 600); },
+  spell() { tone(330, .9, "sine", .14, 0, 3.5); tone(660, .9, "sine", .08, .05, 2.5); hiss(.8, .07, 4000); },
+  stun() { tone(880, .3, "triangle", .1, 0, .5); },
+  hoop() { [659, 880, 1175].forEach((f, i) => tone(f, .25, "square", .045, i * .05)); },
+  beat() { tone(62, .14, "sine", .35); tone(55, .14, "sine", .25, .17); },
+  bonk() { tone(110, .15, "square", .05, 0, .6); },
+  over() { [392, 330, 262, 196].forEach((f, i) => tone(f, .5, "triangle", .1, i * .18)); },
+  growl() { tone(70, 1.4, "sawtooth", .12, 0, .6); hiss(1.2, .12, 300); },
+  fire() { hiss(.9, .2, 900); tone(160, .6, "sawtooth", .06, 0, .5); },
+  whistle() { tone(1900, .35, "sine", .12); tone(1900, .5, "sine", .12, .42, 1.02); }
+};
+Object.assign(E, { tone, hiss, sfx });
+const PENTA = [440, 523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66];
+
+/* ---------- state ---------- */
+const G = { score: 0, lives: 3, level: 1, coins: 0, elements: 0, boost: 1, boostLock: false, boosting: false, act: 0, invuln: 0, shake: 0, flash: 0 };
+const BASE = A.baseSpeed || 22, BOOSTSP = A.boostSpeed || 38, ACT_CD = A.actionCD || 12;
+const P = { pos: new V3(), vel: new V3(), fwd: new V3(0, 0, -1), yaw: 0, pitch: 0, roll: 0, speed: BASE };
+let state = "menu", T = 0, last = performance.now();
+let toastT = 0, wallT = 0, bonkT = 0, beatT = 0, twinkleT = 0;
+const tmp = new V3(), tmp2 = new V3(), tmp3 = new V3();
+Object.defineProperty(E, "T", { get: () => T });
+Object.defineProperty(E, "state", { get: () => state });
+Object.assign(E, { P, G, BASE, BOOSTSP });
+
+/* ---------- HUD ---------- */
+function renderHUD() {
+  $("hearts").textContent = "❤️".repeat(Math.max(0, G.lives));
+  $("score").textContent = G.score; $("level").textContent = G.level;
+}
+let bumpTO = 0;
+function addScore(n) {
+  G.score += n; renderHUD();
+  const el = $("score"); el.classList.add("bump"); clearTimeout(bumpTO); bumpTO = setTimeout(() => el.classList.remove("bump"), 150);
+  if (n > 0 && state === "play") {
+    const p = document.createElement("div"); p.className = "pop"; p.textContent = "+" + n;
+    p.style.left = (46 + rand(-6, 6)) + "%"; if (n >= 100) p.style.fontSize = "34px";
+    $("hud").appendChild(p); setTimeout(() => p.remove(), 1000);
+  }
+}
+function toast(msg, dur) { const el = $("toast"); el.textContent = msg; el.style.opacity = 1; toastT = dur || 1.8; }
+function hit(msg) {
+  if (G.invuln > 0 || state !== "play") return false;
+  G.lives--; G.invuln = 2.5; G.shake = .6; G.flash = 1; sfx.hit();
+  burst(P.pos, COL.RED, 40, 12, 1.6, 1); renderHUD();
+  if (A.onHit) A.onHit(E);
+  if (G.lives <= 0) endGame();
+  else toast(msg || (G.lives === 1 ? "נפגעת! נשאר לב אחרון" : `נפגעת! נשארו ${G.lives} לבבות`), 1.8);
+  return true;
+}
+Object.assign(E, { renderHUD, addScore, toast, hit, endGame: (...a) => endGame(...a) });
+
+/* ---------- input ---------- */
+const keys = { left: false, right: false, up: false, down: false, boost: false };
+const mouse = { x: 0, y: 0, active: false, down: false };
+const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
+let lastKeyT = -10, touchBoost = false;
+const KEYMAP = { ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right", ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down",
+  ShiftLeft: "boost", ShiftRight: "boost", Space: "boost" };
+addEventListener("keydown", e => {
+  if (e.target && e.target.id === "nameIn") { if (e.key === "Enter") startGame(); return; }
+  const k = KEYMAP[e.code];
+  if (k) { keys[k] = true; lastKeyT = T; e.preventDefault(); return; }
+  if (e.code === "KeyE") doAction();
+  else if (e.code === "KeyP" || e.code === "Escape") togglePause();
+  else if (e.code === "KeyM") toggleMute();
+  else if (e.code === "Enter" && state !== "play" && !$("startScreen").hidden) startGame();
+});
+addEventListener("keyup", e => { const k = KEYMAP[e.code]; if (k) keys[k] = false; });
+addEventListener("blur", () => { for (const k in keys) keys[k] = false; mouse.down = false; });
+addEventListener("pointermove", e => {
+  if (e.pointerType === "mouse") { mouse.x = (e.clientX / innerWidth - .5) * 2; mouse.y = -(e.clientY / innerHeight - .5) * 2; mouse.active = true; }
+  else if (e.pointerId === stick.id) {
+    const dx = e.clientX - stick.ox, dy = e.clientY - stick.oy;
+    stick.x = clamp(dx / 55, -1, 1); stick.y = clamp(-dy / 55, -1, 1);
+    $("stickKnob").style.transform = `translate(${stick.x * 35}px,${-stick.y * 35}px)`;
+  }
+});
+document.addEventListener("mouseleave", () => { mouse.active = false; mouse.down = false; });
+canvas.addEventListener("pointerdown", e => {
+  if (e.pointerType === "mouse") { if (e.button === 0) mouse.down = true; return; }
+  if (stick.id === null && e.clientX < innerWidth * .62) {
+    stick.id = e.pointerId; stick.ox = e.clientX; stick.oy = e.clientY; stick.x = stick.y = 0;
+    const b = $("stickBase"); b.style.left = e.clientX + "px"; b.style.top = e.clientY + "px"; b.hidden = false;
+    $("stickKnob").style.transform = "";
+  }
+});
+const endStick = e => { if (e.pointerId === stick.id) { stick.id = null; stick.x = stick.y = 0; $("stickBase").hidden = true; } };
+addEventListener("pointerup", e => { if (e.pointerType === "mouse") mouse.down = false; endStick(e); });
+addEventListener("pointercancel", endStick);
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+const tb = $("tBoost");
+tb.addEventListener("pointerdown", e => { e.preventDefault(); touchBoost = true; tb.classList.add("on"); });
+for (const ev of ["pointerup", "pointerleave", "pointercancel"]) tb.addEventListener(ev, () => { touchBoost = false; tb.classList.remove("on"); });
+$("tAct").addEventListener("pointerdown", e => { e.preventDefault(); doAction(); });
+$("actBtn").addEventListener("click", doAction);
+$("muteBtn").addEventListener("click", toggleMute);
+$("pauseBtn").addEventListener("click", togglePause);
+$("resumeBtn").addEventListener("click", togglePause);
+$("startBtn").addEventListener("click", startGame);
+$("againBtn").addEventListener("click", startGame);
+document.addEventListener("visibilitychange", () => { if (document.hidden && state === "play") togglePause(); });
+const dz = v => { const a = Math.abs(v); return a < .1 ? 0 : Math.sign(v) * Math.min(1, (a - .1) / .6); };
+function doAction() {
+  if (state !== "play" || G.act > 0) return;
+  const r = A.action(E);
+  if (r === false) return;
+  G.act = typeof r === "number" ? r : ACT_CD;
+  actSphere.visible = true; actSphere.userData.t = 0; actSphere.position.copy(P.pos);
+}
+function toggleMute() {
+  muted = !muted; store.set("wiz-muted", muted ? "1" : "0");
+  if (master) master.gain.value = muted ? 0 : .55;
+  $("muteBtn").textContent = muted ? "🔇" : "🔊";
+}
+$("muteBtn").textContent = muted ? "🔇" : "🔊";
+function togglePause() {
+  if (state === "play") { state = "pause"; $("pauseScreen").hidden = false; if (windG) windG.gain.value = 0; }
+  else if (state === "pause") { state = "play"; $("pauseScreen").hidden = true; last = performance.now(); }
+}
+
+/* ---------- start / end ---------- */
+const BEST_KEY = "wiz-best-" + A.id;
+$("nameIn").value = store.get("wiz-name", store.get("gan-name", ""));
+function showBest() { const b = +store.get(BEST_KEY, "0"); $("bestLine").textContent = b ? `השיא שלך כאן: ${b} נקודות` : ""; }
+showBest();
+/* leaderboard shared by all games on the same site (same browser storage) */
+const ARENA_ICON = { potions: "🧪", dragon: "🐉", quidditch: "🏆", castle: "🏰", keys: "🗝️" };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let boardTab = "here", myEntry = 0;
+function loadBoard() { try { const v = JSON.parse(store.get("wiz-board", "[]")); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function saveScore(name, s) {
+  const b = loadBoard(), t = Date.now(); b.push({ n: name || "קוסמת אנונימית", s, a: A.id, t });
+  b.sort((x, y) => y.s - x.s); store.set("wiz-board", JSON.stringify(b.slice(0, 300))); return t;
+}
+function renderBoards() {
+  const rows = loadBoard().filter(e => boardTab === "all" || e.a === A.id).slice(0, 10);
+  const html = rows.length ? `<ol class="lb">${rows.map((e, i) => {
+    const d = new Date(e.t), ds = `${d.getDate()}.${d.getMonth() + 1}`;
+    return `<li class="${e.t === myEntry ? "me" : ""}"><span class="r">${i + 1}</span><span class="nm">${boardTab === "all" ? (ARENA_ICON[e.a] || "") + " " : ""}${esc(e.n)}</span><span class="dt">${ds}</span><span class="sc">${e.s}</span></li>`;
+  }).join("")}</ol>` : `<div class="lbempty">עוד אין תוצאות כאן. מי שמשחקת ראשונה נכנסת לראש הטבלה!</div>`;
+  document.querySelectorAll(".lbwrap").forEach(w => w.innerHTML = html);
+  document.querySelectorAll(".lbtab").forEach(t => t.classList.toggle("on", t.dataset.tab === boardTab));
+}
+document.querySelectorAll(".lbtab").forEach(t => t.addEventListener("click", () => { boardTab = t.dataset.tab; renderBoards(); }));
+renderBoards();
+const playerName = () => $("nameIn").value.trim();
+E.playerName = playerName;
+function startGame() {
+  ac();
+  const nm = playerName(); if (nm) store.set("wiz-name", nm);
+  Object.assign(G, { score: 0, lives: 3, level: 1, coins: 0, elements: 0, boost: 1, boostLock: false, boosting: false, act: 0, invuln: 0, shake: 0, flash: 0 });
+  P.pitch = 0; P.roll = 0; P.speed = BASE; P.yaw = 0; P.pos.set(0, 30, 0);
+  state = "play";
+  E.arrowTarget = null; E.danger = 1e9;
+  A.start(E);
+  P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
+  camera.position.copy(P.pos).addScaledVector(P.fwd, -10); camera.position.y += 4;
+  camera.fov = 70; camera.updateProjectionMatrix();
+  player.visible = true;
+  renderHUD();
+  $("startScreen").hidden = true; $("overScreen").hidden = true; $("pauseScreen").hidden = true;
+  $("hud").hidden = false; $("touch").hidden = !isTouch;
+  last = performance.now();
+  toast(`🧹 ${nm ? nm + ", " : ""}${A.startToast || "המריאי!"}`, 2.8);
+}
+function endGame(title, win) {
+  if (state !== "play") return;
+  state = "over";
+  if (win) sfx.win(); else sfx.over();
+  const best = Math.max(+store.get(BEST_KEY, "0"), G.score), isNew = G.score > 0 && G.score >= best;
+  store.set(BEST_KEY, best);
+  const nm = playerName();
+  if (G.score > 0) myEntry = saveScore(nm, G.score);
+  boardTab = "here"; renderBoards();
+  $("overTitle").textContent = title || A.overTitle(nm, E);
+  $("overRank").textContent = "הדרגה שלך: " + A.ranks.filter(r => G.score >= r[0]).pop()[1];
+  const st = A.overStats(E);
+  $("statgrid").innerHTML = st.map(s => `<div><b>${s[0]}</b><span>${s[1]}</span></div>`).join("");
+  $("oBest").textContent = isNew ? "🏆 שיא חדש!" : `השיא שלך כאן: ${best} נקודות`;
+  $("hud").hidden = true; $("touch").hidden = true; $("overScreen").hidden = false;
+  $("vignette").style.opacity = 0; $("flash").style.opacity = 0;
+  player.visible = false; arrow.visible = false; actSphere.visible = false;
+  if (windG) windG.gain.value = 0;
+  if (A.onEnd) A.onEnd(E);
+  showBest();
+}
+
+/* ---------- world animation ---------- */
+function animateWorld(dt) {
+  if (starMat) starMat.uniforms.t.value = T;
+  if (sky) sky.position.copy(camera.position);
+  if (stars) stars.position.copy(camera.position);
+  if (moon) { moon.position.copy(camera.position).addScaledVector(moonDir, 1100); moonGlow.position.copy(camera.position).addScaledVector(moonDir, 1160); }
+  for (const c of clouds) { c.a += c.sp * dt; c.s.position.set(Math.sin(c.a) * c.r, c.y, Math.cos(c.a) * c.r); }
+  for (const f of fields) f.animate();
+  A.world(dt, E);
+  const sc = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
+  sparks.mat.uniforms.scale.value = sc; smoke.mat.uniforms.scale.value = sc;
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) $("toast").style.opacity = 0; }
+  music();
+}
+
+/* ---------- original ambient score: slow string pads, low drone, sparse celesta, long reverb ---------- */
+const MUS = Object.assign({ beat: .32, key: 0 }, A.music || {});
+const PROG = [[52, 59, 64, 67, 71], [48, 55, 64, 67, 71], [45, 52, 60, 64, 69], [47, 54, 63, 66, 69],
+              [52, 59, 64, 67, 71], [48, 55, 60, 64, 67], [50, 57, 62, 66, 69], [47, 54, 63, 66, 71]];
+const SCALE = [64, 66, 67, 69, 71, 72, 74, 75, 76, 78, 79, 81, 83];
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+let musBus = null, chordIdx = 0, nextChord = 0, nextNote = 0, lastMel = 71;
+function bus() {
+  if (musBus) return musBus;
+  musBus = AC.createGain();
+  const dry = AC.createGain(); dry.gain.value = .5; const wet = AC.createGain(); wet.gain.value = .75;
+  const rev = AC.createConvolver(), len = Math.floor(AC.sampleRate * 4.5), ir = AC.createBuffer(2, len, AC.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+  rev.buffer = ir; musBus.connect(dry); dry.connect(master); musBus.connect(rev); rev.connect(wet); wet.connect(master);
+  return musBus;
+}
+function voice(f, t, dur, vol, type, cutoff, atk) {
+  const o = AC.createOscillator(), g = AC.createGain(), lp = AC.createBiquadFilter();
+  o.type = type; o.frequency.value = f; lp.type = "lowpass"; lp.frequency.value = cutoff;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + atk);
+  g.gain.setValueAtTime(vol, t + Math.max(atk, dur - atk)); g.gain.linearRampToValueAtTime(0, t + dur + atk * 1.2);
+  o.connect(lp); lp.connect(g); g.connect(bus()); o.start(t); o.stop(t + dur + atk * 1.3 + .1);
+}
+function chime(f, t, vol) {
+  [[1, 1, 2.6], [2, .32, 1.2], [3.01, .12, .6], [4.2, .05, .3]].forEach(([m, v, d]) => {
+    const o = AC.createOscillator(), g = AC.createGain(); o.type = "sine"; o.frequency.value = f * m;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * v, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(bus()); o.start(t); o.stop(t + d + .05);
+  });
+}
+function music() {
+  if (!AC || muted || state === "pause" || A.musicOff) return;
+  const now = AC.currentTime, sc = MUS.beat / .32, CH = 8 * sc, NOTE = .7 * sc;
+  if (nextChord < now) { nextChord = now + .1; nextNote = now + .8; }
+  while (nextChord < now + .3) {
+    const ch = PROG[chordIdx % PROG.length].map(m => m + MUS.key), t = nextChord;
+    voice(mtof(ch[0] - 12), t, CH, .05, "sine", 400, 1.5);
+    for (let k = 1; k < ch.length; k++) { voice(mtof(ch[k] - 12) * 1.003, t, CH, .011, "sawtooth", 850, 2.2); voice(mtof(ch[k] - 12) * .997, t, CH, .011, "sawtooth", 850, 2.2); }
+    nextChord += CH; chordIdx++;
+  }
+  while (nextNote < now + .3) {
+    if (Math.random() < .55) {
+      const ch = PROG[(chordIdx - 1 + PROG.length) % PROG.length];
+      const near = SCALE.filter(p => Math.abs(p - lastMel) <= 4 && p !== lastMel);
+      const inChord = near.filter(p => ch.some(c => ((p - c) % 12 + 12) % 12 === 0));
+      lastMel = pick(Math.random() < .6 && inChord.length ? inChord : near);
+      chime(mtof(lastMel + MUS.key), nextNote, .045);
+    }
+    nextNote += NOTE * (Math.random() < .2 ? 2 : 1);
+  }
+}
+
+/* ---------- flight ---------- */
+function updatePlay(dt) {
+  let ix = 0, iy = 0;
+  if (keys.left) ix -= 1; if (keys.right) ix += 1; if (keys.up) iy += 1; if (keys.down) iy -= 1;
+  if (stick.id !== null) { ix = stick.x; iy = stick.y; }
+  else if (!ix && !iy && mouse.active && T - lastKeyT > 1.5) { ix = dz(mouse.x); iy = dz(mouse.y); }
+  const wantBoost = keys.boost || mouse.down || touchBoost;
+  if (wantBoost && !G.boostLock && G.boost > 0) {
+    G.boosting = true; G.boost -= dt * .32;
+    if (G.boost <= 0) { G.boost = 0; G.boostLock = true; }
+  } else {
+    G.boosting = false; G.boost = Math.min(1, G.boost + dt * .14);
+    if (G.boostLock && G.boost > .3) G.boostLock = false;
+  }
+  P.yaw -= ix * (A.turnRate || 1.6) * dt;
+  P.pitch += (iy * .62 - P.pitch) * Math.min(1, dt * 2.5);
+  P.roll += (ix * .65 - P.roll) * Math.min(1, dt * 4);
+  P.speed += ((G.boosting ? BOOSTSP : BASE) - P.speed) * Math.min(1, dt * 2);
+  const cp = Math.cos(P.pitch);
+  P.fwd.set(Math.sin(P.yaw) * cp, Math.sin(P.pitch), Math.cos(P.yaw) * cp);
+  P.vel.copy(P.fwd).multiplyScalar(P.speed);
+  P.pos.addScaledVector(P.vel, dt);
+  const fl = A.floor(P.pos.x, P.pos.z) + 1.6;
+  if (P.pos.y < fl) { P.pos.y = fl; if (P.pitch < 0) P.pitch *= .5; }
+  const ceil = A.ceiling || 140;
+  if (P.pos.y > ceil) { P.pos.y = ceil; if (P.pitch > 0) P.pitch *= .5; }
+  let bonked = false;
+  for (const c of E.towerCols) {
+    if (P.pos.y > c.top || (c.bot !== undefined && P.pos.y < c.bot)) continue;
+    const dx = P.pos.x - c.x, dzz = P.pos.z - c.z, d = Math.hypot(dx, dzz);
+    if (d < c.r) { const k = (c.r - d) / (d || 1); P.pos.x += dx * k; P.pos.z += dzz * k; bonked = true; }
+  }
+  for (const b of E.boxCols) {
+    if (P.pos.y > b.top || (b.bot !== undefined && P.pos.y < b.bot)) continue;
+    const wx = P.pos.x - b.x, wz = P.pos.z - b.z, cs = Math.cos(b.ry), sn = Math.sin(b.ry);
+    let lx = wx * cs - wz * sn, lz = wx * sn + wz * cs;
+    if (Math.abs(lx) < b.hw && Math.abs(lz) < b.hd) {
+      if (b.hw - Math.abs(lx) < b.hd - Math.abs(lz)) lx = Math.sign(lx || 1) * b.hw; else lz = Math.sign(lz || 1) * b.hd;
+      P.pos.x = b.x + lx * cs + lz * sn; P.pos.z = b.z - lx * sn + lz * cs; bonked = true;
+      if (b.onHit) b.onHit(E);
+    }
+  }
+  if (bonked && T > bonkT) { bonkT = T + .5; sfx.bonk(); G.shake = Math.max(G.shake, .2); }
+  if (A.bounds) A.bounds(E, dt);
+  else {
+    const cx = A.center ? A.center.x : 0, cz = A.center ? A.center.z : 0;
+    if (Math.hypot(P.pos.x - cx, P.pos.z - cz) > A.worldR) {
+      const diff = wrapA(Math.atan2(cx - P.pos.x, cz - P.pos.z) - P.yaw);
+      P.yaw += clamp(diff, -2.2 * dt, 2.2 * dt);
+      if (T > wallT) { wallT = T + 4; toast(A.wallMsg || "🌀 קסם מחזיר אותך פנימה", 1.8); }
+    }
+  }
+  player.position.copy(P.pos);
+  player.rotation.set(-P.pitch, P.yaw, P.roll);
+  if (G.invuln > 0) { G.invuln -= dt; player.visible = G.invuln <= 0 || Math.floor(G.invuln * 10) % 2 === 0; } else player.visible = true;
+  const tail = player.localToWorld(tmp.set(0, .05, -2.4));
+  for (let k = 0; k < (G.boosting ? 4 : 2); k++) {
+    const c = Math.random() < .5 ? COL.GOLD : COL.BLUE;
+    sparks.spawn(tail.x + rand(-.3, .3), tail.y + rand(-.3, .3), tail.z + rand(-.3, .3), { vx: rand(-1, 1), vy: rand(-.5, 1), vz: rand(-1, 1), life: rand(.6, 1.1), r: c.r, g: c.g, b: c.b, s0: G.boosting ? .9 : .6, s1: 0 });
+  }
+  // camera
+  const hp = P.pitch * .5, cd = A.camDist || 9.5;
+  tmp2.set(Math.sin(P.yaw) * Math.cos(hp), Math.sin(hp), Math.cos(P.yaw) * Math.cos(hp));
+  tmp3.copy(P.pos).addScaledVector(tmp2, -cd); tmp3.y += 3.2;
+  camera.position.lerp(tmp3, 1 - Math.exp(-dt * 5));
+  const cf = A.floor(camera.position.x, camera.position.z) + 1; if (camera.position.y < cf) camera.position.y = cf;
+  if (A.camClamp) A.camClamp(camera.position);
+  if (G.shake > 0) { G.shake = Math.max(0, G.shake - dt); const s = G.shake * 1.2; camera.position.x += rand(-s, s); camera.position.y += rand(-s, s); }
+  camera.lookAt(tmp.copy(P.pos).addScaledVector(P.fwd, 8).add(tmp2.set(0, 1.2, 0)));
+  camera.rotateZ(-P.roll * .3);
+  const fov = G.boosting ? 80 : 70;
+  if (Math.abs(camera.fov - fov) > .05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
+  // arena logic
+  E.danger = 1e9;
+  A.update(dt, E);
+  if (state !== "play") return;
+  if (E.arrowTarget) {
+    arrow.visible = true; arrow.material.color.setHex(E.arrowColor);
+    arrow.position.copy(P.pos).addScaledVector(P.fwd, 1.8); arrow.position.y += 3.1; arrow.lookAt(E.arrowTarget);
+  } else arrow.visible = false;
+  if (actSphere.visible) {
+    const t = actSphere.userData.t += dt;
+    actSphere.position.copy(P.pos); actSphere.scale.setScalar(1 + t * 55);
+    actSphere.material.opacity = Math.max(0, .4 * (1 - t / .8));
+    if (t > .8) actSphere.visible = false;
+  }
+  G.act = Math.max(0, G.act - dt);
+  $("boostBar").style.width = (G.boost * 100).toFixed(1) + "%";
+  $("actBar").style.width = ((1 - G.act / ACT_CD) * 100).toFixed(1) + "%";
+  $("actBtn").classList.toggle("ok", G.act <= 0);
+  const danger = clamp((65 - E.danger) / 55, 0, 1);
+  $("vignette").style.opacity = (danger * .85).toFixed(3);
+  G.flash = Math.max(0, G.flash - dt * 2.5); $("flash").style.opacity = G.flash.toFixed(3);
+  if (danger > 0 && T > beatT) { beatT = T + .35 + (1 - danger) * .6; sfx.beat(); }
+  if (windG) windG.gain.value = muted ? 0 : .02 + (P.speed - BASE) / (BOOSTSP - BASE) * .05;
+}
+
+/* ---------- loop ---------- */
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
+  if (state !== "pause") {
+    T += dt;
+    if (state === "play") updatePlay(dt);
+    else { A.cinematic(T, camera); if (camera.fov !== 62) { camera.fov = 62; camera.updateProjectionMatrix(); } }
+    animateWorld(dt);
+    sparks.update(dt); smoke.update(dt);
+  }
+  renderer.render(scene, camera);
+}
+A.build(E);
+requestAnimationFrame(frame);
+if (location.hash === "#endtest") setTimeout(() => { $("nameIn").value = "בדיקה"; startGame(); addScore(250); setTimeout(() => endGame(), 300); }, 400);
+if (location.hash === "#autoplay" || location.hash === "#fatlady" || location.hash === "#staff") setTimeout(() => { startGame(); if (location.hash === "#autoplay") { keys.right = true; setTimeout(() => keys.right = false, 1500); } }, 400);
+return E;
+};
+
+</script>
+<script>
+(() => {
+"use strict";
+let E, THREE, V3;
+/* a vaulted stone chamber under the castle: winged element-keys swarm, a riddle door, and the Philosopher's Stone */
+const RX = 70, RZ = 90, WALL_H = 36, VAULT = 26, NK = 64;
+const LOCK = { x: 0, y: 13, z: -RZ + 2 }, STONE = { x: 0, y: 6, z: 18 };
+const keys = [], torches = [], doorLeaves = [];
+let bowIM, shaftIM, teethIM, wingIM, plaque = null, stoneGem = null, stoneGlow = null;
+let riddle = null, held = null, riddleT = 0, doorAnim = 0, nextRiddleT = 0, doors = 0, transmutes = 0, wrongs = 0, lastPanel = "";
+let t1, t2, t3, m4, mBase, q, sc, zAxis;
+const FACTS = [
+  ["H", "היסוד הראשון בטבלה המחזורית"], ["He", "הגז האציל שממלא בלונים מעופפים"], ["O", "הגז שנושמים, ובלעדיו אין אש"],
+  ["C", "היסוד של יהלומים ושל הגרפיט בעיפרון"], ["N", "ממני עשויים 78% מהאוויר"], ["Na", "מתכת רכה שמתלקחת במים, חצי ממלח השולחן"],
+  ["Cl", "גז ירקרק, החצי השני של מלח השולחן"], ["Fe", "המתכת של השריונות, ויש ממני בדם"], ["Cu", "המתכת של מטבעות הקנוט"],
+  ["Ag", "המתכת של מטבעות הסיקל"], ["Au", "המתכת של אוניות הגלאון"], ["Hg", "המתכת היחידה שנוזלית בטמפרטורת החדר"],
+  ["Ne", "הגז האציל שזוהר באדום בשלטים"], ["S", "יסוד צהוב שמריח כמו ביצים רקובות"], ["Mg", "בוער באור לבן מסנוור, כמו לומוס"],
+  ["Ca", "בונה עצמות ושיניים"]
+];
+const FORMULAS = [["O", "ב-H₂O: איזה יסוד מופיע רק פעם אחת?"], ["C", "ב-CO₂: מי היסוד שאינו חמצן?"], ["Na", "ב-NaCl: מי המתכת?"],
+  ["N", "ב-NH₃ (אמוניה): מי היסוד שמופיע פעם אחת?"], ["Fe", "Fe₂O₃ זו חלודה. של איזו מתכת?"], ["S", "H₂SO₄: מי היסוד שבאמצע?"], ["Cu", "CuSO₄ הכחול: מי המתכת?"]];
+const POOL = ["H", "He", "O", "C", "N", "Na", "Cl", "Fe", "Cu", "Ag", "Au", "Hg", "Ne", "S", "Mg", "Ca", "Pb"];
+
+const A = {
+  id: "keys", title: "אבן החכמים",
+  sub: "מרתף מקומר מתחת לטירה. מאות מפתחות מכונפים, כל אחד נושא יסוד כימי. הדלת פותחת רק למי שפותרת את החידה.",
+  howto: [
+    "🗝️ <b>קראי את החידה הכימית</b> ותפסי באוויר את המפתח עם היסוד הנכון.",
+    "🚪 טוסי איתו למנעול הזהב שבדלת. כל דלת שנפתחת מעלה שלב, ומהר יותר שווה יותר.",
+    "⚗️ <b>כל דלת שלישית: אלכימיה!</b> הביאי מפתח עופרת (Pb) לאבן החכמים, והיא תהפוך אותו לזהב.",
+    "😠 מפתח לא נכון מרגיז את הלהקה. ❄️ אימוביולוס מקפיא את המפתחות לכמה שניות."
+  ],
+  actionName: "אימוביולוס", actionIcon: "❄️", actionCD: 11, actionColor: 0x9fe0ff,
+  levelLabel: "דלת", startToast: "החידה מעל הדלת! תפסי את המפתח הנכון",
+  fog: 0x1a120e, fogDensity: .0055, far: 700,
+  sky: null, stars: 0, moon: null, moonDir: new THREE_V(.3, 1, .2),
+  hemi: [0xd8c8b0, 0x1a1008, .7], dirLight: [0xffd8a0, .25],
+  robe: 0x2b1f4a, scarf: 0xa1262b, hat: 0x241a46,
+  music: { beat: .28, key: 2 },
+  baseSpeed: 20, boostSpeed: 35, turnRate: 1.95, camDist: 8.5,
+  ceiling: WALL_H + VAULT - 3, floor: () => 0,
+  ranks: [[0, "תלמידה סקרנית"], [400, "פותחת מנעולים"], [1000, "מכשפת כימיה"], [2000, "אלכימאית צעירה"], [3500, "יורשת של ניקולס פלאמל"]],
+  overTitle: nm => nm ? `${nm}, המפתחות ניצחו הפעם` : "המפתחות ניצחו הפעם",
+  overStats: () => [[E.G.score, "נקודות"], [doors, "דלתות נפתחו"], [transmutes, "עופרת שהפכה לזהב"], [wrongs, "מפתחות לא נכונים"]],
+
+  bounds(e, dt) {
+    const p = e.P.pos;
+    if (clampRoom(p, 3)) { const diff = e.wrapA(Math.atan2(-p.x, -p.z) - e.P.yaw); e.P.yaw += e.clamp(diff, -2.5 * dt, 2.5 * dt); }
+  },
+  camClamp(p) { clampRoom(p, 1.2); },
+
+  build(e) {
+    E = e; THREE = E.THREE; V3 = E.V3;
+    t1 = new V3(); t2 = new V3(); t3 = new V3(); m4 = new THREE.Matrix4(); mBase = new THREE.Matrix4(); q = new THREE.Quaternion(); sc = new V3(1, 1, 1); zAxis = new V3(0, 0, 1);
+    Object.assign(E.EL, {
+      He: { n: 2, c: "#ffc0ee", name: "הליום" }, Ne: { n: 10, c: "#ff7a4a", name: "ניאון" }, Ag: { n: 47, c: "#dfe4f0", name: "כסף" },
+      Au: { n: 79, c: "#ffd23a", name: "זהב" }, Hg: { n: 80, c: "#b8d0e0", name: "כספית" }, Pb: { n: 82, c: "#9098b8", name: "עופרת" }
+    });
+    buildRoom();
+    // winged keys
+    const goldM = new THREE.MeshLambertMaterial({ color: 0xd9b24a, emissive: 0x4a3200 });
+    bowIM = new THREE.InstancedMesh(new THREE.TorusGeometry(.5, .14, 8, 16), goldM, NK);
+    shaftIM = new THREE.InstancedMesh(new THREE.BoxGeometry(.18, .18, 1.9), goldM, NK);
+    teethIM = new THREE.InstancedMesh(new THREE.BoxGeometry(.12, .55, .55), goldM, NK);
+    const wg = new THREE.PlaneGeometry(1.5, .75); wg.translate(.75, 0, 0);
+    wingIM = new THREE.InstancedMesh(wg, new THREE.MeshBasicMaterial({ color: 0xf4f0ff, transparent: true, opacity: .85, side: THREE.DoubleSide }), NK * 2);
+    for (const im of [bowIM, shaftIM, teethIM, wingIM]) { im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false; E.scene.add(im); }
+    for (let i = 0; i < NK; i++) {
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: E.elTex("H"), transparent: true, depthWrite: false, fog: false }));
+      spr.scale.set(3.3, 3.3, 1); E.scene.add(spr);
+      keys.push({ pos: new V3(E.rand(-50, 50), E.rand(10, 45), E.rand(-60, 60)), vel: new V3(E.rand(-1, 1), E.rand(-.3, .3), E.rand(-1, 1)).setLength(12),
+        sym: E.pick(POOL), spr, freeze: 0, angry: 0, ph: E.rand(0, 6.28) });
+      setSym(keys[i], keys[i].sym);
+    }
+  },
+
+  start(e) {
+    const P = e.P; P.pos.set(0, 12, RZ - 12); P.yaw = Math.PI;
+    doors = 0; transmutes = 0; wrongs = 0; held = null; doorAnim = 0; nextRiddleT = 0;
+    for (const k of keys) { k.angry = 0; k.freeze = 0; k.held = false; }
+    newRiddle();
+  },
+
+  action(e) {
+    let n = 0;
+    for (const k of keys) if (!k.held && k.pos.distanceTo(e.P.pos) < 48) { k.freeze = 4.5; k.angry = 0; n++; }
+    E.sfx.spell();
+    for (let i = 0; i < 80; i++) { const v = new V3(E.rand(-1, 1), E.rand(-1, 1), E.rand(-1, 1)).setLength(E.rand(10, 40)); E.sparks.spawn(e.P.pos.x, e.P.pos.y, e.P.pos.z, { vx: v.x, vy: v.y, vz: v.z, life: 1, r: .7, g: .9, b: 1, s0: 1.4, s1: 0, drag: 1.5 }); }
+    E.toast(n ? `❄️ אימוביולוס! ${n} מפתחות קפאו` : "❄️ אין מפתחות קרובים", 1.5);
+    return n ? true : 3;
+  },
+
+  onHit() {},
+
+  update(dt, e) {
+    const P = e.P, G = e.G, T = e.T;
+    if (nextRiddleT > 0) { nextRiddleT -= dt; if (nextRiddleT <= 0) newRiddle(); }
+    else {
+      riddleT -= dt;
+      if (riddleT <= 0) {
+        if (E.hit("⏳ הזמן לחידה נגמר! חידה חדשה")) {}
+        if (E.state !== "play") return;
+        dropHeld(); newRiddle();
+      }
+    }
+    updateKeys(dt, true);
+    if (E.state !== "play") return;
+    // catching
+    if (!held && nextRiddleT <= 0) {
+      for (const k of keys) {
+        if (k.held || k.angry > 0) continue;
+        if (k.pos.distanceTo(P.pos) < 3.3) {
+          if (k.sym === riddle.want) {
+            held = k; k.held = true; k.freeze = 0; E.sfx.good(); E.burst(k.pos, E.rgb(E.EL[k.sym].c), 30, 8, 1.6, .8);
+            E.toast(riddle.alchemy && k.sym === "Pb" ? "⚗️ מפתח העופרת אצלך! לאבן החכמים" : `🗝️ ${E.EL[k.sym].name} (${k.sym})! למנעול שבדלת`, 1.8);
+          } else {
+            wrongs++; E.sfx.bonk(); E.G.shake = .3;
+            E.toast(`😠 ${E.EL[k.sym].name} (${k.sym}) זה לא המפתח! הלהקה כועסת`, 1.8);
+            k.vel.copy(k.pos).sub(P.pos).setLength(30);
+            const near = keys.filter(o => !o.held).sort((a, b) => a.pos.distanceTo(P.pos) - b.pos.distanceTo(P.pos)).slice(0, 4 + Math.min(G.level, 6));
+            for (const o of near) o.angry = 5;
+            k.angry = 0;
+          }
+          break;
+        }
+      }
+    }
+    // alchemy at the stone
+    if (held && riddle.alchemy && held.sym === "Pb" && Math.hypot(P.pos.x - STONE.x, P.pos.z - STONE.z) < 9 && P.pos.y < 22) {
+      setSym(held, "Au"); riddle.want = "Au"; transmutes++; E.addScore(150); E.sfx.win();
+      for (let i = 0; i < 140; i++) E.sparks.spawn(STONE.x, STONE.y + 4, STONE.z, { vx: E.rand(-14, 14), vy: E.rand(4, 28), vz: E.rand(-14, 14), life: E.rand(1, 2), r: 1, g: .82, b: .25, s0: 2, s1: 0, drag: 1, grav: -10 });
+      E.toast("✨ טרנסמוטציה! העופרת הפכה לזהב (Au). למנעול!", 2.6); lastPanel = "";
+    }
+    // the lock
+    if (held && held.sym === riddle.want && !(riddle.alchemy && held.sym === "Pb") && t1.set(LOCK.x, LOCK.y, LOCK.z).distanceTo(P.pos) < 9) openDoor();
+    // angry keys sting
+    let nearest = 1e9;
+    for (const k of keys) if (k.angry > 0) {
+      const d = k.pos.distanceTo(P.pos); nearest = Math.min(nearest, d);
+      if (d < 2.4 && E.hit("🔑 מפתח זועם עקץ אותך!")) { k.angry = 0; k.vel.copy(k.pos).sub(P.pos).setLength(28); if (held) dropHeld(); }
+    }
+    E.danger = nearest * 1.6;
+    // arrow
+    if (held) {
+      if (riddle.alchemy && held.sym === "Pb") { E.arrowTarget = t2.set(STONE.x, STONE.y + 3, STONE.z); E.arrowColor = 0xff4a4a; }
+      else { E.arrowTarget = t2.set(LOCK.x, LOCK.y, LOCK.z); E.arrowColor = 0xffd23a; }
+    } else if (nextRiddleT <= 0) {
+      let best = null, bd = 1e9; for (const k of keys) if (!k.held && k.sym === riddle.want) { const d = k.pos.distanceTo(P.pos); if (d < bd) { bd = d; best = k; } }
+      E.arrowTarget = G.level <= 2 && best ? best.pos : null; E.arrowColor = best ? parseInt(E.EL[best.sym].c.slice(1), 16) : 0xffffff;
+    } else E.arrowTarget = null;
+    renderPanel();
+  },
+
+  world(dt, e) {
+    const T = e.T;
+    if (e.state !== "play") updateKeys(dt, false);
+    drawKeys(T);
+    for (const t of torches) { t.s.scale.setScalar(5 + Math.sin(T * 14 + t.x) * .6); if (Math.random() < dt * 5) E.sparks.spawn(t.x, t.y + .6, t.z, { vy: 2.5, life: .5, r: 1, g: .55, b: .2, s0: .8, s1: 0 }); }
+    stoneGem.rotation.y += dt * .8; stoneGem.position.y = STONE.y + 3 + Math.sin(T * 1.5) * .3;
+    stoneGlow.material.opacity = .5 + .2 * Math.sin(T * 3);
+    if (Math.random() < dt * 10) E.sparks.spawn(STONE.x + E.rand(-1, 1), STONE.y + 3, STONE.z + E.rand(-1, 1), { vy: E.rand(1, 4), life: 1.2, r: 1, g: .2, b: .25, s0: 1.2, s1: 0 });
+    // door leaves swing open then close
+    if (doorAnim > 0) doorAnim -= dt;
+    const open = doorAnim > 0 ? Math.min(1, (2.6 - doorAnim) * 2, doorAnim * 1.5) : 0;
+    doorLeaves[0].rotation.y = -open * 1.2; doorLeaves[1].rotation.y = open * 1.2;
+  },
+
+  cinematic(T, cam) {
+    const a = T * .07;
+    cam.position.set(Math.sin(a) * 45, 22 + Math.sin(T * .2) * 6, Math.cos(a) * 60);
+    cam.lookAt(0, 20, 0);
+  },
+  onEnd() { held = null; for (const k of keys) { k.held = false; k.angry = 0; } }
+};
+
+function THREE_V(x, y, z) { return window.THREE ? new window.THREE.Vector3(x, y, z) : null; }
+
+function clampRoom(p, pad) {
+  let m = false;
+  if (p.x < -RX + pad) { p.x = -RX + pad; m = true; } if (p.x > RX - pad) { p.x = RX - pad; m = true; }
+  if (p.z < -RZ + pad) { p.z = -RZ + pad; m = true; } if (p.z > RZ - pad) { p.z = RZ - pad; m = true; }
+  const top = WALL_H + VAULT * Math.sqrt(Math.max(0, 1 - (p.x / RX) ** 2)) - pad;
+  if (p.y > top) { p.y = top; m = true; }
+  return m;
+}
+function setSym(k, s) { k.sym = s; k.spr.material.map = E.elTex(s); }
+
+function newRiddle() {
+  const lv = E.G.level;
+  if (lv % 3 === 0) riddle = { want: "Pb", alchemy: true, text: "⚗️ אלכימיה: תפסי מפתח עופרת (Pb), הפכי אותו לזהב באבן החכמים, ופתחי את הדלת" };
+  else if (lv >= 4 && Math.random() < .35) { const n = E.pick(POOL.filter(s => s !== "Pb")); riddle = { want: n, text: `המספר האטומי שלי הוא ${E.EL[n].n}` }; }
+  else if (lv >= 2 && Math.random() < .4) { const f = E.pick(FORMULAS); riddle = { want: f[0], text: f[1] }; }
+  else { const f = E.pick(FACTS.filter(f => !riddle || f[0] !== riddle.want)); riddle = { want: f[0], text: f[1] }; }
+  riddleT = Math.max(30, 60 - lv * 3); nextRiddleT = 0;
+  // make sure enough keys carry the answer, and no other key duplicates too much
+  const wantCount = Math.max(2, 5 - Math.floor(lv / 3));
+  let have = keys.filter(k => !k.held && k.sym === riddle.want).length;
+  for (const k of keys) { if (have >= wantCount) break; if (!k.held && k.sym !== riddle.want && Math.random() < .5) { setSym(k, riddle.want); have++; } }
+  for (const k of keys) { if (have >= wantCount) break; if (!k.held && k.sym !== riddle.want) { setSym(k, riddle.want); have++; } }
+  drawPlaque(); lastPanel = ""; renderPanel();
+}
+function openDoor() {
+  const G = E.G, bonus = 100 + 25 * G.level + Math.round(riddleT * 3);
+  doors++; G.level++; E.addScore(bonus); E.sfx.win();
+  if (doors % 2 === 0) { G.lives = Math.min(5, G.lives + 1); E.renderHUD(); }
+  E.burst(t1.set(LOCK.x, LOCK.y, LOCK.z), E.COL.GOLD, 120, 20, 2.4, 1.4);
+  E.toast(`🚪 הדלת נפתחה! +${bonus}${doors % 2 === 0 ? " ❤️" : ""}`, 2.4);
+  doorAnim = 2.6;
+  held.held = false; held.pos.set(E.rand(-40, 40), 30, E.rand(-20, 40)); setSym(held, E.pick(POOL)); held = null;
+  nextRiddleT = 2.2; lastPanel = "";
+  for (const k of keys) k.angry = 0;
+}
+function dropHeld() { if (held) { held.held = false; held.vel.set(E.rand(-1, 1), 1, E.rand(-1, 1)).setLength(15); if (held.sym === "Au" && riddle && riddle.alchemy) { setSym(held, "Pb"); riddle.want = "Pb"; } held = null; } }
+function renderPanel() {
+  if (!riddle) return;
+  const st = nextRiddleT > 0 ? "🚪 הדלת נפתחת..." : held ? (riddle.alchemy && held.sym === "Pb" ? "⚗️ לאבן החכמים האדומה" : "🗝️ המפתח אצלך! למנעול") : "תפסי את המפתח הנכון";
+  const key = `${riddle.text}|${Math.ceil(riddleT)}|${st}`; if (key === lastPanel) return; lastPanel = key;
+  const p = document.getElementById("panel");
+  p.innerHTML = `<div class="pname">🗝️ חידת הדלת</div><div class="pbig" style="font-size:17px;max-width:420px">${riddle.text}</div><div class="psub">⏱ ${Math.ceil(riddleT)} שנ׳ · ${st}</div>`;
+  p.classList.toggle("ready", !!held);
+}
+function drawPlaque() {
+  const c = plaque.userData.canvas, g = c.getContext("2d");
+  g.clearRect(0, 0, 1024, 256);
+  g.fillStyle = "rgba(30,20,10,.92)"; g.fillRect(0, 0, 1024, 256);
+  g.strokeStyle = "#d4a83a"; g.lineWidth = 10; g.strokeRect(8, 8, 1008, 240);
+  g.fillStyle = "#ffd977"; g.textAlign = "center"; g.textBaseline = "middle"; try { g.direction = "rtl"; } catch (e) {}
+  g.font = "bold 46px 'Varela Round', Arial, sans-serif"; g.fillText(riddle.text, 512, 128, 960);
+  plaque.needsUpdate = true;
+}
+
+function buildRoom() {
+  const scene = E.scene;
+  const brick = (rx, ry) => { const t = E.canvasTex(256, g => { g.fillStyle = "#2a2420"; g.fillRect(0, 0, 256, 256); for (let r = 0; r < 8; r++) for (let c = 0; c < 6; c++) { const off = r % 2 ? 26 : 0, l = 50 + Math.random() * 20; g.fillStyle = `rgb(${l + 10},${l + 6},${l})`; g.fillRect(c * 52 + off - 26 + 3, r * 32 + 3, 46, 26); } }); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t; };
+  const floorT = E.canvasTex(256, g => { for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const l = 40 + Math.random() * 14; g.fillStyle = `rgb(${l},${l - 4},${l - 8})`; g.fillRect(i * 64 + 2, j * 64 + 2, 60, 60); } });
+  floorT.wrapS = floorT.wrapT = THREE.RepeatWrapping; floorT.repeat.set(14, 18);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(RX * 2, RZ * 2), new THREE.MeshLambertMaterial({ map: floorT })); floor.rotation.x = -Math.PI / 2; scene.add(floor);
+  const wall = (w, h, x, y, z, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: brick(w / 9, h / 9) })); m.position.set(x, y, z); m.rotation.y = ry; scene.add(m); };
+  wall(RZ * 2, WALL_H, -RX, WALL_H / 2, 0, Math.PI / 2); wall(RZ * 2, WALL_H, RX, WALL_H / 2, 0, -Math.PI / 2);
+  wall(RX * 2, WALL_H, 0, WALL_H / 2, -RZ, 0); wall(RX * 2, WALL_H, 0, WALL_H / 2, RZ, Math.PI);
+  const vault = new THREE.Mesh(new THREE.CylinderGeometry(RX, RX, RZ * 2, 40, 1, true, Math.PI / 2, Math.PI), new THREE.MeshLambertMaterial({ map: brick(20, 26), side: THREE.BackSide }));
+  vault.rotation.x = Math.PI / 2; vault.scale.z = VAULT / RX; vault.position.y = WALL_H; scene.add(vault);
+  for (const s of [-1, 1]) {
+    const endW = new THREE.Mesh(new THREE.CircleGeometry(RX, 40, 0, Math.PI), new THREE.MeshLambertMaterial({ map: brick(14, 3) }));
+    endW.scale.y = VAULT / RX; endW.position.set(0, WALL_H, s * RZ); endW.rotation.y = s > 0 ? Math.PI : 0; scene.add(endW);
+  }
+  // vault ribs
+  const ribM = new THREE.MeshLambertMaterial({ color: 0x5a4c40 });
+  for (let z = -RZ + 15; z < RZ; z += 30) { const rib = new THREE.Mesh(new THREE.TorusGeometry(RX - .5, 1.2, 6, 40, Math.PI), ribM); rib.scale.y = VAULT / RX; rib.position.set(0, WALL_H, z); scene.add(rib); }
+  // the riddle door with its golden lock
+  const doorM = new THREE.MeshLambertMaterial({ color: 0x3a2414 }), goldM = new THREE.MeshLambertMaterial({ color: 0xd4a83a, emissive: 0x4a3000 });
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(30, 28, 1.5), new THREE.MeshLambertMaterial({ color: 0x4a4036 })); frame.position.set(0, 14, -RZ + .4); scene.add(frame);
+  const dark = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.MeshBasicMaterial({ color: 0x050302 })); dark.position.set(0, 12, -RZ + 1.2); scene.add(dark);
+  for (const s of [-1, 1]) {
+    const hinge = new THREE.Group(); hinge.position.set(s * 12, 0, -RZ + 1.6); scene.add(hinge);
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(12, 24, 1), doorM); leaf.position.set(-s * 6, 12, 0); hinge.add(leaf);
+    for (const y of [5, 12, 19]) { const band = new THREE.Mesh(new THREE.BoxGeometry(12, .8, 1.2), goldM); band.position.set(-s * 6, y, 0); hinge.add(band); }
+    doorLeaves.push(hinge);
+  }
+  const lock = new THREE.Group(); lock.position.set(LOCK.x, LOCK.y, LOCK.z); scene.add(lock);
+  lock.add(new THREE.Mesh(new THREE.BoxGeometry(4.5, 4.5, 1.6), goldM));
+  const shackle = new THREE.Mesh(new THREE.TorusGeometry(1.6, .4, 8, 20, Math.PI), goldM); shackle.position.y = 2.2; lock.add(shackle);
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(.5, 12), new THREE.MeshBasicMaterial({ color: 0x000000 })); hole.position.set(0, .4, .82); lock.add(hole);
+  lock.add(E.glowSprite(0xffd23a, 14, .45));
+  const pt = E.canvasTex(1024, () => {}, 256); plaque = pt;
+  const pl = new THREE.Mesh(new THREE.PlaneGeometry(40, 10), new THREE.MeshBasicMaterial({ map: pt, transparent: true })); pl.position.set(0, 32, -RZ + 1); scene.add(pl);
+  const dl = new THREE.PointLight(0xffc060, 1.2, 70); dl.position.set(0, 20, -RZ + 12); scene.add(dl);
+  // the Philosopher's Stone
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.2, STONE.y, 12), new THREE.MeshLambertMaterial({ color: 0x6a5f52 })); ped.position.set(STONE.x, STONE.y / 2, STONE.z); scene.add(ped);
+  stoneGem = new THREE.Mesh(new THREE.OctahedronGeometry(1.6, 0), new THREE.MeshLambertMaterial({ color: 0xff2030, emissive: 0x8a0010 })); stoneGem.position.set(STONE.x, STONE.y + 3, STONE.z); scene.add(stoneGem);
+  stoneGlow = E.glowSprite(0xff2a40, 16, .6); stoneGlow.position.copy(stoneGem.position); scene.add(stoneGlow);
+  const sl = new THREE.PointLight(0xff3040, 1.4, 60); sl.position.set(STONE.x, STONE.y + 6, STONE.z); scene.add(sl);
+  E.towerCols.push({ x: STONE.x, z: STONE.z, r: 3.5, top: STONE.y + 2 });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(7, 7.6, 48), new THREE.MeshBasicMaterial({ color: 0xff4050, transparent: true, opacity: .5, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.set(STONE.x, .05, STONE.z); scene.add(ring);
+  // torches and a few lights
+  for (const s of [-1, 1]) for (let z = -70; z <= 70; z += 35) {
+    const x = s * (RX - .6), br = new THREE.Mesh(new THREE.CylinderGeometry(.3, .2, 2, 6), new THREE.MeshLambertMaterial({ color: 0x2a2018 })); br.position.set(x, 15, z); scene.add(br);
+    const f = E.glowSprite(0xff9a40, 5, .9, true); f.position.set(x - s * .4, 16.5, z); scene.add(f); torches.push({ s: f, x: x - s * .4, y: 16.5, z });
+  }
+  for (const z of [-45, 45]) { const l = new THREE.PointLight(0xffb070, 1, 110); l.position.set(0, 26, z); scene.add(l); }
+  // three old broomsticks by the entrance
+  const bw = new THREE.MeshLambertMaterial({ color: 0x7a4f2a }), bb = new THREE.MeshLambertMaterial({ color: 0xd0a860 });
+  [-8, 0, 8].forEach(x => {
+    const g = new THREE.Group(); g.position.set(x, 0, RZ - 1.5); g.rotation.x = -.18; scene.add(g);
+    const h = new THREE.Mesh(new THREE.CylinderGeometry(.08, .1, 4.6, 8), bw); h.position.y = 3.6; g.add(h);
+    const br2 = new THREE.Mesh(new THREE.ConeGeometry(.45, 1.6, 10), bb); br2.position.y = .8; br2.rotation.x = Math.PI; g.add(br2);
+  });
+}
+
+function updateKeys(dt, playing) {
+  const P = E.P, T = E.T, lv = playing ? E.G.level : 1;
+  const ax = Math.sin(T * .21) * 40, ay = 24 + Math.sin(T * .37) * 8, az = Math.cos(T * .17) * 55;
+  const maxSp = 15 + lv * .9;
+  for (const k of keys) {
+    if (k.held) { k.pos.copy(E.carry.getWorldPosition(t3)); continue; }
+    if (k.freeze > 0) { k.freeze -= dt; k.vel.multiplyScalar(Math.max(0, 1 - 3 * dt)); k.pos.addScaledVector(k.vel, dt); k.pos.y += Math.sin(T * 3 + k.ph) * .01; continue; }
+    const acc = t1.set(0, 0, 0), ali = t2.set(0, 0, 0), coh = t3.set(0, 0, 0); let n = 0;
+    for (const o of keys) {
+      if (o === k || o.held) continue;
+      const dx = k.pos.x - o.pos.x, dy = k.pos.y - o.pos.y, dz = k.pos.z - o.pos.z, d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 < 64) { n++; ali.add(o.vel); coh.add(o.pos); if (d2 < 9) { const f = 6 / Math.max(d2, .3); acc.x += dx * f; acc.y += dy * f; acc.z += dz * f; } }
+    }
+    if (n) { acc.addScaledVector(ali.multiplyScalar(1 / n).sub(k.vel), .8); acc.addScaledVector(coh.multiplyScalar(1 / n).sub(k.pos), .3); }
+    acc.x += (ax + Math.sin(k.ph) * 18 - k.pos.x) * .05; acc.y += (ay + Math.cos(k.ph * 2) * 8 - k.pos.y) * .05; acc.z += (az + Math.cos(k.ph) * 18 - k.pos.z) * .05;
+    if (playing) {
+      const dx = k.pos.x - P.pos.x, dy = k.pos.y - P.pos.y, dz = k.pos.z - P.pos.z, d = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+      if (k.angry > 0) { k.angry -= dt; acc.x -= dx / d * 40; acc.y -= dy / d * 40; acc.z -= dz / d * 40; }
+      else if (d < 14) { const f = (riddle && k.sym === riddle.want ? 26 + lv * 2 : 10) / d; acc.x += dx * f; acc.y += dy * f; acc.z += dz * f; }
+    }
+    const top = WALL_H + VAULT * .6;
+    if (k.pos.x < -RX + 6) acc.x += 20; if (k.pos.x > RX - 6) acc.x -= 20;
+    if (k.pos.z < -RZ + 6) acc.z += 20; if (k.pos.z > RZ - 6) acc.z -= 20;
+    if (k.pos.y < 4) acc.y += 20; if (k.pos.y > top) acc.y -= 20;
+    k.vel.addScaledVector(acc, dt);
+    const sp = k.vel.length(), lim = k.angry > 0 ? 27 : maxSp;
+    if (sp > lim) k.vel.multiplyScalar(lim / sp); else if (sp < 7) k.vel.multiplyScalar(7 / Math.max(sp, .01));
+    k.pos.addScaledVector(k.vel, dt);
+    clampRoom(k.pos, 2); if (k.pos.y < 2) k.pos.y = 2;
+  }
+}
+function drawKeys(T) {
+  const P = E.P;
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    let dir = t1;
+    if (k.held) dir.copy(P.fwd); else dir.copy(k.vel);
+    if (dir.lengthSq() < 1e-4) dir.set(0, 0, 1); dir.normalize();
+    q.setFromUnitVectors(zAxis, dir);
+    mBase.compose(k.pos, q, sc);
+    m4.makeRotationY(Math.PI / 2).setPosition(0, 0, -1.25); bowIM.setMatrixAt(i, t2.m = (t2.m || new THREE.Matrix4()).multiplyMatrices(mBase, m4));
+    shaftIM.setMatrixAt(i, mBase);
+    m4.makeTranslation(0, -.3, .75); teethIM.setMatrixAt(i, t2.m.multiplyMatrices(mBase, m4));
+    const flap = k.freeze > 0 ? .1 : Math.sin(T * 24 + k.ph) * .7;
+    m4.makeRotationZ(flap).setPosition(.1, .15, -.3); wingIM.setMatrixAt(i * 2, t2.m.multiplyMatrices(mBase, m4));
+    m4.makeRotationZ(flap); m4.premultiply(t3.mm = (t3.mm || new THREE.Matrix4()).makeScale(-1, 1, 1)); m4.setPosition(-.1, .15, -.3);
+    wingIM.setMatrixAt(i * 2 + 1, t2.m.multiplyMatrices(mBase, m4));
+    k.spr.position.set(k.pos.x, k.pos.y + 1.8, k.pos.z);
+    k.spr.material.color.setHex(k.freeze > 0 ? 0x9fe0ff : k.angry > 0 ? 0xff7070 : 0xffffff);
+    k.spr.visible = !k.held || true;
+  }
+  for (const im of [bowIM, shaftIM, teethIM, wingIM]) im.instanceMatrix.needsUpdate = true;
+}
+
+window.WizGame(A);
+})();
+
+</script>
+
+</body>
+</html>
