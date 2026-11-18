@@ -1098,13 +1098,13 @@ function buildWorld() {
     varying float vSnow; uniform vec2 uRoad[9];
     void main(){
       float h=vP.y; float n=fbm(vP.xz*.004); float n2=vn(vP.xz*.05);
-      vec3 sand=vec3(.86,.8,.62), field=vec3(.74,.73,.42), grass=vec3(.45,.6,.4), hill=vec3(.33,.5,.42), dark=vec3(.16,.3,.27), mtn=vec3(.36,.47,.52);
+      vec3 sand=vec3(.85,.75,.55), field=vec3(.79,.70,.37), grass=vec3(.42,.56,.31), hill=vec3(.25,.42,.33), dark=vec3(.18,.28,.21), mtn=vec3(.32,.48,.55);
       vec3 c=mix(sand,field,smoothstep(1.,6.,h));
       float paddy=step(.5,fract(vP.x*.012+n*.6))*step(.5,fract(vP.z*.012+n*.4));
       c=mix(c,mix(field,vec3(.62,.7,.38),paddy),smoothstep(4.,10.,h)*(1.-smoothstep(40.,70.,h)));
-      c=mix(c,grass,smoothstep(43.,46.,h+n*30.));
-      c=mix(c,hill,smoothstep(98.,102.,h+n*40.));
-      c=mix(c,mtn,smoothstep(200.,205.,h+n*30.));
+      c=mix(c,grass,smoothstep(43.,46.,h+n*14.));
+      c=mix(c,hill,smoothstep(98.,102.,h+n*14.));
+      c=mix(c,mtn,smoothstep(200.,205.,h+n*10.));
       float slope=1.-normalize(vN).y; vec2 hd=normalize(normalize(vN).xz+1e-4);
       float hatch=step(.78,fract(dot(vP.xz,vec2(-hd.y,hd.x))*.22+n*2.))*smoothstep(.12,.22,slope)*step(8.,h);
       c=mix(c,c*.72,hatch*.8);
@@ -2403,6 +2403,34 @@ PLAY_HOOKS.push(dt => {
   LANTERNS.m.uniforms.amt.value = lerp(.35, 1, sstep(700, 150, ed));
 });
 // rain also when standing still in the scene / moment states would be nice, but keep it to play for cost
+
+/* ---------- the map, painted like a print: flat height bands, inked contours, curled sea ---------- */
+function paintPrintMap() {
+  const W = 600, H = 640, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  const id = g.createImageData(W, H), band = new Int8Array(W * H);
+  const LAND = [[233, 220, 180], [214, 222, 170], [176, 201, 140], [126, 166, 128], [86, 126, 116], [70, 98, 104]];
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const x = MAP.x0 + (i / W) * (MAP.x1 - MAP.x0), z = MAP.z0 + (j / H) * (MAP.z1 - MAP.z0), h = landH(x, z), r = Math.hypot(x, z), o = (j * W + i) * 4;
+    let col, b;
+    if (h < .3) { const sea = seaness(x, z) > .5; b = sea ? -2 : -1; col = sea ? (h < -12 ? [44, 79, 134] : [74, 120, 173]) : [122, 166, 191]; }
+    else if (r < FUJI_R * .97 && h > 40) { const t = h / FUJI_H; b = 10 + Math.floor(t * 4); col = t > .78 ? [242, 238, 228] : t > .45 ? [44, 79, 134] : [74, 120, 173]; }
+    else { b = h < 12 ? 0 : h < 50 ? 1 : h < 110 ? 2 : h < 190 ? 3 : h < 280 ? 4 : 5; col = LAND[b]; }
+    const n = (Math.sin(i * 1.7 + j * .3) + Math.sin(j * 2.3 - i * .7)) * 2 + (Math.random() - .5) * 6;
+    id.data[o] = col[0] + n; id.data[o + 1] = col[1] + n; id.data[o + 2] = col[2] + n; id.data[o + 3] = 255; band[j * W + i] = b;
+  }
+  // inked contour wherever the band changes
+  for (let j = 1; j < H - 1; j++) for (let i = 1; i < W - 1; i++) { const k = j * W + i, b = band[k]; if (b !== band[k + 1] || b !== band[k + W]) { const o = k * 4, dk = b === -2 || band[k + 1] === -2 || band[k + W] === -2 ? .55 : .62; id.data[o] *= dk; id.data[o + 1] *= dk; id.data[o + 2] *= dk; } }
+  g.putImageData(id, 0, 0);
+  // white wave curls on the open sea
+  g.strokeStyle = "rgba(242,238,228,.75)"; g.lineWidth = 1.4;
+  for (let j = 10; j < H; j += 22) for (let i = (j / 22 % 2) * 14; i < W; i += 28) { const k = j * W + i; if (band[k] !== -2) continue; g.beginPath(); g.arc(i, j, 6, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); g.beginPath(); g.arc(i + 4, j - 1, 2.5, Math.PI * 1.1, Math.PI * 2.1); g.stroke(); }
+  // a title cartouche
+  g.fillStyle = "rgba(239,227,198,.92)"; g.strokeStyle = "#3b3a3a"; g.lineWidth = 1.5; g.fillRect(W - 46, 10, 34, 112); g.strokeRect(W - 46, 10, 34, 112);
+  g.fillStyle = "#1c2944"; g.font = "bold 20px serif"; g.textAlign = "center"; ["東", "海", "道", "絵", "図"].forEach((ch, k) => g.fillText(ch, W - 29, 32 + k * 21));
+  return c;
+}
+{ const _r2 = renderMap; renderMap = function () { if (!mapImg || !mapImg.printed) { mapImg = paintPrintMap(); mapImg.printed = true; } _r2(); }; }
+$("mapInfo").textContent = "לחצי על חותמת אדומה כדי לכוון אליה את המצפן · 市 העיירה · ✔ נאסף: אפשר לעוף אליו";
 
 /* ---------- crane fast travel from the map ---------- */
 const TOWN_PT = { x: 1400, z: roadZ(1400) };
