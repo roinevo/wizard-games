@@ -57,6 +57,10 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 .endimg{width:100%;max-height:46vh;object-fit:contain;display:block;margin:4px 0 10px;border:1px solid #9d8865;background:#f6eedb}
 .credit{font-size:12px;color:#8a7b62;margin-top:12px}
 
+.hishi{display:inline-block;width:12px;height:12px;background:#f2c14e;border:2.5px solid #b3362b;transform:rotate(45deg) scaleY(1.15);margin:0 4px 0 2px;vertical-align:-1px}
+#sCrests small{color:#8a7b62;font-size:12px}
+#sCrests.pop{animation:pop .45s}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.28);background:#fff3c8}100%{transform:scale(1)}}
 #bubble{position:fixed;transform:translate(-50%,-100%);background:#f6eedb;border:1.5px solid #3b3a3a;padding:6px 12px;font-size:16px;max-width:min(260px,70vw);text-align:center;z-index:12;pointer-events:none;box-shadow:2px 3px 0 rgba(0,0,0,.2)}
 #bubble[hidden]{display:none}
 #cap{position:fixed;bottom:7%;left:50%;transform:translateX(-50%);background:rgba(239,227,198,.94);border:1px solid #8a7550;padding:8px 18px;font-size:18px;text-align:center;opacity:0;transition:opacity .8s;z-index:12;pointer-events:none}
@@ -70,7 +74,7 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 </head>
 <body>
 <div id="hud" hidden>
-  <div class="stats"><div id="sPrints"></div></div>
+  <div class="stats"><div id="sPrints"></div><div id="sCrests"></div></div>
   <div id="compass"><svg viewBox="-24 -24 48 48"><path d="M0,-20 C5,-8 9,2 6,14 C3,8 -3,8 -6,14 C-9,2 -5,-8 0,-20Z" fill="#b3362b" stroke="#2a1d14" stroke-width="1.6"/></svg></div>
   <div id="cdist"></div>
   <div class="modeTxt" id="modeTxt">🕊️ טיסה</div>
@@ -120,7 +124,7 @@ const PRINTS = {
 };
 const imgURL = id => "img/" + id + ".jpg";
 const SAVEKEY = "hokusai-album";
-function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVEKEY) || "{}"); return { have: s.have || [], best: s.best || [0, 0, 0], done: s.done || [] }; } catch (e) { return { have: [], best: [0, 0, 0], done: [] }; } }
+function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVEKEY) || "{}"); return Object.assign({}, s, { have: s.have || [], best: s.best || [0, 0, 0], done: s.done || [], crests: s.crests || [], spent: s.spent || 0, items: s.items || [] }); } catch (e) { return { have: [], best: [0, 0, 0], done: [], crests: [], spent: 0, items: [] }; } }
 function writeSave(s) { try { localStorage.setItem(SAVEKEY, JSON.stringify(s)); } catch (e) {} }
 let SAVE = loadSave();
 
@@ -146,11 +150,23 @@ const post = new THREE.ShaderMaterial({
   fragmentShader: `precision highp float; varying vec2 vUv;
   uniform sampler2D tC,tD,tP; uniform vec2 res; uniform float near,far,pMix,pAsp,sAsp,flash,inkAmt,time,dmg; uniform vec3 flashCol;
   ${NOISE_GLSL}
+  vec3 PAL(int i){ if(i==0) return vec3(0.275,0.259,0.255); if(i==1) return vec3(0.216,0.337,0.435); if(i==2) return vec3(0.369,0.416,0.404); if(i==3) return vec3(0.322,0.482,0.549); if(i==4) return vec3(0.471,0.514,0.467); if(i==5) return vec3(0.706,0.486,0.408); if(i==6) return vec3(0.604,0.584,0.498); if(i==7) return vec3(0.510,0.631,0.620); if(i==8) return vec3(0.694,0.655,0.537); if(i==9) return vec3(0.820,0.698,0.494); if(i==10) return vec3(0.643,0.714,0.659); if(i==11) return vec3(0.796,0.729,0.616); if(i==12) return vec3(0.753,0.776,0.698); if(i==13) return vec3(0.918,0.784,0.549); if(i==14) return vec3(0.855,0.812,0.702); if(i==15) return vec3(0.933,0.847,0.714); if(i==16) return vec3(0.973,0.894,0.765); if(i==17) return vec3(0.965,0.945,0.882); if(i==18) return vec3(0.106,0.184,0.341); if(i==19) return vec3(0.173,0.310,0.525); if(i==20) return vec3(0.290,0.471,0.678); if(i==21) return vec3(0.659,0.263,0.173); if(i==22) return vec3(0.176,0.275,0.212); if(i==23) return vec3(0.118,0.133,0.149); if(i==24) return vec3(0.906,0.722,0.722); if(i==25) return vec3(0.416,0.561,0.306); if(i==26) return vec3(0.561,0.639,0.353); if(i==27) return vec3(0.788,0.702,0.369); if(i==28) return vec3(0.247,0.420,0.333); if(i==29) return vec3(0.851,0.753,0.549); return vec3(0.); }
+  float QI(vec3 c){ float bd=1e9; float bi=0.; for(int i=0;i<30;i++){ vec3 d=c-PAL(i); d*=vec3(1.,1.25,.9); float e=dot(d,d); if(e<bd){bd=e;bi=float(i);} } return bi; }
+  vec3 QC(float f){ return PAL(int(f+.5)); }
   float W(vec2 uv){float d=texture2D(tD,uv).r; float z=d*2.-1.; float lz=2.*near*far/(far+near-z*(far-near)); return 1./lz;}
   void main(){
     vec2 uv=vUv; vec2 fc=uv*res;
     vec2 wob=(vec2(vn(fc*.045),vn(fc*.045+17.3))-.5)*2.2/res;
     vec3 col=texture2D(tC,uv+wob).rgb;
+    float lzc=1./max(W(uv),1e-6); float isSky=step(7800.,lzc);
+    float pn=(fbm(fc*.03)-.5)*.06+(vn(fc*.25)-.5)*.02;
+    vec2 o1=vec2(1.4,0.)/res, o2=vec2(0.,1.4)/res;
+    float qi=QI(col+pn);
+    float qa=QI(texture2D(tC,uv+wob+o1).rgb+pn), qb=QI(texture2D(tC,uv+wob-o1).rgb+pn), qc=QI(texture2D(tC,uv+wob+o2).rgb+pn), qd=QI(texture2D(tC,uv+wob-o2).rgb+pn);
+    float regionEdge=step(.5,abs(qa-qi))+step(.5,abs(qb-qi))+step(.5,abs(qc-qi))+step(.5,abs(qd-qi));
+    vec3 qcol=QC(qi);
+    float mott=1.+.07*(fbm(fc*.012+qi*3.1)-.5)+.05*(vn(vec2(fc.x*.02,fc.y*.6)+qi)-.5);
+    col=mix(qcol*mott,col,isSky*.85);
     vec2 px=1.35/res; vec2 u2=uv+wob*.6;
     float wc=W(u2), wl=W(u2-vec2(px.x,0.)), wr=W(u2+vec2(px.x,0.)), wu=W(u2+vec2(0.,px.y)), wd=W(u2-vec2(0.,px.y));
     float mx=max(max(max(wc,wl),max(wr,wu)),wd);
@@ -158,6 +174,8 @@ const post = new THREE.ShaderMaterial({
     float ink=smoothstep(.05,.16,lap);
     ink*=smoothstep(.15,.55,vn(fc*.09)+.35);
     ink*=1.-smoothstep(900.,2600.,1./max(wc,1e-6));
+    float rEdge=clamp(regionEdge,0.,1.)*(1.-isSky)*(1.-smoothstep(500.,1800.,lzc));
+    ink=max(ink,rEdge*.75*smoothstep(.2,.5,vn(fc*.12)+.3));
     col=mix(col,vec3(.12,.15,.24),ink*.88*inkAmt);
     // paper
     float pf=fbm(fc*.02)*.35+vn(vec2(fc.x*.08,fc.y*.6))*.25+vn(vec2(fc.x*.6,fc.y*.07))*.22+h21(fc)*.18;
@@ -695,6 +713,9 @@ const sfx = {
    real place in it; the land between them is extrapolated in his style.
    North = -z, East (Edo) = +x, the sea = +z.
    ===================================================================== */
+// the land is generated from a fixed seed, so every visit finds it (and its crests) in the same places
+const NATIVE_RANDOM = Math.random; let SEED = 20240611;
+Math.random = () => { SEED |= 0; SEED = SEED + 0x6D2B79F5 | 0; let t = Math.imul(SEED ^ SEED >>> 15, 1 | SEED); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 camera.far = 9500; camera.updateProjectionMatrix(); post.uniforms.far.value = 9500;
 const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const FUJI_R = 1000, FUJI_H = 700;
@@ -1026,7 +1047,7 @@ function buildWorld() {
   for (let k = 0; k < 90; k++) { const x = EDO.x + rand(-60, 380), z = EDO.z + rand(60, 260) * (k % 2 ? 1 : -1); const y = landH(x, z); if (y > 1.5) (k % 3 ? houses : kuras).push([x, y - .3, z, Math.PI / 2, rand(.9, 1.1)]); }
   BRIDGES.push([EDO.x + 10, EDO.z, 70, Math.PI / 2]);
   const snowTint = (o, c) => { const s = snowAt(o[0], o[2]); return c.setRGB(1, 1, 1).lerp(new THREE.Color(0xffffff), 0).multiplyScalar(1).lerp(new THREE.Color(1.25, 1.25, 1.3), s); };
-  instances(KIT.cedar(), ced); instances(KIT.pine(), pines); instances(KIT.minka(), houses, null, snowTint); instances(KIT.kura(), kuras);
+  instances(KIT.cedar(), ced); instances(KIT.pine(), pines); instances(KIT.minka(), houses, null, snowTint); instances(KIT.kura(), kuras); HOUSE_LIST = houses; KURA_LIST = kuras;
   // bridges
   for (const [x, z, L, ry] of BRIDGES) {
     const parts = []; const n = Math.round(L / 4);
@@ -1091,6 +1112,92 @@ function buildWorld() {
   PEOPLE.forEach((p, i) => { if (!p.line) p.lineIdx = i; });
 }
 const ROAD = { pts: [] };
+let HOUSE_LIST = [], KURA_LIST = [];
+
+/* ---------- hishi crests (菱): the currency of this world ---------- */
+const CRESTS = { list: [], mesh: null, glow: null, n: 0 };
+function crestGeo() {
+  const dia = (w, h, d) => { const sh = new THREE.Shape(); sh.moveTo(0, h); sh.lineTo(w, 0); sh.lineTo(0, -h); sh.lineTo(-w, 0); sh.closePath(); const g = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: false }); g.translate(0, 0, -d / 2); return g; };
+  const p = [{ g: dia(1.0, 1.3, .22), c: 0xb3362b }, { g: dia(.78, 1.02, .34), c: 0xf2c14e }];
+  for (const [x, y] of [[0, .5], [0, -.5], [.39, 0], [-.39, 0]]) p.push({ g: dia(.3, .39, .42), c: 0xd99a2b, m: M4(x, y, 0) });
+  p.push({ g: dia(.12, .16, .5), c: 0xb3362b });
+  return partsGeo(p);
+}
+function buildCrests() {
+  const L = [], add = (x, y, z, kind) => L.push({ x, y, z, kind: kind || "", id: L.length, got: false });
+  const gy = (x, z, up) => Math.max(landH(x, z), 0) + (up === undefined ? 2.4 : up);
+  // along the Tokaido, weaving from side to side
+  const R = ROAD.pts;
+  for (let i = 0; i < R.length - 1; i++) { const [ax, az] = R[i], [bx, bz] = R[i + 1]; const len = Math.hypot(bx - ax, bz - az); const nx = -(bz - az) / len, nz = (bx - ax) / len; for (let d = 30; d < len; d += 75) { const u = d / len, sd = Math.sin(d * .05 + i) * 5; const x = lerp(ax, bx, u) + nx * sd, z = lerp(az, bz, u) + nz * sd; if (landH(x, z) > .5) add(x, gy(x, z), z, "road"); } }
+  // in the villages (a little ring each)
+  for (const [x, z] of VILLAGES) for (let k = 0; k < 3; k++) { const a = k * 2.1 + x * .01, px = x + Math.cos(a) * 18, pz = z + Math.sin(a) * 18; if (landH(px, pz) > 1) add(px, gy(px, pz), pz, "village"); }
+  // on rooftops (needs the crane)
+  HOUSE_LIST.forEach((h, i) => { if (i % 5 === 2) add(h[0], h[1] + 11.6 * h[4], h[2], "roof"); });
+  KURA_LIST.forEach((h, i) => { if (i % 9 === 4) add(h[0], h[1] + 11 * h[4], h[2], "roof"); });
+  // under the bridges, just above the water
+  for (const [x, z, Lb, ry] of BRIDGES) for (const u of [-.25, 0, .25]) add(x + Math.cos(ry) * u * Lb, 2.2, z - Math.sin(ry) * u * Lb, "bridge");
+  // along the river banks
+  for (const Rv of RIVERS) for (let i = 0; i < Rv.pts.length - 1; i++) { const [ax, az] = Rv.pts[i], [bx, bz] = Rv.pts[i + 1]; for (const u of [.3, .7]) { const x = lerp(ax, bx, u) + Rv.w * .9, z = lerp(az, bz, u); if (landH(x, z) > .3) add(x, gy(x, z), z, "river"); } }
+  // the Edo canal between the warehouses
+  for (let k = 0; k < 6; k++) add(EDO.x + 45 + k * 55, 2.4, EDO.z, "canal");
+  // hard places: the summit, the falls, the giant tree, the barrel, the wave, the islands, the torii in the sea
+  for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283; add(Math.cos(a) * 30, FUJI_H * .985 + 3, Math.sin(a) * 30, "summit"); }
+  for (const [x, z, h] of FALLS) { const base = landH(x, z + 30); add(x, base + h + 4, z + 3, "falls"); add(x, base + h * .5, z + 9, "falls"); }
+  add(-1706, landH(-1700, 1050) + 84, 1050, "tree");
+  const fm = STATIONS.find(q => q.id === 36500), [bx, bz] = toward(fm.x, fm.z, 0, 0, 22); add(bx, landH(bx, bz) + 8, bz, "barrel");
+  if (WAVES[0]) { const w = waveWorld(WAVES[0], 22, 72, .5); add(w.x, w.y, w.z, "wave"); }
+  for (const [ix, iz] of ISLANDS) add(ix + 20, gy(ix + 20, iz), iz - 10, "island");
+  const nb = STATIONS.find(q => q.id === 56216); add(nb.x - 12, 21, nb.z + 40, "torii"); add(nb.x + 20, 14, nb.z + 90, "torii");
+  for (const Lk of LAKES) add(Lk.x, 2.2, Lk.z, "lake");
+  add(-2150, landH(-2150, -2000) + 16, -2000, "shrine");
+  for (let k = 0; k < 8; k++) { const x = -2600 + k * 650, z = -2650; add(x, landH(x, z) + 3, z, "peak"); }
+  CRESTS.list = L;
+  const mesh = new THREE.InstancedMesh(crestGeo(), new THREE.MeshBasicMaterial({ vertexColors: true }), L.length);
+  mesh.frustumCulled = false; scene.add(mesh); CRESTS.mesh = mesh;
+  const pos = new Float32Array(L.length * 3), sz = new Float32Array(L.length);
+  L.forEach((c, i) => { pos[i * 3] = c.x; pos[i * 3 + 1] = c.y; pos[i * 3 + 2] = c.z; sz[i] = 1; });
+  const gg = new THREE.BufferGeometry(); gg.setAttribute("position", new THREE.BufferAttribute(pos, 3)); gg.setAttribute("size", new THREE.BufferAttribute(sz, 1));
+  const gm = new THREE.ShaderMaterial({ uniforms: { scale: { value: 400 }, tex: { value: glowTex }, time: TIME },
+    vertexShader: `attribute float size; uniform float scale,time; varying float vA; void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); float d=-mv.z; vA=size*(1.-smoothstep(260.,420.,d)); gl_PointSize=size*(9.+sin(time*3.+position.x)*1.5)*scale/d; gl_Position=projectionMatrix*mv; }`,
+    fragmentShader: `uniform sampler2D tex; varying float vA; void main(){ vec4 t=texture2D(tex,gl_PointCoord); gl_FragColor=vec4(vec3(1.,.82,.4)*t.rgb,t.a*vA*.9); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const glow = new THREE.Points(gg, gm); glow.frustumCulled = false; glow.renderOrder = 4; scene.add(glow); CRESTS.glow = glow;
+  particles.push({ mat: gm }); gm.uniforms.scale.value = post.uniforms.res.value.y / 2;
+  applyCrestSave();
+}
+function applyCrestSave() {
+  const got = new Set(SAVE.crests || []);
+  CRESTS.list.forEach(c => { c.got = got.has(c.id); c.hidden = false; c.pop = 0; CRESTS.glow.geometry.attributes.size.array[c.id] = c.got ? 0 : 1; });
+  CRESTS.glow.geometry.attributes.size.needsUpdate = true;
+  CRESTS.n = got.size; renderHUD();
+}
+const _cm4 = new THREE.Matrix4(), _cq4 = new THREE.Quaternion(), _cv4 = new V3(), _cs4 = new V3(), _ce4 = new THREE.Euler();
+function updateCrests(dt, t) {
+  if (!CRESTS.mesh) return;
+  const m = CRESTS.mesh, px = P.pos.x, py = P.pos.y + (G.mode === "fly" ? 0 : 2), pz = P.pos.z, R = G.mode === "fly" ? 5.5 : 3.6;
+  for (const c of CRESTS.list) {
+    if (c.got) {
+      if (c.pop > 0) { c.pop -= dt; const k = Math.max(0, c.pop / .45); _cs4.setScalar(c.pop <= 0 ? 0 : 1 + (1 - k) * 1.4); _cv4.set(c.x, c.y + (1 - k) * 4, c.z); _ce4.set(0, t * 14, 0); _cq4.setFromEuler(_ce4); m.setMatrixAt(c.id, _cm4.compose(_cv4, _cq4, _cs4)); }
+      else if (!c.hidden) { c.hidden = true; m.setMatrixAt(c.id, _cm4.makeScale(0, 0, 0)); }
+      continue;
+    }
+    _cv4.set(c.x, c.y + Math.sin(t * 2 + c.id) * .35, c.z); _ce4.set(0, t * 1.6 + c.id, 0); _cq4.setFromEuler(_ce4); _cs4.setScalar(1);
+    m.setMatrixAt(c.id, _cm4.compose(_cv4, _cq4, _cs4));
+    if (state === "play") { const dx = c.x - px, dy = c.y - py, dz2 = c.z - pz; if (dx * dx + dy * dy + dz2 * dz2 < R * R) pickCrest(c); }
+  }
+  m.instanceMatrix.needsUpdate = true;
+}
+function pickCrest(c) {
+  c.got = true; c.pop = .45; CRESTS.n++;
+  SAVE.crests = SAVE.crests || []; SAVE.crests.push(c.id); writeSave(SAVE);
+  CRESTS.glow.geometry.attributes.size.array[c.id] = 0; CRESTS.glow.geometry.attributes.size.needsUpdate = true;
+  for (let k = 0; k < 26; k++) { const a = rand(0, 6.28), v = rand(4, 11); sparks.spawn(c.x, c.y, c.z, { vx: Math.cos(a) * v, vy: rand(-2, 9), vz: Math.sin(a) * v, life: rand(.5, 1), s0: rand(.8, 1.6), s1: 0, r: 1, gg: k % 3 ? .78 : .35, b: k % 3 ? .3 : .2 }); }
+  sfx.crest(CRESTS.n); renderHUD(); const el = $("sCrests"); el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop");
+  if (CRESTS.n === 1) toast("מצאת חותם־יהלום 菱\nאספי אותם: זה הכסף של העולם הזה", 3.4);
+  else if (c.kind === "summit" && !G.summitT) { G.summitT = 1; toast("על פסגת פוג׳י! 🗻", 2.2); }
+  if (BOT) console.log(`[crest] ${c.id} ${c.kind} n=${CRESTS.n}`);
+}
+function purse() { return CRESTS.n - (SAVE.spent || 0); }
 function fbmJ(x, z) { return .5 + .25 * Math.sin(x * 1.7 + Math.sin(z * 1.3) * 2) * Math.sin(z * 1.9 + 1) + .15 * Math.sin(x * 4.1 + z * 3.3); }
 
 /* ---------- world update ---------- */
@@ -1131,7 +1238,7 @@ function updateWorld(dt, t) {
     if (Math.hypot(P.pos.x - o.x, P.pos.z - o.z) < 600) for (let k = 0; k < 3; k++) if (Math.random() < dt * 22 * wv.scale) { const c = L[(Math.random() * L.length) | 0]; if (c) foam.spawn(o.x + c.x + 5 * c.s, o.y + c.y - 2 * c.s, o.z + c.z, { vx: rand(2, 8), vy: rand(-3, 3), vz: rand(-2, 2), g: 7, life: rand(1.4, 2.6), s0: rand(.7, 1.5) * wv.scale, s1: .5 }); }
   }
   for (const [x, z, y] of FOAMSPOTS) if (Math.hypot(P.pos.x - x, P.pos.z - z) < 400 && Math.random() < dt * 14) foam.spawn(x + rand(-6, 6), y, z + rand(-4, 4), { vx: rand(-3, 3), vy: rand(2, 7), vz: rand(-3, 3), g: 9, life: rand(.8, 1.6), s0: rand(.8, 1.6), s1: .4 });
-  updatePeople(dt, t);
+  updatePeople(dt, t); updateCrests(dt, t);
   // storm
   const nearStorm = Math.hypot(P.pos.x - STORM.x, P.pos.z - STORM.z) < 700;
   for (const b of STORM.bolts) {
@@ -1489,6 +1596,7 @@ function updateMoment(dt) {
 function renderHUD() {
   const n = STATIONS.filter(s => s.got).length;
   $("sPrints").textContent = `📜 ${n}/${STATIONS.length} הדפסים`;
+  $("sCrests").innerHTML = `<i class="hishi"></i> ${purse()} <small>/ ${CRESTS.list.length}</small>`;
 }
 let toastT = 0;
 function toast(msg, d) { const t = $("toast"); t.textContent = msg; t.style.opacity = 1; toastT = d || 2; if (BOT) console.log(`[toast] ${msg}`); }
@@ -1549,7 +1657,7 @@ function enterWorld() {
   const s0 = STATIONS.find(s => s.id === 55458);
   P.pos.set(s0.x - 40, 0, s0.z + 30); P.yaw = Math.atan2(-P.pos.x, -P.pos.z); P.pitch = 0; P.speed = FLY;
   P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
-  setMode("walk"); poseTraveler(walker, 0, 0, false); walker.position.copy(P.pos); walker.rotation.set(0, P.yaw, 0);
+  applyCrestSave(); setMode("walk"); poseTraveler(walker, 0, 0, false); walker.position.copy(P.pos); walker.rotation.set(0, P.yaw, 0);
   // open on the real Great Wave print, dissolve into the land
   const v = stationView(STATIONS[0]); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix();
   post.uniforms.tP.value = getPrintTex(45434); post.uniforms.pAsp.value = 1.49; post.uniforms.pMix.value = 1;
@@ -1599,10 +1707,11 @@ scene.fog = new THREE.Fog(DEFAULT_MOOD.fog, 600, 5200);
 FOG.near.value = 600; FOG.far.value = 5200;
 addEventListener("resize", resize);
 resize();
-buildWorld();
+buildWorld(); buildCrests(); Math.random = NATIVE_RANDOM;
 buildMenu(); renderHUD();
 requestAnimationFrame(frame);
 sfx.talk = () => { if (!AC) return; const t = AC.currentTime; pluck(note(10 + ((Math.random() * 4) | 0)), t, .06, .6); };
+sfx.crest = n => { if (!AC) return; const t = AC.currentTime, b = 7 + (n % 5); pluck(note(b), t, .13, 1.1); pluck(note(b + 2), t + .07, .11, 1.2); pluck(note(b + 5), t + .14, .09, 1.6); const o = AC.createOscillator(), g = AC.createGain(); o.frequency.value = note(b + 10); g.gain.setValueAtTime(.05, t + .1); g.gain.exponentialRampToValueAtTime(.0005, t + 1.4); o.connect(g); out(g, .8); o.start(t + .1); o.stop(t + 1.5); };
 sfx.step = () => { if (!AC) return; noiseHit(AC.currentTime, rand(500, 800), 1.2, .07, .045); };
 sfx.hoof = fast => { if (!AC) return; const t = AC.currentTime; noiseHit(t, rand(900, 1300), 5, .05, fast ? .09 : .06); noiseHit(t + .07, rand(700, 1000), 5, .05, fast ? .07 : .045); const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(60, t + .1); g.gain.setValueAtTime(fast ? .12 : .07, t); g.gain.exponentialRampToValueAtTime(.001, t + .12); o.connect(g); out(g, .1); o.start(t); o.stop(t + .14); };
 sfx.neigh = () => { if (!AC) return; const t = AC.currentTime; const o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter(), v = AC.createOscillator(), vg = AC.createGain(); o.type = "sawtooth"; f.type = "bandpass"; f.frequency.value = 1300; f.Q.value = 2; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(880, t + .18); o.frequency.linearRampToValueAtTime(600, t + .5); o.frequency.linearRampToValueAtTime(380, t + .9); v.frequency.value = 22; vg.gain.value = 40; v.connect(vg); vg.connect(o.frequency); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.09, t + .05); g.gain.exponentialRampToValueAtTime(.001, t + .95); o.connect(f); f.connect(g); out(g, .4); o.start(t); v.start(t); o.stop(t + 1); v.stop(t + 1); };
@@ -1627,6 +1736,7 @@ if (mP) setTimeout(() => {
   if (m === "play") { P.pos.y = landH(P.pos.x, P.pos.z) + 30; setMode("fly"); }
   if (m === "horse" || m === "gallop") { setMode("horse"); HORSE.here = false; }
   if (m === "crane") callCrane();
+  if (/grab/.test(HASH)) { const c = CRESTS.list.find(q => q.kind === "road" && Math.hypot(q.x - P.pos.x, q.z - P.pos.z) > 20); P.pos.set(c.x - Math.sin(P.yaw) * 6, landH(c.x, c.z), c.z - Math.cos(P.yaw) * 6); }
   if (m === "land") { P.pos.y = landH(P.pos.x, P.pos.z) + 8; setMode("fly"); landCrane(); }
   keys.up = m !== "play" && m !== "crane"; keys.boost = m === "gallop";
   if (m === "crane") { for (let i = 0; i < 40; i++) step(1 / 30); }
