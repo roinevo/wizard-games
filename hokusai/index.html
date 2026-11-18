@@ -781,8 +781,13 @@ const NATIVE_RANDOM = Math.random; let SEED = 20240611;
 Math.random = () => { SEED |= 0; SEED = SEED + 0x6D2B79F5 | 0; let t = Math.imul(SEED ^ SEED >>> 15, 1 | SEED); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 camera.far = 9500; camera.updateProjectionMatrix(); post.uniforms.far.value = 9500;
 const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const FUJI_R = 1000, FUJI_H = 700;
-const MAP = { x0: -3000, x1: 3000, z0: -3000, z1: 3400, N: 320 };
+// The world is AUTHORED in "old" units and then shrunk to half size by rescaleWorld() (world_places.js):
+// build code runs with WK = 1 (old coordinates); after the rescale WK = WORLD_K and every height query
+// maps new coordinates back into the old terrain. Fuji, the terrain, rivers and the layout shrink; people,
+// houses, props and the near field of each station keep their size.
+const WORLD_K = .5; let WK = 1;
+const FUJI_R0 = 1000, FUJI_H0 = 700; let FUJI_R = FUJI_R0, FUJI_H = FUJI_H0;
+const MAP0 = { x0: -3000, x1: 3000, z0: -3000, z1: 3400, N: 320 }, MAP = Object.assign({}, MAP0);
 
 /* ---------- land shape ---------- */
 const LAKES = [
@@ -795,7 +800,7 @@ const RIVERS = [
   { name: "sumida", w: 55, pts: [[2050, -2400], [2000, -1300], [2080, -400], [1980, 300], [2060, 900], [2120, 1700]] },
   { name: "fujikawa", w: 60, pts: [[-1900, -2400], [-2000, -900], [-1950, -200], [-2050, 600], [-1900, 1700]] },
   { name: "oi", w: 120, pts: [[-760, 400], [-720, 900], [-700, 1300], [-690, 1800]] },
-  { name: "nihonbashi", w: 16, pts: [[1985, 848], [1530, 655]] },
+  { name: "nihonbashi", w: 16, pts: [[1985, 848], [1075, 462]] },
   { name: "sano", w: 70, pts: [[1100, -2400], [1350, -1900], [1450, -1500], [1700, -1300], [2000, -1300]] }
 ];
 const ISLANDS = [[-1700, 2750, 170], [-900, 2950, 140], [-200, 3050, 160], [500, 2900, 150], [1200, 3000, 170], [1900, 2750, 150], [2500, 2550, 120], [-2400, 2500, 140], [2300, 1650, 70]];
@@ -816,16 +821,17 @@ function rawH(x, z) {
   for (const R of RIVERS) { const d = riverDist(R, x, z); if (d < R.w * 2.5) h = lerp(h, -5, sstep(R.w * 1.6, R.w * .55, d)); }
   return h;
 }
-const GN = MAP.N, GX = (MAP.x1 - MAP.x0) / GN, GZ = (MAP.z1 - MAP.z0) / GN;
+const GN = MAP0.N, GX = (MAP0.x1 - MAP0.x0) / GN, GZ = (MAP0.z1 - MAP0.z0) / GN;
 const HGRID = new Float32Array((GN + 1) * (GN + 1));
-for (let j = 0; j <= GN; j++) for (let i = 0; i <= GN; i++) HGRID[j * (GN + 1) + i] = rawH(MAP.x0 + i * GX, MAP.z0 + j * GZ);
-function landH(x, z) {
-  const fx = clamp((x - MAP.x0) / GX, 0, GN - 1e-3), fz = clamp((z - MAP.z0) / GZ, 0, GN - 1e-3);
+for (let j = 0; j <= GN; j++) for (let i = 0; i <= GN; i++) HGRID[j * (GN + 1) + i] = rawH(MAP0.x0 + i * GX, MAP0.z0 + j * GZ);
+function landH(x, z) { return WK === 1 ? landH0(x, z) : WK * landH0(x / WK, z / WK); }
+function landH0(x, z) {
+  const fx = clamp((x - MAP0.x0) / GX, 0, GN - 1e-3), fz = clamp((z - MAP0.z0) / GZ, 0, GN - 1e-3);
   const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, k = j * (GN + 1) + i;
   const h = lerp(lerp(HGRID[k], HGRID[k + 1], u), lerp(HGRID[k + GN + 1], HGRID[k + GN + 2], u), v);
-  return Math.max(h, fujiY(FUJI_R, FUJI_H, Math.hypot(x, z)) - 4);
+  return Math.max(h, fujiY(FUJI_R0, FUJI_H0, Math.hypot(x, z)) - 4);
 }
-const seaness = (x, z) => sstep(coastZ(x) - 150, coastZ(x) + 350, z);
+const seaness = (x, z) => { x /= WK; z /= WK; return sstep(coastZ(x) - 150, coastZ(x) + 350, z); };
 function waterH(x, z, t) { return (2.6 * Math.sin(x * .034 + z * .012 + t * .9) + 1.7 * Math.sin(-x * .019 + z * .04 + t * 1.1 + 1) + .9 * Math.sin(x * .07 - z * .05 + t * 1.7 + 2)) * lerp(.06, 1, seaness(x, z)); }
 function floorAt(x, z) { return Math.max(landH(x, z), waterH(x, z, TIME.value)); }
 function snowAt(x, z) { return Math.max(sstep(450, 180, Math.hypot(x - 1450, z + 1650)), sstep(300, 120, Math.hypot(x - 2060, z + 250))); }
@@ -876,7 +882,7 @@ const KIT = {
 // instanced props, split into ~900 m chunks; chunks outside the view are skipped (see cullChunks)
 const CHUNKS = [];
 function instances(geo, list, mat, colorFn) {
-  const CH = 900, cells = {};
+  const CH = 1800, cells = {};
   for (const o of list) { const k = Math.floor(o[0] / CH) + "," + Math.floor(o[2] / CH); (cells[k] = cells[k] || []).push(o); }
   geo.computeBoundingSphere(); const gr = geo.boundingSphere.radius + geo.boundingSphere.center.length();
   const m = new THREE.Matrix4(), c = new THREE.Color(); let first = null;
@@ -956,7 +962,7 @@ function addPerson(type, x, z, o) {
 }
 function updatePeople(dt, t) {
   for (const p of PEOPLE) {
-    const m = p.mesh; if (p.path && !p.walkMat) { p.walkMat = true; m.material = VCW; } const cdx = m.position.x - camera.position.x, cdz = m.position.z - camera.position.z; m.visible = cdx * cdx + cdz * cdz < 420 * 420; if (!m.visible) continue;
+    const m = p.mesh; if (p.path && !p.walkMat) { p.walkMat = true; m.material = VCW; } const cdx = m.position.x - camera.position.x, cdz = m.position.z - camera.position.z; m.visible = cdx * cdx + cdz * cdz < 260 * 260; if (!m.visible) continue;
     if (p.path && p.path.length > 1) {
       const a = p.path[p.seg], b = p.path[p.seg + 1]; const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
       p.u += p.dir * p.speed * dt / L;
@@ -1032,7 +1038,7 @@ station(56240, "אגם סווה", -2350, -2180, { up: 22, d: [0, 0], look: [-171
   const kx = s.x + .735 * 40, kz = s.z + .677 * 40, ky = Math.max(landH(kx, kz), 0);
   const knoll = new THREE.Mesh(partsGeo([{ g: new THREE.DodecahedronGeometry(14, 1), c: 0x6f7a5a, m: M4(0, -4, 0, 0, 0, 0, 1.3, .55, 1) }, { g: new THREE.DodecahedronGeometry(6, 0), c: 0x56636e, m: M4(9, 0, 6, .4, .3, 0) }]), VC); knoll.position.set(kx, ky, kz); scene.add(knoll);
   const pg = KIT.pine(); for (const [o, sc, ry] of [[-5, 2.3, .4], [6, 1.9, 2.2]]) { const x = kx - .677 * o, z = kz + .735 * o; const t = new THREE.Mesh(pg, VC); t.position.set(x, ky + 2, z); t.scale.set(sc, sc * 1.25, sc); t.rotation.y = ry; scene.add(t); }
-  s.view.d = [-.735 * 6, -.677 * 6]; s.view.y = ky + 30; s.view.look = [kx + .735 * 600, ky + 26, kz + .677 * 600]; s.view.fov = 62;
+  s.view.d = [-.735 * 6, -.677 * 6]; s.view.y = ky + 30; s.view.yRef = [kx, kz]; s.view.look = [kx + .735 * 600, ky + 26, kz + .677 * 600]; s.view.fov = 62;
 });
 station(55741, "האי צוקודה", 2150, 1450, { up: 5, d: [0, 0], look: [2300, 10, 1650], fov: 55 }, null, s => {
   for (let k = 0; k < 7; k++) { const b = makeBoat(); b.scale.setScalar(rand(.5, .8)); b.position.set(2300 + rand(-120, 120), 0, 1600 + rand(-80, 60)); b.rotation.y = rand(0, 6); scene.add(b); BOATS.push(b); }
@@ -1051,7 +1057,7 @@ station(55237, "הגשר ניהונבאשי באדו", 1920, 820, { up: 25, d: [
 });
 station(53787, "גשר הסירות בסאנו בשלג", 1350, -1640, { up: 14, d: [18, 22], look: [1540, 2, -1500], fov: 60 }, { top: 0x2c3242, mid: 0xe9e3d6, hor: 0xb8b3a8, fog: 0xd8d4cc }, s => {
   const pts = [[1380, -1600], [1430, -1560], [1490, -1530], [1560, -1500]];
-  const pp = []; for (let k = 0; k < 18; k++) { const u = k / 17; const x = lerp(1380, 1560, u), z = lerp(-1600, -1500, u) + Math.sin(u * 3) * 10; pp.push({ g: G_.box(5, 1.2, 9), c: 0x7a5f3a, m: M4(x, 0, z, 0, Math.atan2(180, 100) + Math.PI / 2, 0) }); } scene.add(new THREE.Mesh(partsGeo(pp), VC));
+  const pp = []; for (let k = 0; k < 18; k++) { const u = k / 17; const x = lerp(1380, 1560, u), z = lerp(-1600, -1500, u) + Math.sin(u * 3) * 10; pp.push([x, 0, z, Math.atan2(180, 100) + Math.PI / 2, 1]); } instances(partsGeo([{ g: G_.box(5, 1.2, 9), c: 0x7a5f3a }]), pp);
   addPerson("traveler", 1450, -1555, { y: 1, path: [[1380, -1600], [1560, -1500]], speed: 1 });
   // the snowy farmhouse and tall pine on the near bank (right side of the print)
   { const hx = s.x + 40, hz = s.z - 8, hy = landH(hx, hz); const h = new THREE.Mesh(KIT.minka(), VC); h.position.set(hx, hy - .3, hz); h.rotation.y = -.5; h.scale.setScalar(1.6); scene.add(h);
@@ -1061,7 +1067,7 @@ station(53787, "גשר הסירות בסאנו בשלג", 1350, -1640, { up: 14,
 });
 station(56142, "המפל שבו רחץ יושיצונה את סוסו", 760, -2200, { up: 6, d: [0, 50], look: [760, 70, -2290], fov: 55 }, null, s => { FALLS.push([760, -2290, 80]); fallView(s, 760, -2290, 80, 95); });
 station(36484, "מפל רובן באויאמה", -200, -2420, { up: 5, d: [0, 60], look: [-200, 90, -2520], fov: 55 }, null, s => { FALLS.push([-200, -2520, 110]); fallView(s, -200, -2520, 110, 120); for (let k = 0; k < 5; k++) addPerson("farmer", -200 + rand(-14, 14), -2500 + rand(-6, 6), { y: landH(-200, -2500) - 1 }); });
-station(37362, "שקיעה מעל גשר ריוגוקו", 2000, 560, { up: 4, d: [0, 0], look: [2010, 20, 380], fov: 55 }, { top: 0x2b2f3d, mid: 0xead9b6, hor: 0xe7c9a0, fog: 0xd9c7a6 }, s => { BRIDGES.push([2030, 400, 260, 0]); const b = makeBoat(); b.scale.setScalar(.9); b.position.set(2010, 0, 520); b.rotation.y = Math.PI / 2; scene.add(b); BOATS.push(b); });
+station(37362, "שקיעה מעל גשר ריוגוקו", 2000, 560, { up: 4, d: [0, 0], look: [2010, 20, 380], fov: 55 }, { top: 0x2b2f3d, mid: 0xead9b6, hor: 0xe7c9a0, fog: 0xd9c7a6 }, s => { BRIDGES.push([2030, 400, 260 * WORLD_K, 0]); const b = makeBoat(); b.scale.setScalar(.9); b.position.set(2010, 0, 520); b.rotation.y = Math.PI / 2; scene.add(b); BOATS.push(b); });
 station(44981, "שלג על נהר סומידה", 2160, -240, { up: 14, d: [40, 30], look: [1900, 30, -120], fov: 66 }, { top: 0x26344a, mid: 0xece6da, hor: 0xc9c3b4, fog: 0xdcd8ce }, s => { const h = new THREE.Mesh(KIT.minka(), VC); h.position.set(2110, landH(2110, -230), -230); scene.add(h); });
 station(56138, "פריחת הדובדבן ביושינו", -900, -2050, { up: 55, d: [0, 170], look: [-900, 185, -2180], fov: 58 }, null, s => {
   const list = []; for (let k = 0; k < 300; k++) { const x = s.x + rand(-200, 200), z = s.z + rand(-270, 60); list.push([x, landH(x, z) - .5, z, rand(0, 6), rand(1.6, 2.6)]); }
@@ -1072,7 +1078,7 @@ const RYU = [[49934, "ירח ערב באיזומיזאקי", -1700, 2700], [4993
 RYU.forEach(([id, name, x, z], k) => station(id, "איי ריוקיו: " + name, x, z - 60, { up: 30, d: [0, -120], look: [x, 10, z], fov: 55 }, { top: 0x2f6a8a, mid: 0xdfe6d8, hor: 0xe4e6d6, fog: 0xd2dccf }, s => {
   VILLAGES.push([x + 30, z + 20, 6]);
   if (k === 2) { const list = []; for (let q = 0; q < 40; q++) { const a = rand(0, 6.28), r = rand(20, 70); list.push([x + Math.cos(a) * r, landH(x + Math.cos(a) * r, z + Math.sin(a) * r), z + Math.sin(a) * r, 0, rand(.8, 1.2)]); } instances(KIT.bamboo(), list); }
-  if (k === 4 || k === 6) { const bp = []; for (let q = 0; q < 30; q++) { const u = q / 29; bp.push({ g: G_.box(6, 2, 8), c: 0xd8c48e, m: M4(x - 150 + u * 300, 0, z - 90 + Math.sin(u * 4) * 20) }); } scene.add(new THREE.Mesh(partsGeo(bp), VC)); }
+  if (k === 4 || k === 6) { const bp = []; for (let q = 0; q < 30; q++) { const u = q / 29; bp.push([x - 150 + u * 300, 0, z - 90 + Math.sin(u * 4) * 20, 0, 1]); } instances(partsGeo([{ g: G_.box(6, 2, 8), c: 0xd8c48e }]), bp); }
   if (k === 5) { const sh = new THREE.Mesh(KIT.shrine(), VC); sh.position.set(x, landH(x, z) + 1, z); sh.scale.setScalar(1.3); scene.add(sh); }
   if (k === 0) { const br = new THREE.Mesh(new THREE.TorusGeometry(14, 1.6, 6, 20, Math.PI), toon(0xcfc3a5)); br.position.set(x - 60, 0, z - 30); scene.add(br); }
   PINEGROVES.push([x, z, 70, 10]);
@@ -1081,7 +1087,7 @@ RYU.forEach(([id, name, x, z], k) => station(id, "איי ריוקיו: " + name,
 station(54433, "הציפור המיסטית מעל הפסגה", 0, 0, { up: 0, look: [0, 760, 0], fov: 60, sky: true }, { top: 0x2a3d6e, mid: 0xf0e2c4, hor: 0xe0d2b5, fog: 0xe0d6c0 }, s => { s.y = FUJI_H + 120; });
 
 // a waterfall station: stand back from the fall and look at its middle, whatever the ground height is
-function fallView(s, x, z, h, dist) { const base = landH(x, z + 30); s.view.d = [x - s.x, z + dist - s.z]; s.view.y = base + h * .45; s.view.look = [x, base + h * .45, z]; s.view.fov = 62; }
+function fallView(s, x, z, h, dist) { const base = landH(x, z + 30); s.view.d = [x - s.x, z + dist - s.z]; s.view.y = base + h * .45; s.view.yRef = [x, z + 30]; s.view.look = [x, base + h * .45, z]; s.view.fov = 62; }
 /* ---------- shared world collections filled by station dressers ---------- */
 var WAVES = [], BOATS = [], MACKEREL = [], CUMULUS = [], VILLAGES = [], PINEGROVES = [], ROADPINES = [], FALLS = [], BRIDGES = [], FOAMSPOTS = [];
 var STORM = { x: 0, z: 0, bolts: [] }, EDO = { x: 0, z: 0 }, MIRROR_FUJI = { on: false };
@@ -1099,9 +1105,9 @@ function buildWorld() {
   geo.setAttribute("aSnow", new THREE.BufferAttribute(snow, 1));
   geo.computeVertexNormals();
   TERRAIN = new THREE.Mesh(geo, printMat(`
-    varying float vSnow; uniform vec2 uRoad[9];
+    varying float vSnow; uniform vec2 uRoad[9]; uniform float uK;
     void main(){
-      float h=vP.y; float n=fbm(vP.xz*.004); float n2=vn(vP.xz*.05);
+      float h=vP.y/uK; float n=fbm(vP.xz*.004); float n2=vn(vP.xz*.05);
       vec3 sand=vec3(.85,.75,.55), field=vec3(.79,.70,.37), grass=vec3(.42,.56,.31), hill=vec3(.25,.42,.33), dark=vec3(.18,.28,.21), mtn=vec3(.32,.48,.55);
       vec3 c=mix(sand,field,smoothstep(1.,6.,h));
       float paddy=step(.5,fract(vP.x*.012+n*.6))*step(.5,fract(vP.z*.012+n*.4));
@@ -1122,7 +1128,7 @@ function buildWorld() {
       gl_FragColor=vec4(fogIt(c),1.);
     }`, `attribute float aSnow; varying float vSnow; varying vec3 vP; varying vec3 vN; varying float vDist;
     void main(){ vSnow=aSnow; vec4 w=modelMatrix*vec4(position,1.); vP=w.xyz; vN=normalize(mat3(modelMatrix)*normal); vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`));
-  TERRAIN.material.uniforms.uRoad = { value: [[2100, 950], [1600, 1080], [1150, 1050], [600, 1180], [0, 1250], [-650, 1250], [-1200, 1150], [-1700, 1050], [-2300, 1000]].map(p => new THREE.Vector2(p[0], p[1])) };
+  TERRAIN.material.uniforms.uK = { value: 1 }; TERRAIN.material.uniforms.uRoad = { value: [[2100, 950], [1600, 1080], [1150, 1050], [600, 1180], [0, 1250], [-650, 1250], [-1200, 1150], [-1700, 1050], [-2300, 1000]].map(p => new THREE.Vector2(p[0], p[1])) };
   scene.add(TERRAIN);
   // water (sea + lakes + rivers share one sheet at level 0)
   const wg = new THREE.PlaneGeometry(MAP.x1 - MAP.x0 + 4000, MAP.z1 - MAP.z0 + 4000, 250, 250); wg.rotateX(-Math.PI / 2); wg.translate((MAP.x0 + MAP.x1) / 2, 0, (MAP.z0 + MAP.z1) / 2);
@@ -1131,11 +1137,11 @@ function buildWorld() {
   for (let i = 0; i < HGRID.length; i++) { const v = clamp((HGRID[i] + 40) / 80, 0, 1) * 255; HT[i * 4] = v; HT[i * 4 + 3] = 255; }
   const hTex = new THREE.DataTexture(HT, GN + 1, GN + 1, THREE.RGBAFormat); hTex.minFilter = hTex.magFilter = THREE.LinearFilter; hTex.needsUpdate = true;
   WATER = new THREE.Mesh(wg, printMat(`
-    varying float vH, vSea; uniform sampler2D tH; uniform vec4 mapR;
+    varying float vH, vSea; uniform sampler2D tH; uniform vec4 mapR; uniform float uK;
     void main(){
       vec3 deep=vec3(.106,.184,.341), mid=vec3(.173,.31,.525), lite=vec3(.29,.471,.678), pale=vec3(.51,.631,.62), foamC=vec3(.965,.945,.882), calm=vec3(.45,.62,.74);
       float h=vH; float nh=clamp((h+5.)/10.,0.,1.); float n=fbm(vP.xz*.035);
-      vec2 tuv=((vP.xz-mapR.xy)/mapR.zw*${GN}.+.5)/${GN + 1}.; float ground=texture2D(tH,tuv).r*80.-40.;
+      vec2 tuv=((vP.xz-mapR.xy)/mapR.zw*${GN}.+.5)/${GN + 1}.; float ground=(texture2D(tH,tuv).r*80.-40.)*uK;
       float depth=max(-ground,0.);
       // open sea: Prussian body, carved crest lines that ride the swell, deeper toward the horizon
       vec3 c=mix(deep,mid,step(.38,nh+n*.1));
@@ -1157,11 +1163,11 @@ function buildWorld() {
       c=mix(c,foamC,1.-step(.7,depth+n*.5));
       gl_FragColor=vec4(fogIt(c),.93);
     }`, `${OCEAN_H} uniform float time; varying vec3 vP; varying vec3 vN; varying float vDist; varying float vH, vSea;
-    float coastZ(float x){ return 1500.+110.*sin(x*.0023)+60.*sin(x*.0071+1.)+(x>1500.?-(x-1500.)*.35:0.); }
-    void main(){ vec4 w=modelMatrix*vec4(position,1.); float cz=coastZ(w.x); float sea=smoothstep(cz-150.,cz+350.,w.z); vSea=sea;
+    float coastZ(float x){ return 1500.+110.*sin(x*.0023)+60.*sin(x*.0071+1.)+(x>1500.?-(x-1500.)*.35:0.); } uniform float uK;
+    void main(){ vec4 w=modelMatrix*vec4(position,1.); float cz=coastZ(w.x/uK); float sea=smoothstep(cz-150.,cz+350.,w.z/uK); vSea=sea;
       float h=hgt(w.xz,time)*mix(.06,1.,sea); w.y+=h; vH=h/mix(.06,1.,sea)*sea;
       float e=1.5; float hx=hgt(w.xz+vec2(e,0.),time)*mix(.06,1.,sea), hz=hgt(w.xz+vec2(0.,e),time)*mix(.06,1.,sea);
-      vN=normalize(vec3(h-hx,e,h-hz)); vP=w.xyz; vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`, { tH: { value: hTex }, mapR: { value: new THREE.Vector4(MAP.x0, MAP.z0, MAP.x1 - MAP.x0, MAP.z1 - MAP.z0) } }, { transparent: true }));
+      vN=normalize(vec3(h-hx,e,h-hz)); vP=w.xyz; vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`, { tH: { value: hTex }, uK: { value: 1 }, mapR: { value: new THREE.Vector4(MAP.x0, MAP.z0, MAP.x1 - MAP.x0, MAP.z1 - MAP.z0) } }, { transparent: true }));
   WATER.renderOrder = 1; scene.add(WATER);
   // Fuji
   FUJI = makeFuji(FUJI_R, FUJI_H, { low: DEFAULT_MOOD.fLow, mid: DEFAULT_MOOD.fMid, high: DEFAULT_MOOD.fHigh, forest: 1, darkSide: .25 });
@@ -1193,7 +1199,7 @@ function buildWorld() {
   // Edo: rows of warehouses along the canal, Nihonbashi bridge
   // white-walled warehouses lining both banks of the canal, converging toward Fuji (Nihonbashi print)
   { const dx = -.92, dz = -.39, nx = .39, nz = -.92, ry = Math.atan2(-dz, dx);
-    for (let k = 0; k < 36; k++) for (const sd of [-1, 1]) { const t = 28 + k * 10.4, x = EDO.x + dx * t + nx * sd * 28, z = EDO.z + dz * t + nz * sd * 28; kuras.push([x, Math.max(landH(x, z), 1) - .3, z, ry, 1.02]); }
+    for (let k = 0; k < 36; k++) for (const sd of [-1, 1]) { const t = 28 + k * 10.4, x = EDO.x + dx * t + nx * sd * 17, z = EDO.z + dz * t + nz * sd * 17; kuras.push([x, Math.max(landH(x, z), 1) - .3, z, ry, 1.02]); }
     for (let k = 0; k < 8; k++) for (const sd of [-1, 1]) { const t = 30 + k * 45, x = EDO.x + dx * t + nx * sd * 38, z = EDO.z + dz * t + nz * sd * 38; houses.push([x, Math.max(landH(x, z), 1) - .3, z, ry, 1.1]); } }
   for (let k = 0; k < 90; k++) { const x = EDO.x + rand(-60, 380), z = EDO.z + rand(60, 260) * (k % 2 ? 1 : -1); const y = landH(x, z); if (y > 1.5) (k % 3 ? houses : kuras).push([x, y - .3, z, Math.PI / 2, rand(.9, 1.1)]); }
   BRIDGES.push([EDO.x - 4, EDO.z - 2, 56, Math.atan2(.92, .39)]);
@@ -1398,7 +1404,7 @@ function updateMood(dt) {
   for (const s of STATIONS) {
     if (!s.mood) continue;
     const d = Math.hypot(ref.x - s.x, ref.z - s.z) + (s.view.sky ? Math.max(0, 500 - (ref.y - FUJI_H)) * 2 : 0);
-    const w = sstep(900, 250, d); if (w <= 0) continue;
+    const w = sstep(900 * WK, 250 * WK, d); if (w <= 0) continue;
     wsum += w;
     for (const k of MOOD_KEYS) acc[k].add(_c.set(s.mood[k] !== undefined ? s.mood[k] : DEFAULT_MOOD[k]).multiplyScalar(w));
     sp += (s.mood.speckle || 0) * w; dk += (s.mood.dark || 0) * w;
@@ -1430,7 +1436,7 @@ function updateWorld(dt, t) {
   for (const [x, z, y] of FOAMSPOTS) if (Math.hypot(P.pos.x - x, P.pos.z - z) < 400 && Math.random() < dt * 14) foam.spawn(x + rand(-6, 6), y, z + rand(-4, 4), { vx: rand(-3, 3), vy: rand(2, 7), vz: rand(-3, 3), g: 9, life: rand(.8, 1.6), s0: rand(.8, 1.6), s1: .4 });
   updatePeople(dt, t); updateCrests(dt, t);
   // storm
-  const nearStorm = Math.hypot(P.pos.x - STORM.x, P.pos.z - STORM.z) < 700;
+  const nearStorm = Math.hypot(P.pos.x - STORM.x, P.pos.z - STORM.z) < 700 * WK;
   for (const b of STORM.bolts) {
     b.t -= dt;
     if (b.state === 0 && b.t <= 0 && nearStorm) { strikeBolt(b); b.state = 1; b.t = .8; b.g.visible = true; }
@@ -1438,7 +1444,7 @@ function updateWorld(dt, t) {
     else if (b.state === 2 && b.t <= 0) { b.state = 0; b.g.visible = false; b.t = rand(2.5, 6); }
   }
   // mystical bird
-  const ba = t * .12; BIRD.position.set(Math.cos(ba) * 260, FUJI_H + 140 + Math.sin(t * .5) * 20, Math.sin(ba) * 260);
+  const ba = t * .12; BIRD.position.set(Math.cos(ba) * 260 * WK, FUJI_H + 140 * WK + Math.sin(t * .5) * 20 * WK, Math.sin(ba) * 260 * WK);
   BIRD.rotation.y = -ba; BIRD.userData["w1"].rotation.y = Math.sin(t * 3) * .5; BIRD.userData["w-1"].rotation.y = -Math.sin(t * 3) * .5;
   const st = STATIONS.find(s => s.id === 54433); st.pos.copy(BIRD.position); st.marker.position.copy(BIRD.position).add(new V3(0, -6, 0)); st.marker.children[0].visible = false;
   // markers bob
@@ -1451,7 +1457,7 @@ function updateWorld(dt, t) {
 let state = "menu", T = 0, G = { mode: "walk", boost: 1, boosting: false, boostLock: false, anim: null, spd: 0 };
 const P = { pos: new V3(), fwd: new V3(0, 0, -1), yaw: 0, pitch: 0, roll: 0, speed: 30 };
 // speeds were raised ~1.5x (22:10) so neighbouring places are closer in time: walk 80s -> 53s, gallop 16s -> 11s, fly 19s -> 12s
-const FLY = 52, BOOST = 105, WALK = 12, RUN = 22, TROT = 33, GALLOP = 60;
+const FLY = 40, BOOST = 80, WALK = 9, RUN = 16, TROT = 24, GALLOP = 44;
 // articulated traveler: a woman in a wide straw kasa, tucked-up indigo kimono, staff and bundle
 function makeTraveler(o) {
   o = o || {};
@@ -1647,7 +1653,7 @@ function updatePlay(dt) {
     P.pos.addScaledVector(P.fwd, P.speed * dt);
     const fl = floorAt(P.pos.x, P.pos.z) + 1.6;
     if (P.pos.y < fl) { P.pos.y = fl; if (P.pitch < 0) P.pitch *= .3; if (landH(P.pos.x, P.pos.z) < 0 && T > splashT) { splashT = T + .35; sfx.splash(); for (let k = 0; k < 12; k++) foam.spawn(P.pos.x, P.pos.y, P.pos.z, { vx: rand(-5, 5), vy: rand(6, 12), vz: rand(-5, 5), g: 20, life: rand(.6, 1), s0: rand(.5, 1), s1: .3 }); } }
-    if (P.pos.y > 1500) { P.pos.y = 1500; if (P.pitch > 0) P.pitch *= .5; }
+    if (P.pos.y > 900) { P.pos.y = 900; if (P.pitch > 0) P.pitch *= .5; }
     for (const wv of WAVES) { const l = waveLocal(wv, P.pos); if (l && inPoly(wv.poly, l.x, l.y)) { P.pos.copy(prev); P.pos.y += 1.5; P.speed *= .6; if (T > splashT) { splashT = T + .3; sfx.splash(); for (let k = 0; k < 20; k++) foam.spawn(P.pos.x, P.pos.y, P.pos.z, { vx: rand(-9, 9), vy: rand(2, 12), vz: rand(-9, 9), g: 14, life: rand(.7, 1.3), s0: rand(.6, 1.3), s1: .3 }); } } }
     player.position.copy(P.pos); player.rotation.order = "YXZ"; player.rotation.set(-P.pitch, P.yaw, -P.roll);
   } else {
@@ -1679,7 +1685,7 @@ function updatePlay(dt) {
     }
   }
   updateMounts(dt);
-  const lim = 2900; P.pos.x = clamp(P.pos.x, -lim, lim); P.pos.z = clamp(P.pos.z, -lim, 3300);
+  const lim = 2900 * WK; P.pos.x = clamp(P.pos.x, -lim, lim); P.pos.z = clamp(P.pos.z, -lim, 3300 * WK);
   // trail
   if (G.mode === "fly") { const tail = player.localToWorld(tmp.set(0, .2, -2.6)); if (Math.random() < .7) sparks.spawn(tail.x, tail.y, tail.z, { vx: rand(-1, 1), vy: rand(-.5, .5), vz: rand(-1, 1), life: rand(.5, .9), s0: G.boosting ? 1.1 : .7, s1: 0, r: 1, gg: .92, b: .75 }); }
   // camera
@@ -1846,8 +1852,8 @@ $("startBtn").onclick = () => enterWorld();
 function enterWorld() {
   audioInit();
   $("startScr").hidden = true; $("hud").hidden = false; $("touch").hidden = !isTouch;
-  const s0 = STATIONS.find(s => s.id === 55458);
-  P.pos.set(s0.x - 40, 0, s0.z + 30); P.yaw = Math.atan2(-P.pos.x, -P.pos.z); P.pitch = 0; P.speed = FLY;
+  // new travellers arrive at the east gate of the post town, looking down the street toward Fuji
+  P.pos.set(TOWN_GATE.x - 16, 0, TOWN_GATE.z - 1); P.yaw = TOWN_GATE.yaw; P.pitch = 0; P.speed = FLY;
   P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
   applyCrestSave(); setMode("walk"); poseTraveler(walker, 0, 0, false); walker.position.copy(P.pos); walker.rotation.set(0, P.yaw, 0);
   // open on the real Great Wave print, dissolve into the land
@@ -1877,7 +1883,7 @@ function step(dt) {
   else if (state === "moment") updateMoment(dt);
   else if (state === "intro") updateIntro(dt);
   else if (state === "scene" && SCENE_HOOK) SCENE_HOOK(dt);
-  else if (state === "menu") { const a = T * .03; camera.position.set(Math.sin(a) * 2300, 420, Math.cos(a) * 2300); camera.lookAt(0, 300, 0); }
+  else if (state === "menu") { const a = T * .03; camera.position.set(Math.sin(a) * 2300 * WK, 420 * WK, Math.cos(a) * 2300 * WK); camera.lookAt(0, 300 * WK, 0); }
   updateWorld(dt, T);
   const fl = Math.sin(T * (G.boosting ? 11 : 6.5)); wingL.rotation.z = fl * .55 + .1; wingR.rotation.z = -fl * .55 - .1;
   if (G.anim && G.anim.type === "craneIn" && G.anim.t > 1.4) { const f2 = Math.sin(T * 14); wingL.rotation.z = f2 * .8; wingR.rotation.z = -f2 * .8; }
@@ -1901,6 +1907,7 @@ scene.fog = new THREE.Fog(DEFAULT_MOOD.fog, 600, 5200);
 FOG.near.value = 600; FOG.far.value = 5200;
 addEventListener("resize", resize);
 resize();
+const PRE_WORLD = new Set(scene.children);
 buildWorld(); buildCrests(); Math.random = NATIVE_RANDOM;
 buildMenu(); renderHUD();
 requestAnimationFrame(frame);
@@ -1960,7 +1967,6 @@ if (BOT) {
 if (/stats/.test(HASH)) setTimeout(() => { const L = []; scene.traverse(o => { if (o.isMesh && o.geometry) { const g = o.geometry; const t = (g.index ? g.index.count : g.attributes.position.count) / 3 * (o.count || 1); L.push([Math.round(t), o.type, (o.count || 1), o.frustumCulled]); } }); L.sort((a, b) => b[0] - a[0]); console.log("[tris] " + JSON.stringify(L.slice(0, 12))); }, 3000);
 if (/stats/.test(HASH)) setInterval(() => console.log("[stats] calls=" + renderer.info.render.calls + " tris=" + renderer.info.render.triangles + " progs=" + renderer.info.programs.length), 2500);
 if (/nullchk/.test(HASH)) setTimeout(() => scene.traverse(o => { if (o.isMesh || o.isPoints) o.onBeforeRender = () => { window.__last = o.type + " geo:" + Object.keys(o.geometry.attributes).join("/") + " idx:" + !!o.geometry.index + " mat:" + o.material.type + " vc:" + o.material.vertexColors + " ic:" + !!o.instanceColor + " n:" + o.geometry.attributes.position.count + " at:" + o.getWorldPosition(new V3()).toArray().map(Math.round) + " par:" + (o.parent && o.parent.type) + " box:" + (o.geometry.computeBoundingBox(), o.geometry.boundingBox.getSize(new V3()).toArray().map(v => v.toFixed(1))) + " vis:" + o.visible + " id:" + o.id + " pidx:" + PEOPLE.findIndex(p => p.mesh === o); }; if (o.geometry) { for (const a in o.geometry.attributes) if (!o.geometry.attributes[a]) console.log("[null] " + o.type + " attr " + a + " count " + o.count + " parent " + (o.parent && o.parent.type)); if (o.geometry.index === undefined) console.log("[undefidx] " + o.type); } }), 2000);
-if (/hdbg/.test(HASH)) setTimeout(() => console.log("[h] " + [[760, 2330], [760, 2100], [1500, 1600], [0, 2000]].map(q => landH(q[0], q[1]).toFixed(1) + "/" + HGRID[Math.round((q[1] - MAP.z0) / GZ) * (GN + 1) + Math.round((q[0] - MAP.x0) / GX)].toFixed(1)).join(" ")), 1500);
 const mH = HASH.match(/hq=([-0-9.,;]+)/); if (mH) setTimeout(() => console.log("[hq] " + mH[1].split(";").map(q => { const [x, z] = q.split(",").map(Number); return q + ":" + landH(x, z).toFixed(1); }).join("  ")), 800);
 window.__dbg = { get state() { return state; }, P, STATIONS, camera };
 /* =====================================================================
@@ -1968,7 +1974,7 @@ window.__dbg = { get state() { return state; }, P, STATIONS, camera };
    where the hishi crests are spent: a market street, a teahouse, a temple
    bell (more places are added below as the town grows).
    ===================================================================== */
-const roadZ = x => 1050 + (x - 1150) / 450 * 30;      // the Tokaido runs almost east-west here
+let roadZ = x => 1050 + (x - 1150) / 450 * 30;      // the Tokaido runs almost east-west here
 const PLACES = [];
 let placeNear = null;
 function addMesh(geo, x, z, ry, sc, y) { const m = new THREE.Mesh(geo, VC); m.position.set(x, y === undefined ? landH(x, z) : y, z); m.rotation.y = ry || 0; if (sc) m.scale.setScalar(sc); scene.add(m); return m; }
@@ -2386,7 +2392,7 @@ const LANTERNS = (() => {
 PLAY_HOOKS.push(dt => {
   const c = camera.position;
   // rain within 650 of the storm, heaviest at its heart
-  const sd = Math.hypot(c.x - STORM.x, c.z - STORM.z), rainAmt = sstep(650, 250, sd);
+  const sd = Math.hypot(c.x - STORM.x, c.z - STORM.z), rainAmt = sstep(650 * WK, 250 * WK, sd);
   RAIN.l.visible = rainAmt > .02;
   if (RAIN.l.visible) {
     RAIN.l.material.opacity = .55 * rainAmt; const fall = (T * 70) % 60;
@@ -2395,16 +2401,16 @@ PLAY_HOOKS.push(dt => {
     RAIN.l.geometry.attributes.position.needsUpdate = true;
   }
   // petals near Yoshino's cherry hillside
-  const ys = STATIONS.find(s => s.id === 56138), pd = Math.hypot(c.x - ys.x, c.z - ys.z + 120);
-  PETALS.p.visible = pd < 520;
+  const ys = STATIONS.find(s => s.id === 56138), pd = Math.hypot(c.x - ys.x, c.z - ys.z + 120 * WK);
+  PETALS.p.visible = pd < 520 * WK;
   if (PETALS.p.visible) {
     for (let i = 0; i < PETALS.N; i++) { const s = PETALS.seed, ph = s[i * 4 + 3], h = (s[i * 4 + 1] - T * 2.2 + 400) % 40;
       PETALS.pos[i * 3] = c.x + ((s[i * 4] + T * 4 + 30) % 60) - 30 + Math.sin(T * 1.3 + ph) * 2; PETALS.pos[i * 3 + 1] = c.y - 10 + h; PETALS.pos[i * 3 + 2] = c.z + s[i * 4 + 2] + Math.cos(T * 1.1 + ph) * 2; }
     PETALS.p.geometry.attributes.position.needsUpdate = true;
   }
   // lanterns glow more in the sunset light around Ryogoku and Edo
-  const ed = Math.min(Math.hypot(P.pos.x - 2000, P.pos.z - 560), Math.hypot(P.pos.x - EDO.x, P.pos.z - EDO.z));
-  LANTERNS.m.uniforms.amt.value = lerp(.35, 1, sstep(700, 150, ed));
+  const ry = STATIONS.find(q => q.id === 37362), ed = Math.min(Math.hypot(P.pos.x - ry.x, P.pos.z - ry.z), Math.hypot(P.pos.x - EDO.x, P.pos.z - EDO.z));
+  LANTERNS.m.uniforms.amt.value = lerp(.35, 1, sstep(700 * WK, 150 * WK, ed));
 });
 // rain also when standing still in the scene / moment states would be nice, but keep it to play for cost
 
@@ -2502,6 +2508,90 @@ const GUIDE = window.GUIDE = (() => {
   return { start() { i = SAVE.tut === undefined ? 0 : SAVE.tut; if (i >= T_.length) { toast("עקבי אחרי עמודי האור 🔆", 2.5); return; } toast("עולמו של הוקוסאי", 2); setTimeout(show, 800); }, get step() { return i; } };
 })();
 
+/* ---------- the town gate: new travellers arrive here ---------- */
+const TOWN_GATE = { x: 1478, z: roadZ(1478), yaw: -1.64 };
+{ const gx = TOWN_GATE.x, gz = TOWN_GATE.z, gy = landH(gx, gz);
+  addMesh(partsGeo([
+    { g: G_.cyl(.35, .4, 7.5, 6), c: 0x5a4632, m: M4(0, 3.75, -6.5) }, { g: G_.cyl(.35, .4, 7.5, 6), c: 0x5a4632, m: M4(0, 3.75, 6.5) },
+    { g: G_.box(1, .8, 16), c: 0x3d3026, m: M4(0, 7.3, 0) }, { g: prism(2.4, 1.2, 17), c: 0x3b3a3a, m: M4(0, 7.7, 0) },
+    { g: G_.box(.3, 1.6, 4), c: 0xefe6d2, m: M4(.4, 5.9, 0) }, { g: G_.box(.32, 1.2, 1.6), c: 0xb3362b, m: M4(.42, 5.9, 0) },
+    ...[-3.5, 3.5].map(z => ({ g: G_.sph(.5, 7, 5), c: 0xc8432c, m: M4(.3, 6.2, z, 0, 0, 0, 1, 1.35, 1) }))
+  ]), gx, gz, 0, 1, gy); }
+
+/* ---------- shrink the world (see WORLD_K in world_main.js) ----------
+   Stations and the town are anchors: whatever stands within an anchor's radius moves rigidly with it
+   (so the calibrated compositions and the street keep their shape); everything else is scaled about
+   Fuji. Heights are re-grounded on the shrunken terrain; things high in the sky scale uniformly. */
+function rescaleWorld(K) {
+  const AR = { 55237: 430, 45434: 300, 56142: 140, 36484: 140, 56216: 160, 54868: 30 };
+  const Z = STATIONS.filter(q => !q.view.sky).map(q => ({ x: q.x, z: q.z, r: AR[q.id] || 60, nx: q.x * K, nz: q.z * K }));
+  const TZ = { x: 1385, z: roadZ(1385), r: 220 }; TZ.nx = TZ.x * K; TZ.nz = TZ.z * K; Z.push(TZ);
+  const zoneOf = (x, z) => { let b = null, bd = 1e9; for (const q of Z) { const d = Math.hypot(x - q.x, z - q.z); if (d < q.r && d < bd) { bd = d; b = q; } } return b; };
+  const gOld = (x, z) => Math.max(landH0(x, z), 0), gNew = (x, z) => Math.max(K * landH0(x / K, z / K), 0);
+  const m2 = (x, z) => { const q = zoneOf(x, z); return q ? [x + q.nx - q.x, z + q.nz - q.z, q] : [x * K, z * K, null]; };
+  const m3 = (x, y, z) => { const [nx, nz, q] = m2(x, z); const off = y - gOld(x, z); return [nx, off > 150 ? y * K : gNew(nx, nz) + off, nz, q]; };
+  const inTown = (x, z) => Math.abs(x - TZ.nx) < 172 && Math.abs(z - (TZ.nz + (x - TZ.nx) / 15)) < 46;
+  const skip = new Set([SKY, TERRAIN, WATER, FUJI, MIRROR, ...STORM.bolts.map(b => b.g)].filter(Boolean));
+  let nInst = 0, nHid = 0, nObj = 0;
+  for (const c of scene.children) {
+    if (PRE_WORLD.has(c) || skip.has(c)) continue;
+    if (c.isInstancedMesh) {
+      c.frustumCulled = false; const a = c.instanceMatrix.array, P0 = c.position;
+      let sx = 0, sz = 0, sy = 0, n = 0;
+      for (let i = 0; i < c.count; i++) {
+        const o = i * 16, x = a[o + 12] + P0.x, y = a[o + 13] + P0.y, z = a[o + 14] + P0.z;
+        const [nx, ny, nz, q] = m3(x, y, z); nInst++;
+        a[o + 12] = nx - P0.x; a[o + 13] = ny - P0.y; a[o + 14] = nz - P0.z;
+        if ((!q && inTown(nx, nz)) || (gOld(x, z) > 1 && K * landH0(nx / K, nz / K) < .3 && y > -1)) { for (let k = 0; k < 12; k++) a[o + k] = 0; nHid++; }
+        sx += nx; sy += ny; sz += nz; n++;
+      }
+      c.instanceMatrix.needsUpdate = true;
+      if (c.userData.sphere && n) { const ctr = new V3(sx / n, sy / n, sz / n); let r = 0; for (let i = 0; i < c.count; i++) { const o = i * 16; r = Math.max(r, Math.hypot(a[o + 12] + P0.x - ctr.x, a[o + 13] + P0.y - ctr.y, a[o + 14] + P0.z - ctr.z)); } c.userData.sphere.set(ctr, r + 40); }
+      continue;
+    }
+    if (c.isPoints || c.isLine) { const pa = c.geometry.attributes.position; for (let i = 0; i < pa.count; i++) { const [nx, ny, nz] = m3(pa.getX(i), pa.getY(i), pa.getZ(i)); pa.setXYZ(i, nx, ny, nz); } pa.needsUpdate = true; continue; }
+    const pp = c.position, [nx, ny, nz] = m3(pp.x, pp.y, pp.z); pp.set(nx, ny, nz); nObj++;
+  }
+  // stations and their views
+  for (const st of STATIONS) {
+    if (st.view.sky) continue;
+    const v = st.view, d = v.d || [0, 0], cx = st.x + d[0], cz = st.z + d[1], [ncx, ncz] = m2(cx, cz);
+    if (v.y !== undefined) { if (v.yRef) { const [rx, rz] = m2(v.yRef[0], v.yRef[1]); v.y = gNew(rx, rz) + (v.y - gOld(v.yRef[0], v.yRef[1])); } else v.y = gNew(ncx, ncz) + (v.y - gOld(cx, cz)); }
+    const L = v.look; v.look = zoneOf(L[0], L[2]) ? m3(L[0], L[1], L[2]).slice(0, 3) : [L[0] * K, L[1] * K, L[2] * K];
+    st.x *= K; st.z *= K; v.d = [ncx - st.x, ncz - st.z];
+    st.pos.copy(st.marker.position);
+  }
+  for (const p of PEOPLE) if (p.path) p.path = p.path.map(q => m2(q[0], q[1]).slice(0, 2));
+  for (const c of CRESTS.list) { [c.x, c.y, c.z] = m3(c.x, c.y, c.z); }
+  for (const f of FOAMSPOTS) { const [nx, ny, nz] = m3(f[0], f[2], f[1]); f[0] = nx; f[1] = nz; f[2] = ny; }
+  for (const o of [STORM, EDO, KITE, TOWN_PT]) { [o.x, o.z] = m2(o.x, o.z); }
+  for (const o of [CHAYA, BELL, SENTO, KAB, SUMO]) { const [nx, ny, nz] = m3(o.x, o.y !== undefined ? o.y : landH0(o.x, o.z), o.z); o.x = nx; o.z = nz; o.y = ny; }
+  for (const v of [CHAYA.seat, SENTO.pool]) { const [nx, ny, nz] = m3(v.x, v.y, v.z); v.set(nx, ny, nz); }
+  for (const k in STALL_POS) STALL_POS[k] = m2(STALL_POS[k][0], STALL_POS[k][1]).slice(0, 2);
+  for (const pl of PLACES) { [pl.x, pl.z] = m2(pl.x, pl.z); }
+  { const [nx, nz] = m2(TOWN_GATE.x, TOWN_GATE.z); TOWN_GATE.x = nx; TOWN_GATE.z = nz;
+    const fx = -nx, fz = -nz, fl = Math.hypot(fx, fz); TOWN_GATE.yaw = Math.atan2(-1 + fx / fl, -1 / 15 + fz / fl); }
+  for (const v of VILLAGES) { [v[0], v[1]] = m2(v[0], v[1]); }
+  for (const b of BIRDS.L) { [b.cx, b.cz] = m2(b.cx, b.cz); }
+  ROAD.pts = ROAD.pts.map(q => m2(q[0], q[1]).slice(0, 2));
+  TERRAIN.material.uniforms.uRoad.value.forEach((v, i) => { const q = ROAD.pts[Math.min(i, ROAD.pts.length - 1)]; v.set(q[0], q[1]); });
+  // terrain-shaped things scale exactly with the terrain
+  for (const R of RIVERS) R.pts = R.pts.map(q => [q[0] * K, q[1] * K]);
+  for (const Lk of LAKES) { Lk.x *= K; Lk.z *= K; Lk.r *= K; }
+  for (const k of ["x0", "x1", "z0", "z1"]) MAP[k] *= K;
+  TERRAIN.scale.setScalar(K); TERRAIN.material.uniforms.uK.value = K;
+  WATER.scale.set(K, 1, K); WATER.material.uniforms.uK.value = K; WATER.material.uniforms.mapR.value.set(MAP.x0, MAP.z0, MAP.x1 - MAP.x0, MAP.z1 - MAP.z0);
+  FUJI.scale.setScalar(K); FUJI.material.uniforms.H.value *= K;
+  if (MIRROR) { MIRROR.scale.set(K, -K, K); MIRROR.material.uniforms.H.value *= K; const Lk = LAKES[1]; MIRROR.material.uniforms.lakeC.value.set(Lk.x, Lk.z, Lk.r * .82); }
+  FUJI_R *= K; FUJI_H *= K;
+  FOG.near.value *= K; FOG.far.value *= K; scene.fog.near *= K; scene.fog.far *= K;
+  // the town's own road line, in new coordinates
+  const rz0 = roadZ; roadZ = x => rz0(x - TZ.nx + TZ.x) + TZ.nz - TZ.z;
+  WK = K;
+  if (/dist|stats/.test(HASH)) console.log(`[rescale] K=${K} objects=${nObj} instances=${nInst} hidden=${nHid}`);
+}
+rescaleWorld(WORLD_K);
+
 /* ---------- test hooks ---------- */
 if (/fresh/.test(HASH)) setTimeout(() => { $("startBtn").click(); setTimeout(() => { for (let i = 0; i < 230; i++) step(1 / 30); }, 300); }, 500);
 if (/iw/.test(HASH)) setTimeout(() => console.log(`[iw] ${innerWidth}x${innerHeight} dpr=${devicePixelRatio}`), 500);
@@ -2532,7 +2622,7 @@ if (mT) setTimeout(() => {
   SAVE.crests = SAVE.crests || []; if (/rich/.test(HASH)) { SAVE.spent = -40; renderHUD(); }
   const w = mT[1];
   const PL = { tea: [CHAYA.x - 1, CHAYA.z + 9], bell: [BELL.x + 5, BELL.z + 4], dye: STALL_POS.dye, sento: [SENTO.x - 2, SENTO.z - 9], kabuki: [KAB.x, KAB.z - 15], kite: [KITE.x + 22, KITE.z - 6], sumo: [SUMO.x + 4, SUMO.z + 10] };
-  const at = PL[w] || [1290, roadZ(1290)];
+  const at = PL[w] || [TOWN_GATE.x, TOWN_GATE.z];
   P.pos.set(at[0], landH(at[0], at[1]), at[1]); P.yaw = w ? Math.atan2(0, -1) : Math.PI / 2;
   if (w === "tea" || w === "bell" || w === "sumo") P.yaw = Math.PI; if (w === "sento" || w === "kabuki") P.yaw = 0; if (w === "kite") P.yaw = -Math.PI / 2;
   for (let i = 0; i < 20; i++) step(1 / 30);
