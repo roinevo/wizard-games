@@ -1007,7 +1007,7 @@ station(36500, "שדה פוג'ימיגהרה", -2550, -950, { up: 5, d: [-7.5, -
 });
 station(56216, "מפרץ נובוטו", 1500, 1420, { up: 5, d: [0, -60], look: [1500, 12, 1560], fov: 58 }, null, s => {
   for (const [dx, dz, sc] of [[-12, 40, 1.6], [20, 90, 1]]) { const t = new THREE.Mesh(KIT.torii(), VC); t.position.set(s.x + dx, -3, s.z + dz); t.scale.setScalar(sc); scene.add(t); }
-  for (let k = 0; k < 6; k++) addPerson(k % 2 ? "farmer" : "woman", s.x + rand(-25, 25), s.z + rand(30, 70), { y: -1.4, bend: 1 });
+  for (let k = 0; k < 6; k++) addPerson(k % 2 ? "farmer" : "woman", s.x + rand(-25, 25), s.z + rand(30, 70), { y: -.3, bend: 1 });
 });
 station(56132, "ביצות אושיבורי", 2350, -620, { up: 16, d: [74, 40], look: [2234, 12, -535], fov: 56 }, null, s => {
   const b = makeBoat(); b.scale.set(1.6, 1.6, 1.4); b.position.set(s.x + 30, 0, s.z + 50); b.rotation.y = .6; scene.add(b); BOATS.push(b);
@@ -1121,7 +1121,7 @@ function buildWorld() {
   TERRAIN.material.uniforms.uRoad = { value: [[2100, 950], [1600, 1080], [1150, 1050], [600, 1180], [0, 1250], [-650, 1250], [-1200, 1150], [-1700, 1050], [-2300, 1000]].map(p => new THREE.Vector2(p[0], p[1])) };
   scene.add(TERRAIN);
   // water (sea + lakes + rivers share one sheet at level 0)
-  const wg = new THREE.PlaneGeometry(MAP.x1 - MAP.x0 + 4000, MAP.z1 - MAP.z0 + 4000, 360, 360); wg.rotateX(-Math.PI / 2); wg.translate((MAP.x0 + MAP.x1) / 2, 0, (MAP.z0 + MAP.z1) / 2);
+  const wg = new THREE.PlaneGeometry(MAP.x1 - MAP.x0 + 4000, MAP.z1 - MAP.z0 + 4000, 250, 250); wg.rotateX(-Math.PI / 2); wg.translate((MAP.x0 + MAP.x1) / 2, 0, (MAP.z0 + MAP.z1) / 2);
   // the ground under the water, so the water knows how far the shore is (foam lines, shallows)
   const HT = new Uint8Array((GN + 1) * (GN + 1) * 4);
   for (let i = 0; i < HGRID.length; i++) { const v = clamp((HGRID[i] + 40) / 80, 0, 1) * 255; HT[i * 4] = v; HT[i * 4 + 3] = 255; }
@@ -2015,7 +2015,7 @@ for (const [kind, x, sd, a1, a2, ch] of STALLS) {
   p.seller = true;
 }
 // lantern posts along the street
-for (let x = 1280; x <= 1470; x += 38) for (const sd of [-1, 1]) { const z = roadZ(x) + sd * 6.5; addMesh(partsGeo([{ g: G_.cyl(.12, .14, 3.4, 5), c: 0x3d3026, m: M4(0, 1.7, 0) }, { g: G_.box(.8, 1, .8), c: 0xf3efe4, m: M4(0, 3.6, 0) }, { g: G_.box(.95, .18, .95), c: 0x2a2626, m: M4(0, 4.15, 0) }]), x, z); }
+{ const lp = []; for (let x = 1280; x <= 1470; x += 38) for (const sd of [-1, 1]) { const z = roadZ(x) + sd * 6.5; lp.push([x, landH(x, z), z, 0, 1]); } instances(partsGeo([{ g: G_.cyl(.12, .14, 3.4, 5), c: 0x3d3026, m: M4(0, 1.7, 0) }, { g: G_.box(.8, 1, .8), c: 0xf3efe4, m: M4(0, 3.6, 0) }, { g: G_.box(.95, .18, .95), c: 0x2a2626, m: M4(0, 4.15, 0) }]), lp); }
 // a crowd on the market street
 for (let k = 0; k < 8; k++) { const x0 = rand(1280, 1460); const p = addPerson(["woman", "traveler", "porter", "monk"][k % 4], x0, roadZ(x0) + rand(-3, 3), { path: [[1275, roadZ(1275) + rand(-3, 3)], [1465, roadZ(1465) + rand(-3, 3)]], speed: rand(.8, 1.5) }); p.u = Math.random(); }
 
