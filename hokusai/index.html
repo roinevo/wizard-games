@@ -882,8 +882,8 @@ const KIT = {
 // instanced props, split into ~900 m chunks so whole chunks outside the view are culled
 // instanced props, split into ~900 m chunks; chunks outside the view are skipped (see cullChunks)
 const CHUNKS = [];
-function instances(geo, list, mat, colorFn) {
-  const CH = 1800, cells = {};
+function instances(geo, list, mat, colorFn, chunk) {
+  const CH = chunk || 1800, cells = {};
   for (const o of list) { const k = Math.floor(o[0] / CH) + "," + Math.floor(o[2] / CH); (cells[k] = cells[k] || []).push(o); }
   geo.computeBoundingSphere(); const gr = geo.boundingSphere.radius + geo.boundingSphere.center.length();
   const m = new THREE.Matrix4(), c = new THREE.Color(); let first = null;
@@ -901,7 +901,7 @@ function instances(geo, list, mat, colorFn) {
 const _frus = new THREE.Frustum(), _pv = new THREE.Matrix4();
 function cullChunks() {
   camera.updateMatrixWorld(); _pv.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); _frus.setFromProjectionMatrix(_pv);
-  for (const im of CHUNKS) im.visible = _frus.intersectsSphere(im.userData.sphere);
+  for (const im of CHUNKS) { const sp = im.userData.sphere; im.visible = _frus.intersectsSphere(sp) && !(im.userData.maxD && sp.center.distanceTo(camera.position) - sp.radius > im.userData.maxD); }
 }
 
 /* ---------- people ---------- */
@@ -1113,6 +1113,13 @@ function buildWorld() {
       vec3 c=mix(sand,field,smoothstep(1.,6.,h));
       float paddy=step(.5,fract(vP.x*.012+n*.6))*step(.5,fract(vP.z*.012+n*.4));
       c=mix(c,mix(field,vec3(.62,.7,.38),paddy),smoothstep(4.,10.,h)*(1.-smoothstep(40.,70.,h)));
+      { float pm=smoothstep(3.,8.,h)*(1.-smoothstep(36.,60.,h)); vec2 cell=floor(vP.xz*.03+n*.5); float hc=h21(cell);
+        vec2 f=fract(vP.xz*.03+n*.5); float dike=1.-step(.06,min(min(f.x,f.y),min(1.-f.x,1.-f.y)));
+        float ang=hc*3.14; vec2 rd2=vec2(cos(ang),sin(ang)); float rows=step(.8,fract(dot(vP.xz,rd2)*.8));
+        vec3 flood=mix(vec3(.64,.71,.66),vec3(.75,.78,.70),step(.8,fract(dot(vP.xz,rd2)*.12)));
+        vec3 pc=hc<.3?flood:(hc<.65?vec3(.56,.64,.35):vec3(.79,.70,.37));
+        pc=mix(pc,pc*.86,rows*step(.3,hc)); pc=mix(pc,vec3(.42,.56,.31),dike);
+        c=mix(c,pc,pm*.9); }
       c=mix(c,grass,smoothstep(43.,46.,h+n*14.));
       c=mix(c,hill,smoothstep(98.,102.,h+n*14.));
       c=mix(c,mtn,smoothstep(200.,205.,h+n*10.));
@@ -2533,6 +2540,7 @@ const TOWN_GATE = { x: 1478, z: roadZ(1478), yaw: -1.64 };
    Stations and the town are anchors: whatever stands within an anchor's radius moves rigidly with it
    (so the calibrated compositions and the street keep their shape); everything else is scaled about
    Fuji. Heights are re-grounded on the shrunken terrain; things high in the sky scale uniformly. */
+const TOWN_NEW = { x: 0, z: 0 };
 function rescaleWorld(K) {
   const AR = { 55237: 430, 45434: 300, 56142: 140, 36484: 140, 56216: 160, 54868: 30 };
   const Z = STATIONS.filter(q => !q.view.sky).map(q => ({ x: q.x, z: q.z, r: AR[q.id] || 60, nx: q.x * K, nz: q.z * K }));
@@ -2598,13 +2606,62 @@ function rescaleWorld(K) {
   FOG.near.value *= K; FOG.far.value *= K; scene.fog.near *= K; scene.fog.far *= K;
   // the town's own road line, in new coordinates
   const rz0 = roadZ; roadZ = x => rz0(x - TZ.nx + TZ.x) + TZ.nz - TZ.z;
+  TOWN_NEW.x = TZ.nx; TOWN_NEW.z = TZ.nz;
   WK = K;
   if (/dist|stats/.test(HASH)) console.log(`[rescale] K=${K} objects=${nObj} instances=${nInst} hidden=${nHid}`);
 }
 rescaleWorld(WORLD_K);
+
+/* ---------- the countryside, filled: farm clusters, paddies, field workers (all instanced, new coordinates) ---------- */
+const k_MAXD = 420, FARMS = [];
+function fillCountryside() {
+  const F = { house: [], hay: [], rack: [], scare: [], fence: [], worker: [], worker2: [], jizo: [] };
+  const roadD = (x, z) => { let d = 1e9; const R = ROAD.pts; for (let i = 0; i < R.length - 1; i++) d = Math.min(d, segDist(x, z, R[i][0], R[i][1], R[i + 1][0], R[i + 1][1])); return d; };
+  const stD = (x, z) => { let d = 1e9; for (const s of STATIONS) d = Math.min(d, Math.hypot(x - s.x, z - s.z)); return d; };
+  const inTown = (x, z) => Math.abs(x - TOWN_NEW.x) < 200 && Math.abs(z - roadZ(x)) < 70;
+  const ok = (x, z, clear) => { const h = landH(x, z); if (h < 1.2 || h > 75 || seaness(x, z) > .2) return false; if (Math.hypot(x, z) < FUJI_R * 1.1) return false;
+    if (Math.abs(landH(x + 4, z) - landH(x - 4, z)) > 4 || Math.abs(landH(x, z + 4) - landH(x, z - 4)) > 4) return false;
+    return roadD(x, z) > (clear || 8) && stD(x, z) > 32 && !inTown(x, z); };
+  const put = (L, x, z, ry, sc, dy) => L.push([x, landH(x, z) + (dy || 0) - .2, z, ry, sc || 1]);
+  let clusters = 0;
+  for (let gx = MAP.x0; gx < MAP.x1; gx += 40) for (let gz = MAP.z0; gz < MAP.z1; gz += 40) {
+    const x = gx + rand(-11, 11), z = gz + rand(-11, 11); if (!ok(x, z, 10)) continue;
+    const n = fbmJ(x * .011, z * .011) + rand(-.08, .08), ry = Math.round(rand(0, 4)) * Math.PI / 2 + rand(-.15, .15);
+    if (n > .66) { // a farmstead: two to four houses around a yard, haystacks, a drying rack, a fence, a scarecrow
+      clusters++; FARMS.push([x, z]); const nh = 2 + ((rand(0, 2.2)) | 0);
+      for (let k = 0; k < nh; k++) { const a = ry + k * 1.7 + rand(-.3, .3), r = rand(9, 15), hx = x + Math.cos(a) * r, hz = z + Math.sin(a) * r; if (ok(hx, hz, 7)) put(F.house, hx, hz, ry + (k % 2) * Math.PI / 2, rand(.9, 1.15)); }
+      for (let k = 0; k < 3; k++) { const a = rand(0, 6.28), r = rand(3, 8); if (ok(x + Math.cos(a) * r, z + Math.sin(a) * r, 5)) put(F.hay, x + Math.cos(a) * r, z + Math.sin(a) * r, rand(0, 6), rand(.8, 1.2)); }
+      { const a = ry + Math.PI, r = 20; if (ok(x + Math.cos(a) * r, z + Math.sin(a) * r, 5)) put(F.rack, x + Math.cos(a) * r, z + Math.sin(a) * r, ry, 1); }
+      { const a = ry + .8, r = 19; if (ok(x + Math.cos(a) * r, z + Math.sin(a) * r, 5)) put(F.fence, x + Math.cos(a) * r, z + Math.sin(a) * r, ry + Math.PI / 2, 1); }
+      if (rand(0, 1) < .6) { const a = rand(0, 6.28), r = 26; if (ok(x + Math.cos(a) * r, z + Math.sin(a) * r, 5)) put(F.scare, x + Math.cos(a) * r, z + Math.sin(a) * r, rand(0, 6), 1); }
+      for (let k = 0; k < 1; k++) { const a = rand(0, 6.28), r = rand(22, 32); if (ok(x + Math.cos(a) * r, z + Math.sin(a) * r, 5)) put(rand(0, 1) < .5 ? F.worker2 : F.worker, x + Math.cos(a) * r, z + Math.sin(a) * r, rand(0, 6), 1.25); }
+    } else if (n > .48) { // open paddies with people working and a scarecrow
+      { const px = x + rand(-12, 12), pz = z + rand(-12, 12); if (ok(px, pz, 5) && rand(0, 1) < .6) put(rand(0, 1) < .5 ? F.worker2 : F.worker, px, pz, rand(0, 6), 1.25); }
+      if (rand(0, 1) < .35) put(F.scare, x + rand(-8, 8), z + rand(-8, 8), rand(0, 6), 1);
+      if (rand(0, 1) < .3) put(F.hay, x + rand(-8, 8), z + rand(-8, 8), rand(0, 6), 1);
+    } else if (n > .38 && rand(0, 1) < .5) put(F.jizo, x, z, rand(0, 6), 1);
+  }
+  const bend = (g, rx) => { g.translate(0, 0, 0); g.applyMatrix4(new THREE.Matrix4().makeRotationX(rx)); return g; };
+  const G3 = {
+    house: KIT.minka(),
+    hay: partsGeo([{ g: G_.cyl(1.3, 1.6, 2.2, 9), c: 0xc9a45e, m: M4(0, 1.1, 0) }, { g: G_.cone(1.7, 2.2, 9), c: 0xd9b46a, m: M4(0, 3.2, 0) }, { g: G_.cyl(1.45, 1.45, .25, 9), c: 0x8a6a42, m: M4(0, 1.9, 0) }]),
+    rack: partsGeo([...[-4, 0, 4].map(x => ({ g: G_.cyl(.12, .12, 3.6, 4), c: 0x5a4632, m: M4(x, 1.8, 0) })), { g: G_.box(9, .14, .14), c: 0x5a4632, m: M4(0, 3, 0) }, { g: G_.box(8.6, 1.6, .5), c: 0xd9b46a, m: M4(0, 2.2, 0) }, { g: G_.box(8.6, .5, .55), c: 0xc9a45e, m: M4(0, 2.95, 0) }]),
+    scare: partsGeo([{ g: G_.cyl(.08, .08, 3.2, 4), c: 0x5a4632, m: M4(0, 1.6, 0) }, { g: G_.box(2.4, .1, .1), c: 0x5a4632, m: M4(0, 2.4, 0) }, { g: G_.box(1.4, 1.2, .3), c: 0x3b5f8a, m: M4(0, 2.1, 0) }, { g: G_.sph(.3, 6, 4), c: 0xe9e2d0, m: M4(0, 3.1, 0) }, { g: G_.cone(.75, .32, 10), c: 0xc9a45e, m: M4(0, 3.4, 0) }]),
+    fence: partsGeo([...[-6, -3, 0, 3, 6].map(x => ({ g: G_.cyl(.07, .07, 1.5, 4), c: 0x8a7a50, m: M4(x, .75, 0) })), { g: G_.box(12, .08, .08), c: 0x8a7a50, m: M4(0, 1.2, 0) }, { g: G_.box(12, .08, .08), c: 0x8a7a50, m: M4(0, .6, 0) }]),
+    worker: bend(personGeo("farmer", 0x3b5f8a), .55), worker2: bend(personGeo("woman", 0x7a3b30), .5),
+    jizo: partsGeo([{ g: G_.cyl(.5, .6, 1.6, 7), c: 0x8a8a7a, m: M4(0, .8, 0) }, { g: G_.sph(.45, 7, 5), c: 0x8a8a7a, m: M4(0, 1.9, 0) }, { g: G_.box(1.1, .5, .3), c: 0xb3362b, m: M4(0, 1.45, .35) }])
+  };
+  let n = 0; const c0 = CHUNKS.length; for (const k in F) if (F[k].length) { instances(G3[k], F[k], null, null, 900); n += F[k].length; }
+  for (let i = c0; i < CHUNKS.length; i++) CHUNKS[i].userData.maxD = k_MAXD;
+  if (/stats|dist/.test(HASH)) console.log(`[country] clusters=${clusters} things=${n} houses=${F.house.length} workers=${F.worker.length + F.worker2.length}`);
+}
+fillCountryside();
 buildHouseGlow();
 
 /* ---------- test hooks ---------- */
+const mF = HASH.match(/farm(\d+)/);
+if (mF) setTimeout(() => { enterWorld(); introT = 6.3; step(.05); state = "play"; const f = FARMS.slice().sort((a, b) => Math.hypot(a[0] - TOWN_GATE.x, a[1] - TOWN_GATE.z) - Math.hypot(b[0] - TOWN_GATE.x, b[1] - TOWN_GATE.z))[+mF[1]];
+  P.pos.set(f[0] + 45, landH(f[0] + 45, f[1] + 20), f[1] + 20); P.yaw = Math.atan2(f[0] - P.pos.x, f[1] - P.pos.z); for (let i = 0; i < 40; i++) step(1 / 30); }, 1200);
 if (/fresh/.test(HASH)) setTimeout(() => { $("startBtn").click(); setTimeout(() => { for (let i = 0; i < 230; i++) step(1 / 30); }, 300); }, 500);
 if (/iw/.test(HASH)) setTimeout(() => console.log(`[iw] ${innerWidth}x${innerHeight} dpr=${devicePixelRatio}`), 500);
 const mG = HASH.match(/goto=(-?\d+),(-?\d+)(?:,(-?[\d.]+))?/);
