@@ -1005,7 +1005,58 @@ function animateWorld(dt) {
   const sc = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
   sparks.mat.uniforms.scale.value = sc; smoke.mat.uniforms.scale.value = sc;
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) $("toast").style.opacity = 0; }
-  if (AC && !muted && T > twinkleT && state !== "pause") { twinkleT = T + rand(.7, 1.8); tone(pick(PENTA), 1.8, "sine", .022); }
+  music();
+}
+
+/* ---------- original ambient score: slow string pads, low drone, sparse celesta, long reverb ---------- */
+const PROG = [[52, 59, 64, 67, 71], [48, 55, 64, 67, 71], [45, 52, 60, 64, 69], [47, 54, 63, 66, 69],
+              [52, 59, 64, 67, 71], [48, 55, 60, 64, 67], [50, 57, 62, 66, 69], [47, 54, 63, 66, 71]];
+const SCALE = [64, 66, 67, 69, 71, 72, 74, 75, 76, 78, 79, 81, 83];
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+let musBus = null, chordIdx = 0, nextChord = 0, nextNote = 0, lastMel = 71;
+function bus() {
+  if (musBus) return musBus;
+  musBus = AC.createGain();
+  const dry = AC.createGain(); dry.gain.value = .5; const wet = AC.createGain(); wet.gain.value = .75;
+  const rev = AC.createConvolver(), len = Math.floor(AC.sampleRate * 4.5), ir = AC.createBuffer(2, len, AC.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+  rev.buffer = ir; musBus.connect(dry); dry.connect(master); musBus.connect(rev); rev.connect(wet); wet.connect(master);
+  return musBus;
+}
+function voice(f, t, dur, vol, type, cutoff, atk) {
+  const o = AC.createOscillator(), g = AC.createGain(), lp = AC.createBiquadFilter();
+  o.type = type; o.frequency.value = f; lp.type = "lowpass"; lp.frequency.value = cutoff;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + atk);
+  g.gain.setValueAtTime(vol, t + Math.max(atk, dur - atk)); g.gain.linearRampToValueAtTime(0, t + dur + atk * 1.2);
+  o.connect(lp); lp.connect(g); g.connect(bus()); o.start(t); o.stop(t + dur + atk * 1.3 + .1);
+}
+function chime(f, t, vol) {
+  [[1, 1, 2.6], [2, .32, 1.2], [3.01, .12, .6], [4.2, .05, .3]].forEach(([m, v, d]) => {
+    const o = AC.createOscillator(), g = AC.createGain(); o.type = "sine"; o.frequency.value = f * m;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * v, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(bus()); o.start(t); o.stop(t + d + .05);
+  });
+}
+function music() {
+  if (!AC || muted || state === "pause") return;
+  const now = AC.currentTime, CH = 8, NOTE = .7;
+  if (nextChord < now) { nextChord = now + .1; nextNote = now + .8; }
+  while (nextChord < now + .3) {
+    const ch = PROG[chordIdx % PROG.length], t = nextChord;
+    voice(mtof(ch[0] - 12), t, CH, .05, "sine", 400, 1.5);
+    for (let k = 1; k < ch.length; k++) { voice(mtof(ch[k] - 12) * 1.003, t, CH, .011, "sawtooth", 850, 2.2); voice(mtof(ch[k] - 12) * .997, t, CH, .011, "sawtooth", 850, 2.2); }
+    nextChord += CH; chordIdx++;
+  }
+  while (nextNote < now + .3) {
+    if (Math.random() < .55) {
+      const ch = PROG[(chordIdx - 1 + PROG.length) % PROG.length];
+      const near = SCALE.filter(p => Math.abs(p - lastMel) <= 4 && p !== lastMel);
+      const inChord = near.filter(p => ch.some(c => ((p - c) % 12 + 12) % 12 === 0));
+      lastMel = pick(Math.random() < .6 && inChord.length ? inChord : near);
+      chime(mtof(lastMel), nextNote, .045);
+    }
+    nextNote += NOTE * (Math.random() < .2 ? 2 : 1);
+  }
 }
 
 function updateCinematic() {
