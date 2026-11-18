@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>בתוך ההדפס</title>
+<title>עולמו של הוקוסאי</title>
 <style>
 :root{--paper:#efe4c9;--paper2:#e4d5b3;--ink:#1c2944;--indigo:#1f3d6d;--red:#b3362b;--muted:#6d5f49}
 html,body{margin:0;height:100%;overflow:hidden;background:#d8c8a6;color:var(--ink);font-family:"Frank Ruhl Libre","Noto Serif Hebrew","David",Georgia,serif;-webkit-user-select:none;user-select:none;touch-action:none}
@@ -56,55 +56,43 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 #stickKnob{position:absolute;left:35px;top:35px;width:40px;height:40px;border-radius:50%;background:rgba(31,61,109,.6)}
 .endimg{width:100%;max-height:46vh;object-fit:contain;display:block;margin:4px 0 10px;border:1px solid #9d8865;background:#f6eedb}
 .credit{font-size:12px;color:#8a7b62;margin-top:12px}
+
+#bubble{position:fixed;transform:translate(-50%,-100%);background:#f6eedb;border:1.5px solid #3b3a3a;padding:6px 12px;font-size:16px;max-width:260px;text-align:center;z-index:12;pointer-events:none;box-shadow:2px 3px 0 rgba(0,0,0,.2)}
+#bubble[hidden]{display:none}
+#cap{position:fixed;bottom:7%;left:50%;transform:translateX(-50%);background:rgba(239,227,198,.94);border:1px solid #8a7550;padding:8px 18px;font-size:18px;text-align:center;opacity:0;transition:opacity .8s;z-index:12;pointer-events:none}
+#cap.on{opacity:1}
+#mapScr .card{max-width:min(92vw,86vh)}
+#mapCv{width:100%;aspect-ratio:600/640;display:block;border:1px solid #8a7550;cursor:crosshair}
+.modeTxt{position:absolute;bottom:14px;left:14px;background:rgba(239,227,198,.85);border:1px solid #a8916a;padding:3px 10px;font-size:16px}
+#tMode,#tMap{position:absolute;bottom:160px;left:30px;width:66px;height:66px;border-radius:50%;background:rgba(239,227,198,.85);border:2px solid #8a7550;font-size:26px;pointer-events:auto}
+#tMap{bottom:236px}
 </style>
 </head>
 <body>
 <div id="hud" hidden>
-  <div class="cart"><span class="jp" id="cartJp"></span><span id="cartHe"></span></div>
-  <div class="stats"><div id="sSeals"></div><div id="sScrolls"></div><div id="sScore"></div></div>
-  <div class="goal" id="goal"></div>
+  <div class="stats"><div id="sPrints"></div></div>
   <div id="compass"><svg viewBox="-24 -24 48 48"><path d="M0,-20 C5,-8 9,2 6,14 C3,8 -3,8 -6,14 C-9,2 -5,-8 0,-20Z" fill="#b3362b" stroke="#2a1d14" stroke-width="1.6"/></svg></div>
   <div id="cdist"></div>
-  <div class="lives" id="lives"></div>
+  <div class="modeTxt" id="modeTxt">🕊️ טיסה</div>
   <div class="boost"><i id="boostBar"></i></div>
   <div id="toast"></div>
-  <div class="tbtns"><button id="pauseBtn" title="השהיה">❚❚</button><button id="muteBtn" title="צליל">♪</button></div>
+  <div class="tbtns"><button id="pauseBtn" title="השהיה">❚❚</button><button id="muteBtn" title="צליל">♪</button><button id="mapBtn" title="מפה">🗺️</button></div>
 </div>
-<div id="touch" hidden><div id="stickBase" hidden><div id="stickKnob"></div></div><button id="tBoost">≫</button></div>
-
+<div id="bubble" hidden></div>
+<div id="cap"></div>
+<div id="touch" hidden><div id="stickBase" hidden><div id="stickKnob"></div></div><button id="tBoost">≫</button><button id="tMode">🚶</button><button id="tMap">🗺️</button></div>
 <div class="scr" id="startScr">
   <div class="card">
-    <h1>בתוך ההדפס<span class="seal">北斎</span></h1>
-    <p class="sub">מסע רכוב על עגור אל תוך עולמו של קאצושיקה הוקוסאי. כל ממלכה היא הדפס אמיתי שקם לחיים.</p>
-    <div class="worlds" id="worlds"></div>
-    <div class="row"><button class="btn ghost" id="albumBtn">📜 אלבום ההדפסים <span id="albumCount"></span></button></div>
+    <h1>עולמו של הוקוסאי<span class="seal">北斎</span></h1>
+    <p class="sub">ארץ אחת שלמה סביב הר פוג'י. כל אחד מ-31 ההדפסים הוא מקום אמיתי בה: הגל מול קנגאווה, הגשר באדו, החבית בפוג'ימיגהרה, המפלים, איי ריוקיו… טוסי על העגור, נחתי ולכי בין האיכרים, ומצאי את הנקודות שבהן הצייר עמד.</p>
+    <div class="row"><button class="btn red" id="startBtn">להיכנס לעולם</button><button class="btn ghost" id="albumBtn">📜 אלבום ההדפסים <span id="albumCount"></span></button><a class="btn ghost" href="classic.html" style="text-decoration:none">שלוש הממלכות (הגרסה הקודמת)</a></div>
     <div class="help" id="helpTxt"></div>
     <div class="credit">ההדפסים: אוסף מוזיאון המטרופוליטן לאמנות, ניו יורק, ברשות הציבור (Open Access, CC0). המוזיקה מקורית.</div>
   </div>
 </div>
-<div class="scr" id="albumScr" hidden>
-  <div class="card">
-    <h1 style="font-size:30px">אלבום ההדפסים</h1>
-    <p class="sub">כל מגילה שמוצאים בתוך עולם נכנסת לכאן לתמיד.</p>
-    <div class="album" id="album"></div>
-    <div class="row"><button class="btn" id="albumBack">חזרה</button></div>
-  </div>
-</div>
-<div class="scr" id="pauseScr" hidden>
-  <div class="card" style="max-width:380px;text-align:center">
-    <h1 style="font-size:30px">הפסקה</h1>
-    <div class="row" style="justify-content:center"><button class="btn" id="resumeBtn">להמשיך</button><button class="btn ghost" id="quitBtn">לתפריט</button></div>
-  </div>
-</div>
-<div class="scr" id="endScr" hidden style="background:rgba(40,25,10,.35)">
-  <div class="card" style="max-width:640px">
-    <h1 style="font-size:30px" id="endTitle"></h1>
-    <img class="endimg" id="endImg" alt="">
-    <div id="endText" style="font-size:17px;line-height:1.7"></div>
-    <div class="row"><button class="btn red" id="nextBtn">לממלכה הבאה</button><button class="btn" id="againBtn">שוב</button><button class="btn ghost" id="menuBtn">לתפריט</button></div>
-  </div>
-</div>
-
+<div class="scr" id="albumScr" hidden><div class="card"><h1 style="font-size:30px">אלבום ההדפסים</h1><p class="sub">כל הדפס נכנס לכאן כשמגיעים למקום שבו צויר.</p><div class="album" id="album"></div><div class="row"><button class="btn" id="albumBack">חזרה</button></div></div></div>
+<div class="scr" id="pauseScr" hidden><div class="card" style="max-width:380px;text-align:center"><h1 style="font-size:30px">הפסקה</h1><div class="row" style="justify-content:center"><button class="btn" id="resumeBtn">להמשיך</button></div></div></div>
+<div class="scr" id="mapScr" hidden><div class="card"><h1 style="font-size:26px;margin-bottom:6px">מפת המסע</h1><canvas id="mapCv" width="600" height="640"></canvas><div class="row"><span id="mapInfo" style="flex:1">לחצי על חותמת כדי לכוון אליה את המצפן</span><button class="btn" id="mapClose">חזרה</button></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (() => {
@@ -130,14 +118,6 @@ const PRINTS = {
   49938: "קול האגם בריונקאי", 49939: "זוהר ערב בג'ונגאי", 49940: "שמי סתיו בצ'וקו", 49941: "אורנים וגלים בריוטו",
   54433: "הציפור המיסטית"
 };
-const WORLDS = [
-  { name: "הגל הגדול", jp: "神奈川沖浪裏", print: 45434, desc: "לגלוש בין טפרי הקצף של הגל המפורסם בעולם",
-    scrolls: [56216, 36496, 55741, 37362, 53787, 49941, 49934, 49938, 56132] },
-  { name: "פוג'י האדום", jp: "凱風快晴", print: 36490, desc: "לטפס בין ענני הבוקר אל פסגת ההר האדום",
-    scrolls: [36500, 36498, 54868, 56786, 56240, 55236, 55458, 55237, 49935] },
-  { name: "סערה למרגלות הפסגה", jp: "山下白雨", print: 36492, desc: "לעלות מתוך החושך והברקים אל מעל העננים",
-    scrolls: [56727, 56142, 36484, 44981, 56138, 49936, 49937, 49939, 49940, 54433] }
-];
 const imgURL = id => "img/" + id + ".jpg";
 const SAVEKEY = "hokusai-album";
 function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVEKEY) || "{}"); return { have: s.have || [], best: s.best || [0, 0, 0], done: s.done || [] }; } catch (e) { return { have: [], best: [0, 0, 0], done: [] }; } }
@@ -177,6 +157,7 @@ const post = new THREE.ShaderMaterial({
     float lap=(abs(wl+wr-2.*wc)+abs(wu+wd-2.*wc))/mx;
     float ink=smoothstep(.05,.16,lap);
     ink*=smoothstep(.15,.55,vn(fc*.09)+.35);
+    ink*=1.-smoothstep(900.,2600.,1./max(wc,1e-6));
     col=mix(col,vec3(.12,.15,.24),ink*.88*inkAmt);
     // paper
     float pf=fbm(fc*.02)*.35+vn(vec2(fc.x*.08,fc.y*.6))*.25+vn(vec2(fc.x*.6,fc.y*.07))*.22+h21(fc)*.18;
@@ -626,419 +607,6 @@ function makeFuji(R, H, pal) {
 }
 function fujiY(R, H, r) { const rr = (r - R * .045) / (R * .955); if (rr <= 0) return H * .985; if (rr >= 1) return 0; return H * (1 - Math.pow(rr, 1 / 1.55)); }
 
-/* ---------------- WORLD DEFINITIONS ---------------- */
-function scatterScrolls(list, fn) { return list.map((id, i) => { const p = fn(i, list.length); const s = makeScroll(id); s.position.copy(p); addW(s); return { id, obj: s, pos: p, got: SAVE.have.includes(id) }; }); }
-
-const BUILDERS = [
-// ---------- 0: The Great Wave ----------
-function () {
-  const W = { name: 0, ceiling: 150, radius: 520, start: new V3(110, 22, 175), startYaw: Math.PI + .25 };
-  FOG.col.value.set(0xcfc4a8); FOG.near.value = 250; FOG.far.value = 2200;
-  addW(makeSky({ top: 0xe6d9bb, mid: 0xe1d2b1, hor: 0xd4ccb8, band: 0x6f6d6c, bandY: .045, bandW: .055, bandAmt: .85, midY: .3, topY: .8, cloud: .55, cloudCol: 0xece5d4 }));
-  const ocean = addW(makeOcean());
-  const big = makeWave(1, 95, 1); big.grp.position.set(-25, -4, -20); addW(big.grp);
-  const w2 = makeWave(.55, 70, 4); w2.grp.position.set(160, -2, -210); addW(w2.grp);
-  const w3 = makeWave(.42, 60, 7); w3.grp.position.set(-210, -2, 160); addW(w3.grp);
-  const w4 = makeWave(.3, 40, 9); w4.grp.position.set(40, -1, 120); addW(w4.grp);
-  W.waves = [big, w2, w3, w4];
-  const fuji = makeFuji(260, 120, { low: 0x5b6b86, mid: 0x6f7f99, high: 0x58657c, speckle: 0, forest: 0, darkSide: .15 });
-  fuji.position.set(420, -6, -1500); fuji.userData.setCenter(fuji.position); addW(fuji);
-  W.boats = [];
-  for (const [x, z, ry] of [[22, -60, .15], [-95, 70, -.25], [130, -120, .4]]) { const b = makeBoat(); b.position.set(x, 0, z); b.rotation.y = ry; b.userData.ry = ry; addW(b); W.boats.push(b); }
-  const sealPos = [waveWorld(big, 29, 26, .35), waveWorld(big, 28, 24, .5), waveWorld(big, 29, 26, .65), waveWorld(big, 6, 74, .42), waveWorld(big, 2, 74, .6), [70, 8, 70], [-60, 10, 110], [130, 12, -40], [80, 14, -170], [-110, 22, -70], [170, 8, 60], [40, 30, 170]];
-  W.seals = sealPos.map((p, i) => { const s = makeSeal(KANJI[i % KANJI.length]); const v = p.isVector3 ? p : new V3(p[0], p[1], p[2]); s.position.copy(v); addW(s); return { obj: s, pos: v, got: false }; });
-  W.final = { pos: waveWorld(big, 28, 22, .56), r: 10, axis: "z", msg: "עכשיו: טוסי דרך המנהרה שמתחת לטפרי הגל!" };
-  W.scrolls = scatterScrolls(WORLDS[0].scrolls, (i, n) => { const a = i / n * Math.PI * 2 + .3; const r = 230 + (i % 3) * 70; return new V3(Math.cos(a) * r, 14 + (i % 4) * 14, Math.sin(a) * r - 40); });
-  W.floor = (x, z) => oceanH(x, z, TIME.value);
-  W.camEnd = { pos: new V3(55, 9, 105), look: new V3(30, 30, -200), fov: 58 };
-  W.solid = (p) => {
-    for (const wv of W.waves) {
-      const l = waveLocal(wv, p); if (!l) continue;
-      if (inPoly(wv.poly, l.x, l.y)) return { claw: (l.y > 42 && l.x > 20) || l.y > 58, wave: wv };
-    }
-    return null;
-  };
-  W.update = (dt, t) => {
-    for (const b of W.boats) { const y = oceanH(b.position.x, b.position.z, t); b.position.y = y + .2; b.rotation.x = Math.sin(t * 1.2 + b.position.x) * .12; b.rotation.z = Math.sin(t * .9 + b.position.z) * .08; }
-    for (const wv of W.waves) {
-      animateClaws(wv, t);
-      const L = wv.claws.userData.list, o = wv.grp.position;
-      for (let k = 0; k < 3; k++) if (Math.random() < dt * 22 * wv.scale) {
-        const c = L[(Math.random() * L.length) | 0];
-        if (c) foam.spawn(o.x + c.x + 5 * c.s, o.y + c.y - 2 * c.s, o.z + c.z, { vx: rand(2, 8), vy: rand(-3, 3), vz: rand(-2, 2), g: 7, life: rand(1.4, 2.6), s0: rand(.7, 1.5) * wv.scale, s1: .5 });
-      }
-    }
-  };
-  return W;
-},
-// ---------- 1: Red Fuji ----------
-function () {
-  const R = 680, H = 430, C = new V3(0, 0, -650);
-  const W = { name: 1, ceiling: 520, radius: 1150, start: new V3(60, 70, 420), startYaw: Math.PI };
-  FOG.col.value.set(0xa9c3c7); FOG.near.value = 400; FOG.far.value = 3200;
-  addW(makeSky({ top: 0x1d4a86, mid: 0x3f78ad, hor: 0xd4e2dc, midY: .12, topY: .55 }));
-  const fuji = makeFuji(R, H, { low: 0x9a4a35, mid: 0xb9462d, high: 0x6d2a20, speckle: 0, forest: 1, darkSide: .3, f1: 0x1d3633, f2: 0x3b675d });
-  fuji.position.copy(C); fuji.userData.setCenter(C); addW(fuji);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000, 1, 1).rotateX(-Math.PI / 2), printMat(`
-    void main(){ float d=fbm(vP.xz*.02); float dots=step(.52,vn(vP.xz*.7));
-      vec3 c=mix(vec3(.12,.22,.21),vec3(.25,.42,.38),dots); c=mix(c,vec3(.36,.55,.52),smoothstep(.55,.75,d)*.5);
-      gl_FragColor=vec4(fogIt(c),1.);}`)); ground.position.y = .2; addW(ground);
-  // tiny forest
-  const N = 2600, tg = new THREE.ConeGeometry(2.2, 7, 5); tg.translate(0, 3.5, 0);
-  const trees = new THREE.InstancedMesh(tg, toon(0x1f3b36), N); const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sv = new V3();
-  for (let i = 0; i < N; i++) {
-    const a = rand(0, Math.PI * 2), r = rand(R * .55, R * 1.6); const x = C.x + Math.cos(a) * r, z = C.z + Math.sin(a) * r;
-    if (Math.hypot(x - W.start.x, z - W.start.z) < 40) continue;
-    const y = fujiY(R, H, r); if (y > H * .12) continue;
-    sv.setScalar(rand(.7, 1.5)); m4.compose(new V3(x, y, z), q, sv); trees.setMatrixAt(i, m4);
-  }
-  addW(trees);
-  // mackerel clouds
-  const cm = new THREE.SpriteMaterial({ map: cloudTex, alphaTest: .45, fog: false });
-  for (let row = 0; row < 26; row++) {
-    const z = -1700 + row * 85, y = 300 + (row % 5) * 26 + Math.sin(row) * 20;
-    for (let x = -1400; x < 1400; x += rand(55, 120)) {
-      const s = new THREE.Sprite(cm); const w = rand(50, 110); s.scale.set(w, w * .25, 1);
-      s.position.set(x, y + rand(-12, 12), z + rand(-20, 20)); addW(s);
-    }
-  }
-  W.seals = [];
-  for (let i = 0; i < 12; i++) {
-    const a = -Math.PI / 2 + .9 - i * .62, r = lerp(R * .95, R * .18, i / 11), y = lerp(40, H * .9, i / 11) + 20;
-    const p = new V3(C.x + Math.cos(a) * r, Math.max(y, fujiY(R, H, r) + 18), C.z + Math.sin(a) * r);
-    if (i >= 4 && i <= 6) p.y = 320 + i * 8;
-    const s = makeSeal(KANJI[(i + 3) % KANJI.length]); s.position.copy(p); addW(s); W.seals.push({ obj: s, pos: p, got: false });
-  }
-  W.final = { pos: new V3(C.x, H + 14, C.z), r: 22, axis: "y", msg: "עכשיו: עופי אל הלוע שבפסגת ההר!" };
-  W.scrolls = scatterScrolls(WORLDS[1].scrolls, (i, n) => { const a = i / n * Math.PI * 2; const r = R * (1.05 + (i % 3) * .2); return new V3(C.x + Math.cos(a) * r, 40 + (i % 4) * 60, C.z + Math.sin(a) * r); });
-  W.floor = (x, z) => Math.max(.5, fujiY(R, H, Math.hypot(x - C.x, z - C.z)));
-  W.camEnd = { pos: new V3(-560, 60, 160), look: new V3(-90, 220, -650), fov: 56 };
-  W.update = () => {};
-  return W;
-},
-// ---------- 2: Storm below the summit ----------
-function () {
-  const R = 640, H = 470, C = new V3(0, 0, -560);
-  const W = { name: 2, ceiling: 560, radius: 1100, start: new V3(-40, 30, 300), startYaw: Math.PI };
-  FOG.col.value.set(0x8d8a7c); FOG.near.value = 300; FOG.far.value = 2600;
-  addW(makeSky({ top: 0x16335f, mid: 0xece2c6, hor: 0x9eb0b4, midY: .14, topY: .52 }));
-  const fuji = makeFuji(R, H, { low: 0x1c1714, mid: 0x82321f, high: 0xa9482b, speckle: 1, forest: 0, darkSide: .3 });
-  fuji.position.copy(C); fuji.userData.setCenter(C); addW(fuji);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2), printMat(`
-    void main(){ float d=vn(vP.xz*.5); vec3 c=mix(vec3(.11,.1,.1),vec3(.18,.16,.15),d); gl_FragColor=vec4(fogIt(c),1.);}`)); ground.position.y = .2; addW(ground);
-  // cumulus band
-  const cw = toon(0xf4f1e8), cs = new THREE.SphereGeometry(1, 14, 10);
-  for (let k = 0; k < 60; k++) {
-    const a = rand(0, Math.PI * 2), r = rand(R * .75, R * 1.7), y = rand(H * .38, H * .62);
-    if (fujiY(R, H, r) > y - 30) continue;
-    const cl = new THREE.Group(); cl.position.set(C.x + Math.cos(a) * r, y, C.z + Math.sin(a) * r);
-    for (let j = 0; j < 11; j++) { const s = new THREE.Mesh(cs, cw); const sz = rand(7, 15); s.scale.set(sz, sz * .7, sz); s.position.set(rand(-38, 38), rand(0, 9) - Math.abs(j - 5) * .6, rand(-25, 25)); cl.add(s); }
-    addW(cl);
-  }
-  W.bolts = [];
-  const boltMat = new THREE.MeshBasicMaterial({ color: 0xc8432c, side: THREE.DoubleSide });
-  for (let k = 0; k < 4; k++) {
-    const g = new THREE.Group(); addW(g); g.visible = false;
-    W.bolts.push({ g, t: rand(2, 6), state: 0, segs: [], mat: boltMat });
-  }
-  W.seals = [];
-  for (let i = 0; i < 12; i++) {
-    const a = -Math.PI / 2 - .5 + i * .7, r = lerp(R * .92, R * .1, i / 11);
-    const y = fujiY(R, H, r) + 22 + (i > 7 ? 15 : 0);
-    const p = new V3(C.x + Math.cos(a) * r, y, C.z + Math.sin(a) * r);
-    const s = makeSeal(KANJI[(i + 7) % KANJI.length]); s.position.copy(p); addW(s); W.seals.push({ obj: s, pos: p, got: false });
-  }
-  W.final = { pos: new V3(C.x, H + 16, C.z), r: 22, axis: "y", msg: "עכשיו: מעל הסערה, אל הפסגה!" };
-  W.scrolls = scatterScrolls(WORLDS[2].scrolls, (i, n) => { const a = i / n * Math.PI * 2 + .5; const r = R * (.9 + (i % 3) * .25); const y = fujiY(R, H, r) + 30 + (i % 3) * 40; return new V3(C.x + Math.cos(a) * r, y, C.z + Math.sin(a) * r); });
-  W.floor = (x, z) => Math.max(.5, fujiY(R, H, Math.hypot(x - C.x, z - C.z)));
-  W.camEnd = { pos: new V3(-430, 70, 260), look: new V3(-60, 210, -560), fov: 58 };
-  function strike(b) {
-    while (b.g.children.length) { const c = b.g.children.pop(); c.geometry.dispose(); }
-    const base = P.pos.clone().addScaledVector(P.fwd, rand(30, 70)); base.x += rand(-35, 35); base.z += rand(-35, 35);
-    const y0 = W.floor(base.x, base.z) + 2;
-    let p = new V3(base.x, y0, base.z), dir = rand(0, Math.PI * 2); b.segs = [];
-    const mk = (a, c, w) => { const d = c.clone().sub(a); const len = d.length(); const geo = new THREE.BoxGeometry(w, len, w * .4); const m = new THREE.Mesh(geo, b.mat); m.position.copy(a).add(c).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new V3(0, 1, 0), d.normalize()); b.g.add(m); b.segs.push([a.clone(), c.clone()]); };
-    for (let s = 0; s < 6; s++) {
-      const n = p.clone().add(new V3(Math.cos(dir) * rand(10, 18), rand(10, 20), Math.sin(dir) * rand(10, 18)));
-      mk(p, n, 2.4); if (Math.random() < .5) { const br = n.clone().add(new V3(rand(-14, 14), rand(-12, -4), rand(-14, 14))); mk(n, br, 1.6); }
-      p = n; dir += rand(-1.6, 1.6);
-    }
-    b.center = base;
-  }
-  W.update = (dt, t) => {
-    if (state !== "play") return;
-    for (const b of W.bolts) {
-      b.t -= dt;
-      if (b.state === 0 && b.t <= 0) { strike(b); b.state = 1; b.t = .9; b.g.visible = true; b.mat.opacity = 1; }
-      else if (b.state === 1) { b.g.visible = Math.floor(b.t * 14) % 2 === 0; b.g.scale.setScalar(1); if (b.t <= 0) { b.state = 2; b.t = .45; b.g.visible = true; sfx.thunder(); post.uniforms.flash.value = .55; checkBolt(b); } }
-      else if (b.state === 2) { if (b.t <= 0) { b.state = 0; b.g.visible = false; b.t = rand(2.5, 5.5); } }
-    }
-  };
-  function checkBolt(b) {
-    for (const [a, c] of b.segs) {
-      const ab = c.clone().sub(a), ap = P.pos.clone().sub(a); const tt = clamp(ap.dot(ab) / ab.lengthSq(), 0, 1);
-      if (a.clone().addScaledVector(ab, tt).distanceTo(P.pos) < 7) { hit("⚡ הברק פגע בך!"); return; }
-    }
-  }
-  return W;
-}
-];
-
-/* ---------------- game state ---------------- */
-let state = "menu", T = 0, G = null;
-const P = { pos: new V3(), fwd: new V3(0, 0, -1), yaw: 0, pitch: 0, roll: 0, speed: 26 };
-const BASE = 26, BOOST = 46;
-function loadWorld(i) {
-  if (wgroup) {
-    scene.remove(wgroup);
-    wgroup.traverse(o => { if (o.geometry && o.geometry.dispose) o.geometry.dispose(); if (o.material && o.material.dispose && !(o.material.map && o.material.map.userData && o.material.map.userData.asp)) o.material.dispose(); });
-  }
-  wgroup = new THREE.Group(); scene.add(wgroup);
-  foam.clear(); sparks.clear();
-  worldIdx = i; world = BUILDERS[i]();
-  scene.fog = new THREE.Fog(FOG.col.value.getHex(), FOG.near.value, FOG.far.value);
-  const hemi = new THREE.HemisphereLight(0xfff8e8, 0x6d7a90, .75); addW(hemi);
-  const dl = new THREE.DirectionalLight(0xffffff, .65); dl.position.copy(SUN.value).multiplyScalar(100); addW(dl);
-  const pt = getPrintTex(WORLDS[i].print); post.uniforms.tP.value = pt;
-  post.uniforms.pAsp.value = (pt.image && pt.image.width) ? pt.image.width / pt.image.height : 1.49;
-  $("cartJp").textContent = WORLDS[i].jp; $("cartHe").textContent = WORLDS[i].name;
-}
-function startWorld(i) {
-  audioInit();
-  loadWorld(i);
-  G = { seals: 0, scrolls: 0, score: 0, lives: 5, boost: 1, boostLock: false, boosting: false, invuln: 0, phase: "seals", t0: T, introT: 0, outroT: -1, splashT: 0, finalObj: null, newScrolls: [] };
-  P.pos.copy(world.start); P.yaw = world.startYaw; P.pitch = 0; P.roll = 0; P.speed = BASE;
-  P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
-  ["startScr", "albumScr", "endScr", "pauseScr"].forEach(s => $(s).hidden = true);
-  $("hud").hidden = false; $("touch").hidden = !isTouch;
-  state = "intro"; G.introT = 0;
-  camera.position.copy(world.camEnd.pos); camera.fov = world.camEnd.fov; camera.updateProjectionMatrix(); camera.lookAt(world.camEnd.look);
-  post.uniforms.pMix.value = 1;
-  renderHUD();
-  music.setWorld(i);
-}
-function renderHUD() {
-  if (!G) return;
-  $("sSeals").textContent = `🔴 חותמות ${G.seals}/${world.seals.length}`;
-  $("sScrolls").textContent = `📜 מגילות ${world.scrolls.filter(s => s.got).length}/${world.scrolls.length}`;
-  $("sScore").textContent = `✦ ${G.score}`;
-  $("lives").textContent = "🪶".repeat(Math.max(0, G.lives));
-  $("goal").textContent = G.phase === "seals" ? `אספי את ${world.seals.length} החותמות האדומות · חפשי מגילות נסתרות` : world.final.msg;
-}
-let toastT = 0;
-function toast(msg, d) { const t = $("toast"); t.textContent = msg; t.style.opacity = 1; toastT = d || 2; if (BOT) console.log(`[t=${(T - (G ? G.t0 : 0)).toFixed(1)} score=${G ? G.score : 0} lives=${G ? G.lives : 0}] ${msg}`); }
-function hit(msg) {
-  if (!G || G.invuln > 0 || state !== "play") return;
-  G.lives--; G.invuln = 2.2; sfx.taiko(); post.uniforms.dmg.value = 1; shake = .5;
-  toast(msg, 1.8); renderHUD();
-  if (G.lives <= 0) gameOver();
-}
-function addScore(n) { G.score += n; renderHUD(); }
-let shake = 0;
-
-/* ---------------- input ---------------- */
-const keys = { left: false, right: false, up: false, down: false, boost: false };
-const mouse = { x: 0, y: 0, active: false, down: false };
-const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
-let lastKeyT = -10, touchBoost = false;
-const KEYMAP = { ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right", ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ShiftLeft: "boost", ShiftRight: "boost", Space: "boost" };
-addEventListener("keydown", e => {
-  const k = KEYMAP[e.code];
-  if (k) { keys[k] = true; lastKeyT = T; e.preventDefault(); return; }
-  if (e.code === "KeyP" || e.code === "Escape") togglePause();
-  else if (e.code === "KeyM") toggleMute();
-});
-addEventListener("keyup", e => { const k = KEYMAP[e.code]; if (k) keys[k] = false; });
-addEventListener("blur", () => { for (const k in keys) keys[k] = false; mouse.down = false; });
-addEventListener("pointermove", e => {
-  if (e.pointerType === "mouse") { mouse.x = (e.clientX / innerWidth - .5) * 2; mouse.y = -(e.clientY / innerHeight - .5) * 2; mouse.active = true; }
-  else if (e.pointerId === stick.id) {
-    const dx = e.clientX - stick.ox, dy = e.clientY - stick.oy;
-    stick.x = clamp(dx / 55, -1, 1); stick.y = clamp(-dy / 55, -1, 1);
-    $("stickKnob").style.transform = `translate(${stick.x * 35}px,${-stick.y * 35}px)`;
-  }
-});
-document.addEventListener("mouseleave", () => { mouse.active = false; mouse.down = false; });
-canvas.addEventListener("pointerdown", e => {
-  if (e.pointerType === "mouse") { if (e.button === 0) mouse.down = true; return; }
-  if (stick.id === null) {
-    stick.id = e.pointerId; stick.ox = e.clientX; stick.oy = e.clientY; stick.x = stick.y = 0;
-    const b = $("stickBase"); b.style.left = e.clientX + "px"; b.style.top = e.clientY + "px"; b.hidden = false; $("stickKnob").style.transform = "";
-  }
-});
-const endStick = e => { if (e.pointerId === stick.id) { stick.id = null; stick.x = stick.y = 0; $("stickBase").hidden = true; } };
-addEventListener("pointerup", e => { if (e.pointerType === "mouse") mouse.down = false; endStick(e); });
-addEventListener("pointercancel", endStick);
-canvas.addEventListener("contextmenu", e => e.preventDefault());
-$("tBoost").addEventListener("pointerdown", e => { e.preventDefault(); touchBoost = true; });
-for (const ev of ["pointerup", "pointerleave", "pointercancel"]) $("tBoost").addEventListener(ev, () => touchBoost = false);
-const dz = v => { const a = Math.abs(v); return a < .12 ? 0 : Math.sign(v) * Math.min(1, (a - .12) / .6); };
-function togglePause() {
-  if (state === "play") { state = "pause"; $("pauseScr").hidden = false; music.duck(true); }
-  else if (state === "pause") { state = "play"; $("pauseScr").hidden = true; music.duck(false); }
-}
-$("pauseBtn").onclick = togglePause; $("resumeBtn").onclick = togglePause;
-$("quitBtn").onclick = () => { $("pauseScr").hidden = true; toMenu(); };
-$("muteBtn").onclick = toggleMute;
-function toggleMute() { muted = !muted; if (master) master.gain.value = muted ? 0 : .55; $("muteBtn").textContent = muted ? "✕" : "♪"; }
-
-/* ---------------- play update ---------------- */
-const tmp = new V3(), tmp2 = new V3(), tmp3 = new V3();
-let prevPos = new V3();
-function updatePlay(dt) {
-  let ix = 0, iy = 0;
-  if (keys.left) ix -= 1; if (keys.right) ix += 1; if (keys.up) iy += 1; if (keys.down) iy -= 1;
-  if (stick.id !== null) { ix = stick.x; iy = stick.y; }
-  else if (!ix && !iy && mouse.active && T - lastKeyT > 1.5) { ix = dz(mouse.x); iy = dz(mouse.y); }
-  const wantBoost = keys.boost || mouse.down || touchBoost;
-  if (wantBoost && !G.boostLock && G.boost > 0) { G.boosting = true; G.boost -= dt * .3; if (G.boost <= 0) { G.boost = 0; G.boostLock = true; } }
-  else { G.boosting = false; G.boost = Math.min(1, G.boost + dt * .15); if (G.boostLock && G.boost > .3) G.boostLock = false; }
-  $("boostBar").style.width = (G.boost * 100) + "%";
-  P.yaw -= ix * 1.6 * dt;
-  P.pitch += (iy * .65 - P.pitch) * Math.min(1, dt * 2.5);
-  P.roll += (ix * .7 - P.roll) * Math.min(1, dt * 4);
-  P.speed += ((G.boosting ? BOOST : BASE) - P.speed) * Math.min(1, dt * 2);
-  const cp = Math.cos(P.pitch);
-  P.fwd.set(Math.sin(P.yaw) * cp, Math.sin(P.pitch), Math.cos(P.yaw) * cp);
-  prevPos.copy(P.pos);
-  P.pos.addScaledVector(P.fwd, P.speed * dt);
-  // floor
-  const fl = world.floor(P.pos.x, P.pos.z) + 1.4;
-  if (P.pos.y < fl) {
-    P.pos.y = fl; if (P.pitch < 0) P.pitch *= .3;
-    if (worldIdx === 0 && T > G.splashT) { G.splashT = T + .35; sfx.splash(); for (let k = 0; k < 14; k++) foam.spawn(P.pos.x + rand(-1, 1), P.pos.y, P.pos.z + rand(-1, 1), { vx: rand(-5, 5), vy: rand(6, 13), vz: rand(-5, 5), g: 20, life: rand(.6, 1.1), s0: rand(.5, 1), s1: .3 }); }
-  }
-  if (P.pos.y > world.ceiling) { P.pos.y = world.ceiling; if (P.pitch > 0) P.pitch *= .5; }
-  // solids (waves)
-  if (world.solid) {
-    const s = world.solid(P.pos);
-    if (s) {
-      P.pos.copy(prevPos); P.pos.y += 1.2; P.yaw += .5 * Math.sign(Math.random() - .5); P.speed *= .6;
-      if (T > G.splashT) { G.splashT = T + .3; sfx.splash(); for (let k = 0; k < 24; k++) foam.spawn(P.pos.x, P.pos.y, P.pos.z, { vx: rand(-9, 9), vy: rand(2, 12), vz: rand(-9, 9), g: 14, life: rand(.7, 1.3), s0: rand(.6, 1.3), s1: .3 }); }
-      if (s.claw) hit("🌊 טפרי הקצף תפסו אותך!");
-    }
-  }
-  // bounds
-  const rr = Math.hypot(P.pos.x, P.pos.z - (worldIdx ? -600 : 0));
-  if (rr > world.radius) { const diff = wrapA(Math.atan2(-P.pos.x, (worldIdx ? -600 : 0) - P.pos.z) - P.yaw); P.yaw += clamp(diff, -2 * dt, 2 * dt); }
-  player.position.copy(P.pos);
-  player.rotation.set(-P.pitch, P.yaw, P.roll, "YXZ");
-  player.rotation.order = "YXZ"; player.rotation.set(-P.pitch, P.yaw, -P.roll);
-  if (G.invuln > 0) { G.invuln -= dt; player.visible = G.invuln <= 0 || Math.floor(G.invuln * 10) % 2 === 0; } else player.visible = true;
-  // collect seals
-  for (const s of world.seals) {
-    if (s.got) continue;
-    if (s.pos.distanceTo(P.pos) < 4.2) {
-      s.got = true; s.obj.visible = false; G.seals++; addScore(100); sfx.seal(G.seals);
-      for (let k = 0; k < 30; k++) sparks.spawn(s.pos.x, s.pos.y, s.pos.z, { vx: rand(-8, 8), vy: rand(-8, 8), vz: rand(-8, 8), life: rand(.5, 1), s0: 1.6, s1: 0, r: 1, gg: .45, b: .3 });
-      if (G.seals >= world.seals.length) { G.phase = "final"; toast("כל החותמות נאספו!\n" + world.final.msg, 3); addFinal(); }
-      else toast(`חותמת ${G.seals}/${world.seals.length}`, 1.1);
-      renderHUD();
-    }
-  }
-  for (const s of world.scrolls) {
-    if (s.got && s.collectedNow) continue;
-    if (!s.obj.visible) continue;
-    if (s.pos.distanceTo(P.pos) < 9) {
-      s.collectedNow = true; s.obj.visible = false;
-      const isNew = !SAVE.have.includes(s.id);
-      s.got = true; if (isNew) { SAVE.have.push(s.id); writeSave(SAVE); G.newScrolls.push(s.id); }
-      addScore(isNew ? 300 : 120); sfx.scroll();
-      toast(`📜 ${PRINTS[s.id]}${isNew ? "\nנוסף לאלבום!" : ""}`, 2.4);
-      for (let k = 0; k < 40; k++) sparks.spawn(s.pos.x, s.pos.y, s.pos.z, { vx: rand(-10, 10), vy: rand(-10, 10), vz: rand(-10, 10), life: rand(.6, 1.2), s0: 2, s1: 0, r: 1, gg: .85, b: .5 });
-      renderHUD();
-    }
-  }
-  if (G.phase === "final" && G.finalObj && G.finalObj.position.distanceTo(P.pos) < world.final.r) finishWorld();
-  // dmg fade
-  post.uniforms.dmg.value = Math.max(0, post.uniforms.dmg.value - dt * 1.5);
-  // trail
-  const tail = player.localToWorld(tmp.set(0, .2, -2.6));
-  if (Math.random() < .7) sparks.spawn(tail.x, tail.y, tail.z, { vx: rand(-1, 1), vy: rand(-.5, .5), vz: rand(-1, 1), life: rand(.5, .9), s0: G.boosting ? 1.1 : .7, s1: 0, r: 1, gg: .92, b: .75 });
-  // camera
-  const hp = P.pitch * .5, cd = 11;
-  tmp2.set(Math.sin(P.yaw) * Math.cos(hp), Math.sin(hp), Math.cos(P.yaw) * Math.cos(hp));
-  tmp3.copy(P.pos).addScaledVector(tmp2, -cd); tmp3.y += 3.4;
-  camera.position.lerp(tmp3, 1 - Math.exp(-dt * 5));
-  const cf = world.floor(camera.position.x, camera.position.z) + 1.5; if (camera.position.y < cf) camera.position.y = cf;
-  if (shake > 0) { shake = Math.max(0, shake - dt); const s = shake * 1.4; camera.position.x += rand(-s, s); camera.position.y += rand(-s, s); }
-  camera.lookAt(tmp.copy(P.pos).addScaledVector(P.fwd, 8).add(tmp2.set(0, 1.4, 0)));
-  const fovT = G.boosting ? 70 : 62; if (Math.abs(camera.fov - fovT) > .1) { camera.fov += (fovT - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
-  updateCompass();
-}
-function addFinal() {
-  const f = world.final; const r = ringMesh(f.r * .8, 0xffd27a);
-  r.position.copy(f.pos); if (f.axis === "y") r.rotation.x = Math.PI / 2;
-  addW(r); G.finalObj = r;
-}
-function curTarget() {
-  if (G.phase === "final") return world.final.pos;
-  let best = null, bd = 1e9;
-  for (const s of world.seals) if (!s.got) { const d = s.pos.distanceTo(P.pos); if (d < bd) { bd = d; best = s.pos; } }
-  return best;
-}
-function updateCompass() {
-  const t = curTarget(); if (!t) return;
-  const ang = wrapA(Math.atan2(t.x - P.pos.x, t.z - P.pos.z) - P.yaw);
-  const dy = t.y - P.pos.y, h = Math.hypot(t.x - P.pos.x, t.z - P.pos.z);
-  $("compass").style.transform = `rotate(${-ang}rad)`;
-  $("cdist").textContent = `${Math.round(Math.hypot(h, dy))} ${dy > 12 ? "▲" : dy < -12 ? "▼" : ""}`;
-}
-function finishWorld() {
-  state = "outro"; G.outroT = 0; G.outroFrom = { pos: camera.position.clone(), q: camera.quaternion.clone(), fov: camera.fov };
-  const el = (T - G.t0);
-  G.timeBonus = Math.max(0, Math.round(1500 - el * 6)); G.lifeBonus = G.lives * 150;
-  addScore(1000 + G.timeBonus + G.lifeBonus);
-  sfx.finale(); toast("✦ " + WORLDS[worldIdx].name + " ✦", 2.5);
-  if (!SAVE.have.includes(WORLDS[worldIdx].print)) { SAVE.have.push(WORLDS[worldIdx].print); G.newScrolls.push(WORLDS[worldIdx].print); }
-  if (!SAVE.done.includes(worldIdx)) SAVE.done.push(worldIdx);
-  G.newBest = G.score > (SAVE.best[worldIdx] || 0); if (G.newBest) SAVE.best[worldIdx] = G.score;
-  writeSave(SAVE);
-}
-function gameOver() {
-  state = "over"; music.duck(true);
-  $("hud").hidden = true; $("touch").hidden = true;
-  $("endTitle").textContent = "הגל בלע את העגור…";
-  $("endImg").src = imgURL(WORLDS[worldIdx].print);
-  $("endText").innerHTML = `אספת ${G.seals} חותמות ו-${G.newScrolls.length} הדפסים חדשים לאלבום. הם נשמרו.<br>נסי שוב: הנוצות מתחדשות.`;
-  $("nextBtn").hidden = true; $("endScr").hidden = false;
-}
-function showEnd() {
-  state = "end"; music.duck(true);
-  $("hud").hidden = true; $("touch").hidden = true;
-  $("endTitle").textContent = "נכנסת אל ההדפס!";
-  $("endImg").src = imgURL(WORLDS[worldIdx].print);
-  const el = Math.round(T - G.t0);
-  $("endText").innerHTML = `<b>${PRINTS[WORLDS[worldIdx].print]}</b>, קאצושיקה הוקוסאי, בערך 1831<br>` +
-    `ניקוד: <b>${G.score}</b>${G.newBest ? " · שיא חדש! 🏆" : ""} · זמן: ${Math.floor(el / 60)}:${String(el % 60).padStart(2, "0")}<br>` +
-    `מגילות: ${world.scrolls.filter(s => s.got).length}/${world.scrolls.length}` + (G.newScrolls.length ? ` · נוספו לאלבום: ${G.newScrolls.map(id => PRINTS[id]).join(", ")}` : "");
-  $("nextBtn").hidden = worldIdx >= 2; $("endScr").hidden = false;
-}
-$("nextBtn").onclick = () => startWorld(Math.min(2, worldIdx + 1));
-$("againBtn").onclick = () => startWorld(worldIdx);
-$("menuBtn").onclick = toMenu;
-function toMenu() { state = "menu"; $("hud").hidden = true; $("touch").hidden = true; $("endScr").hidden = true; buildMenu(); $("startScr").hidden = false; music.duck(false); }
-
-/* ---------------- menu ---------------- */
-function buildMenu() {
-  SAVE = loadSave();
-  const w = $("worlds"); w.innerHTML = "";
-  WORLDS.forEach((W, i) => {
-    const have = W.scrolls.filter(id => SAVE.have.includes(id)).length;
-    const b = document.createElement("button"); b.className = "wcard";
-    b.innerHTML = `<img src="${imgURL(W.print)}" alt=""><b>${i + 1}. ${W.name}</b><small>${W.desc}</small><small>📜 ${have}/${W.scrolls.length}${SAVE.done.includes(i) ? " · ✔ הושלם" : ""}${SAVE.best[i] ? " · שיא " + SAVE.best[i] : ""}</small>`;
-    b.onclick = () => startWorld(i); w.appendChild(b);
-  });
-  $("albumCount").textContent = `(${Object.keys(PRINTS).filter(id => SAVE.have.includes(+id)).length}/${Object.keys(PRINTS).length})`;
-  $("helpTxt").innerHTML = isTouch ? "גוררים אצבע כדי לנווט · ≫ להאצה" : "חיצים / WASD או העכבר לנווט · רווח / Shift / קליק להאצה · P הפסקה · M צליל";
-}
-$("albumBtn").onclick = () => {
-  const a = $("album"); a.innerHTML = "";
-  Object.keys(PRINTS).forEach(id => { const has = SAVE.have.includes(+id); const f = document.createElement("figure"); if (!has) f.className = "no"; f.innerHTML = `<img src="${imgURL(id)}" alt=""><figcaption>${has ? PRINTS[id] : "??? טרם נמצא"}</figcaption>`; a.appendChild(f); });
-  $("startScr").hidden = true; $("albumScr").hidden = false;
-};
-$("albumBack").onclick = () => { $("albumScr").hidden = true; $("startScr").hidden = false; };
-
 /* ---------------- audio ---------------- */
 let AC = null, master = null, rev = null, muted = false, amb = null;
 function audioInit() {
@@ -1121,112 +689,762 @@ const sfx = {
   finale() { if (!AC) return; const t = AC.currentTime; [0, 2, 4, 5, 7, 9, 10, 12].forEach((d, i) => pluck(note(d + 5), t + i * .11, .16, 2.2)); flute(note(12), t + .9, 3.2, .09); }
 };
 
-/* ---------------- bot ---------------- */
-let stuckT = 0, lastBP = new V3(), wander = 0;
-function botStep() {
-  keys.left = keys.right = keys.up = keys.down = keys.boost = false; lastKeyT = T;
-  let t = curTarget();
-  const sc = world.scrolls.find(s => !s.collectedNow && s.pos.distanceTo(P.pos) < 70);
-  if (sc && G.phase === "seals") t = sc.pos;
-  if (P.pos.distanceTo(lastBP) < .25) stuckT += 1 / 30; else stuckT = 0; lastBP.copy(P.pos);
-  if (stuckT > 1.2) { wander = 1.2; stuckT = 0; }
-  if (wander > 0) { wander -= 1 / 30; keys.left = true; keys.up = true; return; }
-  if (!t) return;
-  const dx = t.x - P.pos.x, dzz = t.z - P.pos.z, dy = t.y - P.pos.y, h = Math.hypot(dx, dzz);
-  const diff = wrapA(Math.atan2(dx, dzz) - P.yaw);
-  if (diff > .05) keys.left = true; else if (diff < -.05) keys.right = true;
-  const want = Math.atan2(dy, Math.max(h, 1)) * 1.4;
-  if (want > P.pitch + .05) keys.up = true; else if (want < P.pitch - .05) keys.down = true;
-  keys.boost = h > 60 && Math.abs(diff) < .3;
+/* =====================================================================
+   OPEN WORLD: one continuous land around Mount Fuji. Every print is a
+   real place in it; the land between them is extrapolated in his style.
+   North = -z, East (Edo) = +x, the sea = +z.
+   ===================================================================== */
+camera.far = 9500; camera.updateProjectionMatrix(); post.uniforms.far.value = 9500;
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const FUJI_R = 1000, FUJI_H = 700;
+const MAP = { x0: -3000, x1: 3000, z0: -3000, z1: 3400, N: 320 };
+
+/* ---------- land shape ---------- */
+const LAKES = [
+  { name: "hakone", x: -1450, z: 650, r: 230 },
+  { name: "kawaguchi", x: -150, z: -1450, r: 260 },
+  { name: "suwa", x: -2150, z: -2000, r: 300 }
+];
+const RIVERS = [
+  { name: "sumida", w: 55, pts: [[2050, -2400], [2000, -1300], [2080, -400], [1980, 300], [2060, 900], [2120, 1700]] },
+  { name: "fujikawa", w: 60, pts: [[-1900, -2400], [-2000, -900], [-1950, -200], [-2050, 600], [-1900, 1700]] },
+  { name: "oi", w: 120, pts: [[-760, 400], [-720, 900], [-700, 1300], [-690, 1800]] },
+  { name: "sano", w: 70, pts: [[1100, -2400], [1350, -1900], [1450, -1500], [1700, -1300], [2000, -1300]] }
+];
+const ISLANDS = [[-1700, 2750, 170], [-900, 2950, 140], [-200, 3050, 160], [500, 2900, 150], [1200, 3000, 170], [1900, 2750, 150], [2500, 2550, 120], [-2400, 2500, 140], [2300, 1650, 70]];
+const coastZ = x => 1500 + 110 * Math.sin(x * .0023) + 60 * Math.sin(x * .0071 + 1) + (x > 1500 ? -(x - 1500) * .35 : 0);
+function segDist(px, pz, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az; const t = clamp(((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz), 0, 1); return Math.hypot(px - ax - dx * t, pz - az - dz * t); }
+function riverDist(r, x, z) { let d = 1e9; for (let i = 0; i < r.pts.length - 1; i++) d = Math.min(d, segDist(x, z, r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1])); return d; }
+function rawH(x, z) {
+  let h = 34 + 16 * Math.sin(x * .0021 + 1.3) * Math.sin(z * .0017 + .4) + 9 * Math.sin(x * .0053 + z * .0031) + 5 * Math.sin(x * .011 - z * .008 + 2);
+  h += sstep(-1300, -2600, z) * (150 + 90 * Math.sin(x * .0042) + 45 * Math.sin(x * .011 + z * .006));
+  h += sstep(-1500, -2700, x) * (110 + 60 * Math.sin(z * .005));
+  h += 95 * Math.exp(-(((x + 1550) / 520) ** 2 + ((z - 450) / 420) ** 2));
+  h += 60 * Math.exp(-(((x - 600) / 380) ** 2 + ((z + 2050) / 300) ** 2));
+  h = lerp(h, 7, sstep(1300, 1800, x) * sstep(-1700, -1200, z) * (1 - sstep(1500, 1900, z)));
+  const cz = coastZ(x);
+  h -= sstep(cz - 260, cz + 120, z) * (h + 28);
+  for (const [ix, iz, r] of ISLANDS) { const d = Math.hypot(x - ix, z - iz); h = Math.max(h, 28 * sstep(r, r * .25, d) + 6 * Math.sin(x * .05) * sstep(r, 0, d) - 2); }
+  for (const L of LAKES) { const d = Math.hypot(x - L.x, z - L.z) + 30 * Math.sin(Math.atan2(z - L.z, x - L.x) * 3); h = lerp(h, -7, sstep(L.r, L.r * .7, d)); }
+  for (const R of RIVERS) { const d = riverDist(R, x, z); if (d < R.w * 2.5) h = lerp(h, -5, sstep(R.w * 1.6, R.w * .55, d)); }
+  return h;
+}
+const GN = MAP.N, GX = (MAP.x1 - MAP.x0) / GN, GZ = (MAP.z1 - MAP.z0) / GN;
+const HGRID = new Float32Array((GN + 1) * (GN + 1));
+for (let j = 0; j <= GN; j++) for (let i = 0; i <= GN; i++) HGRID[j * (GN + 1) + i] = rawH(MAP.x0 + i * GX, MAP.z0 + j * GZ);
+function landH(x, z) {
+  const fx = clamp((x - MAP.x0) / GX, 0, GN - 1e-3), fz = clamp((z - MAP.z0) / GZ, 0, GN - 1e-3);
+  const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, k = j * (GN + 1) + i;
+  const h = lerp(lerp(HGRID[k], HGRID[k + 1], u), lerp(HGRID[k + GN + 1], HGRID[k + GN + 2], u), v);
+  return Math.max(h, fujiY(FUJI_R, FUJI_H, Math.hypot(x, z)) - 4);
+}
+const seaness = (x, z) => sstep(coastZ(x) - 150, coastZ(x) + 350, z);
+function waterH(x, z, t) { return (2.6 * Math.sin(x * .034 + z * .012 + t * .9) + 1.7 * Math.sin(-x * .019 + z * .04 + t * 1.1 + 1) + .9 * Math.sin(x * .07 - z * .05 + t * 1.7 + 2)) * lerp(.06, 1, seaness(x, z)); }
+function floorAt(x, z) { return Math.max(landH(x, z), waterH(x, z, TIME.value)); }
+function snowAt(x, z) { return Math.max(sstep(450, 180, Math.hypot(x - 1450, z + 1650)), sstep(300, 120, Math.hypot(x - 2060, z + 250))); }
+
+/* ---------- mood: each print lends its light to the land around it ---------- */
+const MOOD_KEYS = ["top", "mid", "hor", "fog", "fLow", "fMid", "fHigh"];
+const DEFAULT_MOOD = { top: 0x1f4f86, mid: 0xe8dfc8, hor: 0xd6dcd2, fog: 0xcfd2c4, fLow: 0x5f7896, fMid: 0x6d86a6, fHigh: 0x4e5f7c, speckle: 0, dark: 0 };
+const MOOD = {}; for (const k of MOOD_KEYS) MOOD[k] = new THREE.Color(DEFAULT_MOOD[k]); MOOD.speckle = 0; MOOD.dark = 0;
+
+/* ---------- geometry kit (merged parts with vertex colours) ---------- */
+function partsGeo(parts) {
+  let n = 0; const gs = parts.map(p => { const g = p.g.index ? p.g.toNonIndexed() : p.g.clone(); if (p.m) g.applyMatrix4(p.m); n += g.attributes.position.count; return { g, c: new THREE.Color(p.c) }; });
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3); let o = 0;
+  for (const { g, c } of gs) { const cnt = g.attributes.position.count; pos.set(g.attributes.position.array, o * 3); nor.set(g.attributes.normal.array, o * 3); for (let i = 0; i < cnt; i++) { col[(o + i) * 3] = c.r; col[(o + i) * 3 + 1] = c.g; col[(o + i) * 3 + 2] = c.b; } o += cnt; g.dispose(); }
+  const m = new THREE.BufferGeometry(); m.setAttribute("position", new THREE.BufferAttribute(pos, 3)); m.setAttribute("normal", new THREE.BufferAttribute(nor, 3)); m.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  return m;
+}
+const M4 = (x, y, z, rx, ry, rz, sx, sy, sz) => new THREE.Matrix4().compose(new V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), new V3(sx || 1, sy === undefined ? (sx || 1) : sy, sz === undefined ? (sx || 1) : sz));
+const VC = toon(0xffffff, { vertexColors: true });
+const VCD = toon(0xffffff, { vertexColors: true, side: THREE.DoubleSide });
+const G_ = {
+  box: (w, h, d) => new THREE.BoxGeometry(w, h, d), cyl: (a, b, h, s) => new THREE.CylinderGeometry(a, b, h, s || 8), cone: (r, h, s) => new THREE.ConeGeometry(r, h, s || 8),
+  sph: (r, a, b) => new THREE.SphereGeometry(r, a || 8, b || 6)
+};
+// a roof: triangular prism
+function prism(w, h, d) { const s = new THREE.Shape(); s.moveTo(-w / 2, 0); s.lineTo(0, h); s.lineTo(w / 2, 0); s.closePath(); const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false }); g.translate(0, 0, -d / 2); return g; }
+const KIT = {
+  minka: () => partsGeo([{ g: G_.box(9, 4, 7), c: 0xd9cba8, m: M4(0, 2, 0) }, { g: G_.box(9.2, .6, 7.2), c: 0x3d2f22, m: M4(0, .3, 0) }, { g: prism(11.5, 6.5, 9), c: 0x8a7650, m: M4(0, 4, 0, 0, Math.PI / 2) }, { g: G_.box(.9, .7, 11.4), c: 0x3a3226, m: M4(0, 10.3, 0, 0, Math.PI / 2) }, { g: G_.box(1.6, 2.6, .2), c: 0x2d2a26, m: M4(1.5, 1.3, 3.55) }]),
+  kura: () => partsGeo([{ g: G_.box(10, 7, 8), c: 0xf0ead8, m: M4(0, 3.5, 0) }, { g: G_.box(10.2, 1.6, 8.2), c: 0x2f3b4a, m: M4(0, .8, 0) }, { g: prism(12, 3.2, 11), c: 0x2e3442, m: M4(0, 7, 0, 0, Math.PI / 2) }, { g: G_.box(1.4, 1.6, .3), c: 0x22252c, m: M4(0, 4.8, 4.05) }]),
+  shrine: () => partsGeo([{ g: G_.box(8, 5, 8), c: 0xa8482e, m: M4(0, 2.5, 0) }, { g: prism(12, 4, 12), c: 0x3b3a3a, m: M4(0, 5, 0) }, { g: G_.box(11, .8, 11), c: 0x2a2a2a, m: M4(0, 5, 0) }, { g: G_.box(9, .6, 9), c: 0x7a6a50, m: M4(0, .3, 0) }]),
+  pine: () => {
+    const p = [{ g: new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new V3(0, 0, 0), new V3(1.2, 5, .4), new V3(-.8, 10, .2), new V3(1.5, 15, -.5), new V3(3, 18, 0)]), 16, .65, 6), c: 0x5a4636 }];
+    for (const [x, y, z, s] of [[3, 18, 0, 1.2], [-1.6, 13.5, 1, .95], [2.8, 11, -1.4, .8], [-3.5, 16.5, -.8, .75], [5.5, 15.5, .8, .7]]) {
+      p.push({ g: G_.sph(3.2, 10, 6), c: 0x24443a, m: M4(x, y, z, 0, 0, 0, 1.6 * s, .38 * s, 1.3 * s) });
+      p.push({ g: G_.sph(3, 10, 6), c: 0x3f6b55, m: M4(x, y + .7 * s, z, 0, 0, 0, 1.3 * s, .22 * s, 1.05 * s) });
+    }
+    return partsGeo(p);
+  },
+  cedar: () => partsGeo([{ g: G_.cyl(.4, .5, 3, 5), c: 0x3d3026, m: M4(0, 1.5, 0) }, { g: G_.cone(3.2, 12, 7), c: 0x1f3a33, m: M4(0, 8.5, 0) }, { g: G_.cone(2.4, 7, 7), c: 0x2c4c42, m: M4(0, 12.5, 0) }]),
+  cherry: () => { const p = [{ g: G_.cyl(.5, .8, 6, 6), c: 0x4a3a33, m: M4(0, 3, 0, 0, 0, .1) }]; for (let k = 0; k < 6; k++) p.push({ g: G_.sph(2.6, 8, 6), c: k % 2 ? 0xf2c8cf : 0xe9b0bb, m: M4(rand(-3, 3), rand(6, 9), rand(-3, 3), 0, 0, 0, 1.2, .8, 1.2) }); return partsGeo(p); },
+  reed: () => { const p = []; for (let k = 0; k < 7; k++) p.push({ g: G_.cone(.12, rand(3, 5.5), 3), c: k % 2 ? 0xb9a96a : 0x8f9a5a, m: M4(rand(-.8, .8), 2, rand(-.8, .8), rand(-.2, .2), 0, rand(-.25, .25)) }); return partsGeo(p); },
+  bamboo: () => { const p = []; for (let k = 0; k < 5; k++) { const x = rand(-1.5, 1.5), z = rand(-1.5, 1.5); p.push({ g: G_.cyl(.18, .2, 14, 5), c: 0x6f9a52, m: M4(x, 7, z) }); p.push({ g: G_.sph(1.4, 6, 4), c: 0x4f7a45, m: M4(x, 13.5, z, 0, 0, 0, 1.2, 2, 1.2) }); } return partsGeo(p); },
+  rock: () => partsGeo([{ g: new THREE.DodecahedronGeometry(3, 0), c: 0x6f7c86, m: M4(0, 1, 0, 0, 0, 0, 1.3, .8, 1) }, { g: new THREE.DodecahedronGeometry(2, 0), c: 0x56636e, m: M4(2.2, .6, 1, .4, .3, 0) }]),
+  torii: (s) => partsGeo([{ g: G_.cyl(.55, .65, 12, 8), c: 0xc0442c, m: M4(-5, 6, 0) }, { g: G_.cyl(.55, .65, 12, 8), c: 0xc0442c, m: M4(5, 6, 0) }, { g: G_.box(15, 1, 1.2), c: 0x2a2626, m: M4(0, 12.4, 0) }, { g: G_.box(13, .9, 1), c: 0xc0442c, m: M4(0, 11.5, 0) }, { g: G_.box(12, .7, .8), c: 0xc0442c, m: M4(0, 9.4, 0) }])
+};
+function instances(geo, list, mat, colorFn) {
+  const im = new THREE.InstancedMesh(geo, mat || VC, list.length); const m = new THREE.Matrix4(); const c = new THREE.Color();
+  list.forEach((o, i) => { m.compose(new V3(o[0], o[1], o[2]), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, o[3] || 0, 0)), new V3(o[4] || 1, o[4] || 1, o[4] || 1)); im.setMatrixAt(i, m); if (colorFn) { im.setColorAt(i, colorFn(o, c)); } });
+  if (im.instanceColor) im.instanceColor.needsUpdate = true;
+  scene.add(im); return im;
 }
 
-/* ---------------- loop ---------------- */
-let last = performance.now();
+/* ---------- people ---------- */
+const SKIN = 0xe3c39a, STRAW = 0xc9a45e;
+const KIMONO = [0x24467a, 0x3b5f8a, 0x6b4a3a, 0x7a3b30, 0x4d5b3a, 0x2f3b55, 0x8a6a3e, 0x5a3f62];
+function personGeo(type, col) {
+  const p = [
+    { g: G_.cyl(.16, .14, 1.1, 5), c: 0x2a2622, m: M4(-.18, .55, 0) }, { g: G_.cyl(.16, .14, 1.1, 5), c: 0x2a2622, m: M4(.18, .55, 0) },
+    { g: G_.cyl(.34, type === "woman" ? .62 : .48, type === "woman" ? 1.6 : 1.2, 8), c: col, m: M4(0, type === "woman" ? .85 : 1.6, 0) },
+    { g: G_.cyl(.3, .38, .7, 8), c: col, m: M4(0, 2.3, 0) },
+    { g: G_.sph(.26, 8, 6), c: SKIN, m: M4(0, 2.95, .02) },
+    { g: G_.cyl(.09, .1, .9, 5), c: col, m: M4(-.42, 2.05, .1, .3, 0, .25) }, { g: G_.cyl(.09, .1, .9, 5), c: col, m: M4(.42, 2.05, .1, .3, 0, -.25) }
+  ];
+  if (type === "woman") { p.push({ g: G_.sph(.24, 8, 6), c: 0x1a1a1e, m: M4(0, 3.18, -.08, 0, 0, 0, 1, .8, 1) }, { g: G_.box(.75, .3, .5), c: 0xc9a85a, m: M4(0, 1.85, 0) }); }
+  else if (type === "monk") p.push({ g: G_.cyl(.34, .3, .7, 10), c: STRAW, m: M4(0, 3.1, 0) });
+  else p.push({ g: G_.cone(.85, .38, 12), c: STRAW, m: M4(0, 3.28, 0) });
+  if (type === "porter") { p.push({ g: G_.cyl(.06, .06, 3.4, 4), c: 0x6a5232, m: M4(0, 2.55, 0, Math.PI / 2, 0, 0) }, { g: G_.cyl(.45, .35, .7, 7), c: 0x9a7c4a, m: M4(0, 1.95, 1.5) }, { g: G_.cyl(.45, .35, .7, 7), c: 0x9a7c4a, m: M4(0, 1.95, -1.5) }); }
+  if (type === "traveler") { p.push({ g: G_.cyl(.05, .05, 2.6, 4), c: 0x6a5232, m: M4(.55, 1.4, .3) }, { g: G_.box(.6, .6, .4), c: 0x8e8a7a, m: M4(0, 2.4, -.35) }); }
+  if (type === "fisher") p.push({ g: G_.cyl(.04, .03, 5, 4), c: 0x5a4632, m: M4(0, 3.2, 1.8, 1.0, 0, 0) });
+  if (type === "farmer") p.push({ g: G_.cyl(.05, .05, 2, 4), c: 0x6a5232, m: M4(.5, 1.6, .5, .6, 0, 0) });
+  return partsGeo(p);
+}
+const PEOPLE = [];
+const LINES = {
+  generic: ["אוהיו! בוקר טוב לרוכבת העגור", "ההר מסתכל עלינו מכל מקום", "הוקוסאי? הזקן שמצייר את ההר שוב ושוב?", "הדרך ארוכה, אבל הנוף שווה", "פעם ראיתי עגור לבן כמו שלך, ליד האגם", "לאן את רוכבת היום?"],
+  hint: s => [`שמעתי שמ${s.place} רואים את ההר הכי יפה`, `הצייר הזקן ישב פעם ב${s.place}`, `לכי ל${s.place}, ותביני למה הוא צייר שם`]
+};
+function addPerson(type, x, z, o) {
+  o = o || {};
+  const col = o.col || KIMONO[(Math.random() * KIMONO.length) | 0];
+  const mesh = new THREE.Mesh(personGeo(type, col), VC);
+  const y = o.y !== undefined ? o.y : landH(x, z);
+  mesh.position.set(x, y, z); mesh.rotation.y = o.ry || rand(0, 6.28); mesh.scale.setScalar(o.s || 1.25);
+  scene.add(mesh);
+  const P_ = { mesh, type, path: o.path || null, seg: 0, u: Math.random(), dir: 1, speed: o.speed || rand(1.2, 2), line: o.line || null, bend: o.bend || 0, ph: rand(0, 6), fixedY: o.y !== undefined, wade: o.wade };
+  PEOPLE.push(P_); return P_;
+}
+function updatePeople(dt, t) {
+  for (const p of PEOPLE) {
+    const m = p.mesh;
+    if (p.path && p.path.length > 1) {
+      const a = p.path[p.seg], b = p.path[p.seg + 1]; const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      p.u += p.dir * p.speed * dt / L;
+      if (p.u > 1) { if (p.seg < p.path.length - 2) { p.seg++; p.u = 0; } else { p.u = 1; p.dir = -1; } }
+      if (p.u < 0) { if (p.seg > 0) { p.seg--; p.u = 1; } else { p.u = 0; p.dir = 1; } }
+      const A = p.path[p.seg], B = p.path[p.seg + 1];
+      const x = lerp(A[0], B[0], p.u), z = lerp(A[1], B[1], p.u);
+      m.position.x = x; m.position.z = z;
+      if (!p.fixedY) m.position.y = Math.max(landH(x, z), p.wade ? -1.2 : -9) + Math.abs(Math.sin(t * 6 + p.ph)) * .12;
+      m.rotation.y = Math.atan2((B[0] - A[0]) * p.dir, (B[1] - A[1]) * p.dir);
+      m.rotation.z = Math.sin(t * 6 + p.ph) * .04;
+    } else if (p.bend) { m.rotation.x = .5 + Math.sin(t * 1.5 + p.ph) * .25; }
+    else m.rotation.z = Math.sin(t * 1.2 + p.ph) * .03;
+  }
+}
+
+/* ---------- stations: every print is a place ---------- */
+// view: camera position (rel. to marker) + look target (absolute); built() dresses the place
+const STATIONS = [];
+function station(id, place, x, z, view, mood, dress) {
+  const s = { id, place, x, z, view, mood: mood || null, dress, got: SAVE.have.includes(id) };
+  STATIONS.push(s); return s;
+}
+const FUJI_TOP = new V3(0, FUJI_H * .95, 0);
+const toward = (x, z, tx, tz, d) => { const L = Math.hypot(tx - x, tz - z); return [x + (tx - x) / L * d, z + (tz - z) / L * d]; };
+
+station(45434, "מול חופי קנגאווה", 760, 2330, { up: 7, look: [180, 60, 1500], fov: 58 }, { top: 0xe6d9bb, mid: 0xe2d4b4, hor: 0x77756f, fog: 0xcfc4a8 }, s => {
+  const big = makeWave(1, 95, 1); big.grp.position.set(s.x - 140, -4, s.z - 150); scene.add(big.grp);
+  const w2 = makeWave(.5, 70, 4); w2.grp.position.set(s.x + 70, -2, s.z - 300); scene.add(w2.grp);
+  const w3 = makeWave(.35, 50, 7); w3.grp.position.set(s.x - 40, -1, s.z - 40); scene.add(w3.grp);
+  WAVES.push(big, w2, w3);
+  for (const [dx, dz, ry] of [[-110, -175, .15], [-20, -110, -.25], [60, -260, .4]]) { const b = makeBoat(); b.position.set(s.x + dx, 0, s.z + dz); b.rotation.y = ry; scene.add(b); BOATS.push(b); }
+});
+station(36490, "גבעת היער שממערב להר", -2350, 420, { up: 14, look: [-200, 380, -100], fov: 55 }, { top: 0x1d4a86, mid: 0x4a7fb2, hor: 0xd4e2dc, fog: 0xa9c3c7, fLow: 0x9a4a35, fMid: 0xb9462d, fHigh: 0x6d2a20 }, s => { MACKEREL.push([s.x, s.z]); });
+station(36492, "המדרון המזרחי של ההר", 980, 330, { up: 6, look: [0, 520, 0], fov: 60 }, { top: 0x16335f, mid: 0xece2c6, hor: 0x9eb0b4, fog: 0x8d8a7c, fLow: 0x1c1714, fMid: 0x82321f, fHigh: 0xa9482b, speckle: 1, dark: .6 }, s => { STORM.x = s.x; STORM.z = s.z; });
+station(56727, "קג'יקאזאווה על נהר פוג'י", -1985, -260, { up: 4, d: [60, 25], look: [-1990, 18, -250], fov: 55 }, null, s => {
+  const rk = new THREE.Mesh(partsGeo([{ g: new THREE.DodecahedronGeometry(10, 0), c: 0x3f5a6e, m: M4(0, 2, 0, 0, 0, 0, 1.6, 1.4, 1) }, { g: new THREE.DodecahedronGeometry(6, 0), c: 0x2f475a, m: M4(8, 8, 0, .3, .4, 0) }]), VC); rk.position.set(s.x - 5, -3, s.z + 10); scene.add(rk);
+  addPerson("fisher", s.x + 4, s.z + 10, { y: 14, ry: Math.PI / 2 }); addPerson("farmer", s.x - 3, s.z + 8, { y: 10, s: .9 });
+  FOAMSPOTS.push([s.x, s.z + 10, 14]);
+});
+station(36500, "שדה פוג'ימיגהרה", -1150, -620, { up: 4, d: [-14, -50], look: [0, 260, 0], fov: 50 }, null, s => {
+  const [bx, bz] = toward(s.x, s.z, 0, 0, 22); const ang = Math.atan2(-bx, -bz);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 3.2, 40, 1, true), toon(0xd9c08c, { side: THREE.DoubleSide }));
+  barrel.rotation.z = Math.PI / 2; barrel.rotation.y = ang + Math.PI / 2; barrel.position.set(bx, landH(bx, bz) + 8, bz); scene.add(barrel);
+  for (const k of [-1.4, 1.4]) { const hoop = new THREE.Mesh(new THREE.TorusGeometry(8.05, .22, 6, 40), toon(0x3b3a3a)); hoop.rotation.copy(barrel.rotation); hoop.rotateY(0); hoop.position.copy(barrel.position); hoop.translateY(k); scene.add(hoop); }
+  addPerson("farmer", bx + .5, bz, { y: landH(bx, bz) + .3, bend: 1, col: 0x3b5f8a });
+});
+station(56216, "מפרץ נובוטו", 1500, 1420, { up: 5, d: [0, -60], look: [1500, 12, 1560], fov: 58 }, null, s => {
+  for (const [dx, dz, sc] of [[-12, 40, 1.6], [20, 90, 1]]) { const t = new THREE.Mesh(KIT.torii(), VC); t.position.set(s.x + dx, -3, s.z + dz); t.scale.setScalar(sc); scene.add(t); }
+  for (let k = 0; k < 6; k++) addPerson(k % 2 ? "farmer" : "woman", s.x + rand(-25, 25), s.z + rand(30, 70), { y: -1.4, bend: 1 });
+});
+station(56132, "ביצות אושיבורי", 2350, -620, { up: 10, d: [-40, -30], look: [2380, 0, -560], fov: 55 }, null, s => {
+  const b = makeBoat(); b.scale.set(1.6, 1.6, 1.4); b.position.set(s.x + 30, 0, s.z + 50); b.rotation.y = .6; scene.add(b); BOATS.push(b);
+  const reeds = []; for (let k = 0; k < 500; k++) { const a = rand(0, 6.28), r = rand(20, 140); const x = s.x + Math.cos(a) * r + 30, z = s.z + Math.sin(a) * r + 50; reeds.push([x, Math.max(-1, landH(x, z)), z, rand(0, 6), rand(.8, 1.4)]); }
+  instances(KIT.reed(), reeds);
+});
+station(36498, "אגם האקונה", -1250, 900, { up: 40, d: [0, 0], look: [-1450, 0, 600], fov: 60 }, null, s => { VILLAGES.push([-1300, 420, 10]); });
+station(36496, "חוף שיצ'יריגהאמה", -1000, 1650, { up: 18, d: [0, 0], look: [-300, 120, 600], fov: 58 }, null, s => { PINEGROVES.push([s.x + 80, s.z - 60, 60, 25]); });
+station(54868, "השתקפות באגם מיסאקה", -150, -1760, { up: 9, d: [0, 0], look: [-80, 140, -600], fov: 56 }, null, s => { MIRROR_FUJI.on = true; VILLAGES.push([-380, -1650, 8]); });
+station(56786, "מעבר מישימה", -1700, 1050, { up: 3, d: [0, 40], look: [-1500, 180, 600], fov: 58 }, null, s => {
+  const [tx, tz] = [s.x, s.z]; const ty = landH(tx, tz);
+  const tree = new THREE.Mesh(partsGeo([{ g: G_.cyl(2.6, 3.4, 70, 12), c: 0x58687a, m: M4(0, 35, 0) }, { g: G_.sph(10, 10, 8), c: 0x2c4a42, m: M4(-6, 72, 0, 0, 0, 0, 1.4, .6, 1.2) }, { g: G_.sph(9, 10, 8), c: 0x3a5f52, m: M4(7, 66, 3, 0, 0, 0, 1.3, .55, 1.1) }, { g: G_.sph(7, 10, 8), c: 0x2c4a42, m: M4(2, 80, -2, 0, 0, 0, 1.3, .5, 1) }]), VC);
+  tree.position.set(tx, ty - 1, tz); scene.add(tree);
+  for (let k = 0; k < 3; k++) { const a = k * 2.1; addPerson("traveler", tx + Math.cos(a) * 3.6, tz + Math.sin(a) * 3.6, { ry: a + Math.PI / 2 }); }
+  CUMULUS.push([-1550, 750, 170, 8]);
+});
+station(56240, "אגם סווה", -1880, -1760, { up: 16, d: [0, 0], look: [-2200, 20, -2050], fov: 58 }, null, s => {
+  const sh = new THREE.Mesh(KIT.shrine(), VC); sh.position.set(-2150, landH(-2150, -2000) + 4, -2000); scene.add(sh);
+  const isl = new THREE.Mesh(new THREE.CylinderGeometry(22, 26, 10, 16), toon(0x6d7f6a)); isl.position.set(-2150, -3, -2000); scene.add(isl);
+  PINEGROVES.push([s.x + 10, s.z + 10, 25, 6]);
+});
+station(55741, "האי צוקודה", 2150, 1450, { up: 5, d: [0, 0], look: [2300, 10, 1650], fov: 55 }, null, s => {
+  for (let k = 0; k < 7; k++) { const b = makeBoat(); b.scale.setScalar(rand(.5, .8)); b.position.set(2300 + rand(-120, 120), 0, 1600 + rand(-80, 60)); b.rotation.y = rand(0, 6); scene.add(b); BOATS.push(b); }
+  VILLAGES.push([2300, 1650, 9, "kura"]);
+});
+station(55236, "מעבר נהר אוי בקנאיה", -650, 1250, { up: 22, d: [0, 0], look: [-200, 160, 300], fov: 58 }, null, s => {
+  for (let k = 0; k < 14; k++) { const z = 1150 + k * 14 + rand(-4, 4); addPerson(k % 3 ? "porter" : "traveler", -760 + k * 6, z, { path: [[-830, z], [-600, z + 30]], speed: rand(.8, 1.4), wade: true }); }
+});
+station(55458, "שדרת האורנים בהודוגאיה", 1150, 1050, { up: 3, d: [0, 0], look: [0, 200, 0], fov: 58 }, null, s => {
+  ROADPINES.push(s);
+  for (let k = 0; k < 6; k++) addPerson(["traveler", "porter", "monk", "woman"][k % 4], s.x + rand(-30, 30), s.z + rand(-10, 10), { path: [[s.x - 300, s.z + 80], [s.x + 300, s.z - 60]] });
+});
+station(55237, "הגשר ניהונבאשי באדו", 1920, 820, { up: 6, d: [0, 0], look: [0, 300, 0], fov: 55 }, null, s => { EDO.x = s.x; EDO.z = s.z; });
+station(53787, "גשר הסירות בסאנו בשלג", 1350, -1640, { up: 12, d: [0, 0], look: [1520, 0, -1520], fov: 58 }, { top: 0x2c3242, mid: 0xe9e3d6, hor: 0xb8b3a8, fog: 0xd8d4cc }, s => {
+  const pts = [[1380, -1600], [1430, -1560], [1490, -1530], [1560, -1500]];
+  for (let k = 0; k < 18; k++) { const u = k / 17; const x = lerp(1380, 1560, u), z = lerp(-1600, -1500, u) + Math.sin(u * 3) * 10; const b = new THREE.Mesh(G_.box(5, 1.2, 9), toon(0x7a5f3a)); b.position.set(x, 0, z); b.rotation.y = Math.atan2(180, 100) + Math.PI / 2; scene.add(b); }
+  addPerson("traveler", 1450, -1555, { y: 1, path: [[1380, -1600], [1560, -1500]], speed: 1 });
+  VILLAGES.push([1300, -1700, 5]);
+});
+station(56142, "המפל שבו רחץ יושיצונה את סוסו", 760, -2200, { up: 6, d: [0, 50], look: [760, 70, -2290], fov: 55 }, null, s => { FALLS.push([760, -2290, 80]); });
+station(36484, "מפל רובן באויאמה", -200, -2420, { up: 5, d: [0, 60], look: [-200, 90, -2520], fov: 55 }, null, s => { FALLS.push([-200, -2520, 110]); for (let k = 0; k < 5; k++) addPerson("farmer", -200 + rand(-14, 14), -2500 + rand(-6, 6), { y: landH(-200, -2500) - 1 }); });
+station(37362, "שקיעה מעל גשר ריוגוקו", 2000, 560, { up: 4, d: [0, 0], look: [2010, 20, 380], fov: 55 }, { top: 0x2b2f3d, mid: 0xead9b6, hor: 0xe7c9a0, fog: 0xd9c7a6 }, s => { BRIDGES.push([2030, 400, 260, 0]); const b = makeBoat(); b.scale.setScalar(.9); b.position.set(2010, 0, 520); b.rotation.y = Math.PI / 2; scene.add(b); BOATS.push(b); });
+station(44981, "שלג על נהר סומידה", 2160, -240, { up: 10, d: [0, 0], look: [2060, 0, -250], fov: 55 }, { top: 0x26344a, mid: 0xece6da, hor: 0xc9c3b4, fog: 0xdcd8ce }, s => { const h = new THREE.Mesh(KIT.minka(), VC); h.position.set(2110, landH(2110, -230), -230); scene.add(h); });
+station(56138, "פריחת הדובדבן ביושינו", -900, -2050, { up: 6, d: [0, 0], look: [-900, 60, -2200], fov: 58 }, null, s => {
+  const list = []; for (let k = 0; k < 160; k++) { const x = s.x + rand(-180, 180), z = s.z + rand(-260, 40); list.push([x, landH(x, z), z, rand(0, 6), rand(.9, 1.6)]); }
+  instances(KIT.cherry(), list);
+  const t = new THREE.Mesh(KIT.torii(), VC); t.position.set(s.x + 20, landH(s.x + 20, s.z - 120), s.z - 120); scene.add(t);
+});
+const RYU = [[49934, "ירח ערב באיזומיזאקי", -1700, 2700], [49935, "גן הבננות בנאקאשימה", -900, 2900], [49936, "גדר הבמבוק בקומה-מורה", -200, 3000], [49937, "המעיין הקדוש בג'וגאקו", 500, 2850], [49938, "קול האגם בריונקאי", 1200, 2950], [49939, "זוהר ערב בג'ונגאי", 1900, 2700], [49940, "שמי סתיו בצ'וקו", 2500, 2520], [49941, "אורנים וגלים בריוטו", -2400, 2470]];
+RYU.forEach(([id, name, x, z], k) => station(id, "איי ריוקיו: " + name, x, z - 60, { up: 30, d: [0, -120], look: [x, 10, z], fov: 55 }, { top: 0x2f6a8a, mid: 0xdfe6d8, hor: 0xe4e6d6, fog: 0xd2dccf }, s => {
+  VILLAGES.push([x + 30, z + 20, 6]);
+  if (k === 2) { const list = []; for (let q = 0; q < 40; q++) { const a = rand(0, 6.28), r = rand(20, 70); list.push([x + Math.cos(a) * r, landH(x + Math.cos(a) * r, z + Math.sin(a) * r), z + Math.sin(a) * r, 0, rand(.8, 1.2)]); } instances(KIT.bamboo(), list); }
+  if (k === 4 || k === 6) { for (let q = 0; q < 30; q++) { const u = q / 29; const b = new THREE.Mesh(G_.box(6, 2, 8), toon(0xd8c48e)); b.position.set(x - 150 + u * 300, 0, z - 90 + Math.sin(u * 4) * 20); scene.add(b); } }
+  if (k === 5) { const sh = new THREE.Mesh(KIT.shrine(), VC); sh.position.set(x, landH(x, z) + 1, z); sh.scale.setScalar(1.3); scene.add(sh); }
+  if (k === 0) { const br = new THREE.Mesh(new THREE.TorusGeometry(14, 1.6, 6, 20, Math.PI), toon(0xcfc3a5)); br.position.set(x - 60, 0, z - 30); scene.add(br); }
+  PINEGROVES.push([x, z, 70, 10]);
+  const sb = makeBoat(); sb.scale.setScalar(.45); sb.position.set(x + rand(-80, 80), 0, z - 110); scene.add(sb); BOATS.push(sb);
+}));
+station(54433, "הציפור המיסטית מעל הפסגה", 0, 0, { up: 0, look: [0, 760, 0], fov: 60, sky: true }, { top: 0x2a3d6e, mid: 0xf0e2c4, hor: 0xe0d2b5, fog: 0xe0d6c0 }, s => { s.y = FUJI_H + 120; });
+
+/* ---------- shared world collections filled by station dressers ---------- */
+var WAVES = [], BOATS = [], MACKEREL = [], CUMULUS = [], VILLAGES = [], PINEGROVES = [], ROADPINES = [], FALLS = [], BRIDGES = [], FOAMSPOTS = [];
+var STORM = { x: 0, z: 0, bolts: [] }, EDO = { x: 0, z: 0 }, MIRROR_FUJI = { on: false };
+
+/* ---------- build the world ---------- */
+let SKY, FUJI, WATER, TERRAIN, MIRROR, BIRD;
+function buildWorld() {
+  SKY = makeSky({ top: DEFAULT_MOOD.top, mid: DEFAULT_MOOD.mid, hor: DEFAULT_MOOD.hor, midY: .14, topY: .5, cloud: .3, cloudCol: 0xf1ece0 });
+  SKY.geometry = new THREE.SphereGeometry(8000, 48, 24); scene.add(SKY);
+  // terrain
+  const geo = new THREE.PlaneGeometry(MAP.x1 - MAP.x0, MAP.z1 - MAP.z0, GN, GN); geo.rotateX(-Math.PI / 2);
+  geo.translate((MAP.x0 + MAP.x1) / 2, 0, (MAP.z0 + MAP.z1) / 2);
+  const pa = geo.attributes.position; const snow = new Float32Array(pa.count);
+  for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i); pa.setY(i, rawH(x, z)); snow[i] = snowAt(x, z); }
+  geo.setAttribute("aSnow", new THREE.BufferAttribute(snow, 1));
+  geo.computeVertexNormals();
+  TERRAIN = new THREE.Mesh(geo, printMat(`
+    varying float vSnow; uniform vec2 uRoad[9];
+    void main(){
+      float h=vP.y; float n=fbm(vP.xz*.004); float n2=vn(vP.xz*.05);
+      vec3 sand=vec3(.86,.8,.62), field=vec3(.74,.73,.42), grass=vec3(.45,.6,.4), hill=vec3(.33,.5,.42), dark=vec3(.16,.3,.27), mtn=vec3(.36,.47,.52);
+      vec3 c=mix(sand,field,smoothstep(1.,6.,h));
+      float paddy=step(.5,fract(vP.x*.012+n*.6))*step(.5,fract(vP.z*.012+n*.4));
+      c=mix(c,mix(field,vec3(.62,.7,.38),paddy),smoothstep(4.,10.,h)*(1.-smoothstep(40.,70.,h)));
+      c=mix(c,grass,smoothstep(30.,60.,h+n*30.));
+      c=mix(c,hill,smoothstep(70.,130.,h+n*40.));
+      c=mix(c,mtn,smoothstep(150.,260.,h));
+      float forest=smoothstep(.55,.62,n+fbm(vP.xz*.013)*.25)*smoothstep(15.,30.,h);
+      c=mix(c,mix(dark,vec3(.26,.43,.36),step(.55,n2)),forest);
+      float rd=1e9; for(int i=0;i<8;i++){ vec2 a=uRoad[i], b=uRoad[i+1]; vec2 pa=vP.xz-a, ba=b-a; float t=clamp(dot(pa,ba)/dot(ba,ba),0.,1.); rd=min(rd,length(pa-ba*t)); }
+      c=mix(c,vec3(.8,.7,.5),smoothstep(6.,3.5,rd+n2*2.)*step(1.,h));
+      float band=abs(fract(h*.035+n*.8)-.5); c=mix(c,c*.86,smoothstep(.05,.0,band)*smoothstep(60.,90.,h)*.6);
+      c=mix(c,vec3(.95,.95,.93),vSnow*smoothstep(-1.,2.,h));
+      float l=dot(normalize(vN),sun); c*= mix(.8,1.,smoothstep(.0,.4,l));
+      gl_FragColor=vec4(fogIt(c),1.);
+    }`, `attribute float aSnow; varying float vSnow; varying vec3 vP; varying vec3 vN; varying float vDist;
+    void main(){ vSnow=aSnow; vec4 w=modelMatrix*vec4(position,1.); vP=w.xyz; vN=normalize(mat3(modelMatrix)*normal); vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`));
+  TERRAIN.material.uniforms.uRoad = { value: [[2100, 950], [1600, 1080], [1150, 1050], [600, 1180], [0, 1250], [-650, 1250], [-1200, 1150], [-1700, 1050], [-2300, 1000]].map(p => new THREE.Vector2(p[0], p[1])) };
+  scene.add(TERRAIN);
+  // water (sea + lakes + rivers share one sheet at level 0)
+  const wg = new THREE.PlaneGeometry(MAP.x1 - MAP.x0 + 4000, MAP.z1 - MAP.z0 + 4000, 360, 360); wg.rotateX(-Math.PI / 2); wg.translate((MAP.x0 + MAP.x1) / 2, 0, (MAP.z0 + MAP.z1) / 2);
+  WATER = new THREE.Mesh(wg, printMat(`
+    varying float vH, vSea;
+    void main(){
+      vec3 deep=vec3(.07,.16,.33), mid=vec3(.13,.3,.55), lite=vec3(.42,.6,.78), foamC=vec3(.95,.93,.86), calm=vec3(.5,.66,.78);
+      float h=vH; float nh=clamp((h+5.)/10.,0.,1.); float n=fbm(vP.xz*.035);
+      vec3 c=mix(deep,mid,smoothstep(.15,.55,nh));
+      float lines=abs(fract(h*.55+n*2.2+vP.x*.004)-.5);
+      c=mix(c,lite,smoothstep(.09,.02,lines)*smoothstep(.2,.6,nh)*.85);
+      float fm=smoothstep(.9,.93,nh+n*.14-.06)*step(.5,vn(vP.xz*vec2(.35,.9)));
+      c=mix(c,foamC,fm);
+      vec3 lake=mix(calm,vec3(.36,.55,.72),fbm(vP.xz*.01));
+      float ln=abs(fract(vP.z*.05+n*1.5)-.5); lake=mix(lake,vec3(.8,.86,.88),smoothstep(.04,.0,ln)*.5);
+      c=mix(lake,c,vSea);
+      gl_FragColor=vec4(fogIt(c),.93);
+    }`, `${OCEAN_H} uniform float time; varying vec3 vP; varying vec3 vN; varying float vDist; varying float vH, vSea;
+    float coastZ(float x){ return 1500.+110.*sin(x*.0023)+60.*sin(x*.0071+1.)+(x>1500.?-(x-1500.)*.35:0.); }
+    void main(){ vec4 w=modelMatrix*vec4(position,1.); float cz=coastZ(w.x); float sea=smoothstep(cz-150.,cz+350.,w.z); vSea=sea;
+      float h=hgt(w.xz,time)*mix(.06,1.,sea); w.y+=h; vH=h/mix(.06,1.,sea)*sea;
+      float e=1.5; float hx=hgt(w.xz+vec2(e,0.),time)*mix(.06,1.,sea), hz=hgt(w.xz+vec2(0.,e),time)*mix(.06,1.,sea);
+      vN=normalize(vec3(h-hx,e,h-hz)); vP=w.xyz; vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`, null, { transparent: true }));
+  WATER.renderOrder = 1; scene.add(WATER);
+  // Fuji
+  FUJI = makeFuji(FUJI_R, FUJI_H, { low: DEFAULT_MOOD.fLow, mid: DEFAULT_MOOD.fMid, high: DEFAULT_MOOD.fHigh, forest: 1, darkSide: .25 });
+  FUJI.userData.setCenter(new V3()); scene.add(FUJI);
+  // stations dress their places
+  for (const s of STATIONS) s.dress(s);
+  // mirrored Fuji under Kawaguchi lake (seen only through the water there)
+  if (MIRROR_FUJI.on) { MIRROR = makeFuji(FUJI_R, FUJI_H, { low: 0x8fa9b8, mid: 0x9db5c4, high: 0x8a9fb2, darkSide: .1 }); MIRROR.userData.setCenter(new V3(0, -10, 0)); MIRROR.scale.y = -1; MIRROR.position.y = -10; scene.add(MIRROR); }
+  // forests around the mountain foot + pines along the Tokaido + groves
+  const ced = [], pines = [], houses = [], kuras = [];
+  for (let k = 0; k < 4200; k++) { const a = rand(0, 6.28), r = rand(FUJI_R * .62, FUJI_R * 1.5); const x = Math.cos(a) * r, z = Math.sin(a) * r; const y = landH(x, z); if (y < 3 || y > FUJI_H * .16) continue; ced.push([x, y - .5, z, rand(0, 6), rand(.7, 1.4)]); }
+  for (let k = 0; k < 2500; k++) { const x = rand(MAP.x0, MAP.x1), z = rand(MAP.z0, MAP.z1); const y = landH(x, z); if (y < 25 || y > 260 || Math.hypot(x, z) < FUJI_R * 1.1) continue; if (fbmJ(x * .004, z * .004) < .52) continue; ced.push([x, y - .5, z, rand(0, 6), rand(.8, 1.5)]); }
+  const TOKAIDO = [[2100, 950], [1600, 1080], [1150, 1050], [600, 1180], [0, 1250], [-650, 1250], [-1200, 1150], [-1700, 1050], [-2300, 1000]];
+  ROAD.pts = TOKAIDO;
+  for (let i = 0; i < TOKAIDO.length - 1; i++) { const [ax, az] = TOKAIDO[i], [bx, bz] = TOKAIDO[i + 1]; const L = Math.hypot(bx - ax, bz - az); for (let d = 0; d < L; d += 34) { const u = d / L, x = lerp(ax, bx, u), z = lerp(az, bz, u); const nx = -(bz - az) / L, nz = (bx - ax) / L; for (const sd of [-1, 1]) { const px = x + nx * 14 * sd + rand(-3, 3), pz = z + nz * 14 * sd + rand(-3, 3); const y = landH(px, pz); if (y > 1) pines.push([px, y - .5, pz, rand(0, 6), rand(.8, 1.2)]); } } }
+  for (const [x, z, r, n] of PINEGROVES) for (let k = 0; k < n; k++) { const a = rand(0, 6.28), d = rand(0, r); const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; const y = landH(px, pz); if (y > 1) pines.push([px, y - .5, pz, rand(0, 6), rand(.8, 1.3)]); }
+  for (let k = 0; k < 260; k++) { const x = rand(MAP.x0, MAP.x1), z = rand(-600, coastZ(0) + 100); const y = landH(x, z); if (y < 3 || y > 60 || Math.hypot(x, z) < FUJI_R * 1.05) continue; pines.push([x, y - .5, z, rand(0, 6), rand(.8, 1.3)]); }
+  for (const [x, z, n, kind] of VILLAGES) for (let k = 0; k < n; k++) { const px = x + rand(-60, 60), pz = z + rand(-60, 60); const y = landH(px, pz); if (y < 1.5) continue; (kind === "kura" ? kuras : houses).push([px, y - .3, pz, Math.round(rand(0, 4)) * Math.PI / 2 + rand(-.1, .1), rand(.9, 1.2)]); }
+  // villages along the Tokaido
+  for (let i = 1; i < TOKAIDO.length - 1; i += 2) { const [x, z] = TOKAIDO[i]; for (let k = 0; k < 7; k++) { const px = x + rand(-70, 70), pz = z + rand(20, 60) * (k % 2 ? 1 : -1); const y = landH(px, pz); if (y > 2) houses.push([px, y - .3, pz, Math.atan2(TOKAIDO[i + 1][0] - x, TOKAIDO[i + 1][1] - z), rand(.9, 1.2)]); } }
+  // Edo: rows of warehouses along the canal, Nihonbashi bridge
+  for (let k = 0; k < 26; k++) for (const sd of [-1, 1]) { const x = EDO.x + 30 + k * 13, z = EDO.z + sd * 22; kuras.push([x, landH(x, z) - .3, z, Math.PI / 2, 1]); }
+  for (let k = 0; k < 90; k++) { const x = EDO.x + rand(-60, 380), z = EDO.z + rand(60, 260) * (k % 2 ? 1 : -1); const y = landH(x, z); if (y > 1.5) (k % 3 ? houses : kuras).push([x, y - .3, z, Math.PI / 2, rand(.9, 1.1)]); }
+  BRIDGES.push([EDO.x + 10, EDO.z, 70, Math.PI / 2]);
+  const snowTint = (o, c) => { const s = snowAt(o[0], o[2]); return c.setRGB(1, 1, 1).lerp(new THREE.Color(0xffffff), 0).multiplyScalar(1).lerp(new THREE.Color(1.25, 1.25, 1.3), s); };
+  instances(KIT.cedar(), ced); instances(KIT.pine(), pines); instances(KIT.minka(), houses, null, snowTint); instances(KIT.kura(), kuras);
+  // bridges
+  for (const [x, z, L, ry] of BRIDGES) {
+    const parts = []; const n = Math.round(L / 4);
+    for (let k = 0; k <= n; k++) { const u = k / n - .5; const y = 6 + 5 * (1 - 4 * u * u); parts.push({ g: G_.box(4.2, .8, 9), c: 0x8a6a42, m: M4(u * L, y, 0, 0, 0, -Math.atan(-40 * u / L)) }); if (k % 2 === 0) { parts.push({ g: G_.cyl(.35, .35, y + 5, 5), c: 0x5a4632, m: M4(u * L, (y + 5) / 2 - 5, 4) }, { g: G_.cyl(.35, .35, y + 5, 5), c: 0x5a4632, m: M4(u * L, (y + 5) / 2 - 5, -4) }, { g: G_.box(4.2, .3, .3), c: 0x5a4632, m: M4(u * L, y + 1.5, 4.3) }, { g: G_.box(4.2, .3, .3), c: 0x5a4632, m: M4(u * L, y + 1.5, -4.3) }); } }
+    const b = new THREE.Mesh(partsGeo(parts), VC); b.position.set(x, 0, z); b.rotation.y = ry; scene.add(b);
+    for (let k = 0; k < 8; k++) { const u = rand(-.4, .4); const lx = u * L; const p = addPerson(["traveler", "woman", "porter", "farmer"][k % 4], 0, 0, { y: 6 + 5 * (1 - 4 * u * u) + .3 }); const ca = Math.cos(ry), sa = Math.sin(ry); const a0 = [x + (-L * .45) * ca, z - (-L * .45) * sa], a1 = [x + (L * .45) * ca, z - (L * .45) * sa]; p.path = [a0, a1]; p.u = u + .5; p.fixedY = true; p.speed = rand(1, 1.6); }
+  }
+  // waterfalls
+  for (const [x, z, h] of FALLS) {
+    const base = landH(x, z + 30);
+    const cliff = new THREE.Mesh(partsGeo([{ g: G_.box(70, h, 30), c: 0x5d6c63, m: M4(0, h / 2, -12) }, { g: G_.box(40, h * .7, 20), c: 0x4b5a52, m: M4(-38, h * .35, -6, 0, .3) }, { g: G_.box(36, h * .8, 20), c: 0x4b5a52, m: M4(38, h * .4, -6, 0, -.3) }]), VC);
+    cliff.position.set(x, base - 2, z); scene.add(cliff);
+    const fall = new THREE.Mesh(new THREE.PlaneGeometry(14, h), printMat(`void main(){ float s=abs(fract(vP.x*.35+sin(vP.y*.05)*.3)-.5); float f=fract(vP.y*.03+time*1.2+vn(vec2(vP.x*.3,0.))); vec3 c=mix(vec3(.3,.5,.75),vec3(.95,.95,.92),smoothstep(.25,.1,s)); c=mix(c,vec3(.97),step(.85,f)*.6); gl_FragColor=vec4(fogIt(c),1.);}`));
+    fall.position.set(x, base - 2 + h / 2, z + 3.2); scene.add(fall);
+    FOAMSPOTS.push([x, z + 6, base + 1]);
+  }
+  // clouds: Hokusai's flat banded clouds over the land; mackerel rows over the Red Fuji station
+  const cm = new THREE.SpriteMaterial({ map: cloudTex, alphaTest: .45, fog: false });
+  for (let k = 0; k < 160; k++) { const s = new THREE.Sprite(cm); const w = rand(120, 260); s.scale.set(w, w * .25, 1); s.position.set(rand(MAP.x0, MAP.x1), rand(780, 1000), rand(MAP.z0, MAP.z1)); scene.add(s); }
+  for (const [x, z] of MACKEREL) for (let row = 0; row < 18; row++) { const zz = z - 700 + row * 75, y = 520 + (row % 5) * 25; for (let xx = x - 900; xx < x + 900; xx += rand(55, 120)) { const s = new THREE.Sprite(cm); const w = rand(50, 110); s.scale.set(w, w * .25, 1); s.position.set(xx + 600, y + rand(-12, 12), zz); scene.add(s); } }
+  const cw = toon(0xf4f1e8), cs = new THREE.SphereGeometry(1, 14, 10);
+  const puff = (x, y, z, n, sz) => { const g = new THREE.Group(); g.position.set(x, y, z); for (let j = 0; j < n; j++) { const s = new THREE.Mesh(cs, cw); const r = rand(.6, 1.2) * sz; s.scale.set(r, r * .72, r); s.position.set(rand(-3, 3) * sz, rand(0, .8) * sz, rand(-2, 2) * sz); g.add(s); } scene.add(g); };
+  for (let k = 0; k < 26; k++) { const a = rand(0, 6.28), r = rand(FUJI_R * .7, FUJI_R * 1.4); puff(Math.cos(a) * r, FUJI_H * rand(.42, .62), Math.sin(a) * r, 10, 11); }
+  for (const [x, z, r, n] of CUMULUS) for (let k = 0; k < n; k++) puff(x + rand(-r, r), rand(120, 200), z + rand(-r, r), 9, 8);
+  // storm bolts
+  const boltMat = new THREE.MeshBasicMaterial({ color: 0xc8432c });
+  for (let k = 0; k < 3; k++) { const g = new THREE.Group(); g.visible = false; scene.add(g); STORM.bolts.push({ g, t: rand(1, 4), state: 0, mat: boltMat, segs: [] }); }
+  // station markers: a tall pillar of soft light + a floating seal over a gold ring
+  for (const s of STATIONS) {
+    const g = new THREE.Group();
+    const y = s.y !== undefined ? s.y : Math.max(landH(s.x, s.z), 0) + 2;
+    g.position.set(s.x, y, s.z);
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 260, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: .16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+    pillar.position.y = 130; g.add(pillar);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(8, .45, 6, 36), new THREE.MeshBasicMaterial({ color: 0xd9a74a })); ring.rotation.x = Math.PI / 2; ring.position.y = .6; g.add(ring);
+    const seal = makeSeal(KANJI[STATIONS.indexOf(s) % KANJI.length]); seal.position.y = 7; seal.scale.setScalar(1.6); g.add(seal);
+    s.marker = g; s.pos = new V3(s.x, y, s.z); scene.add(g);
+    if (s.got) { pillar.material.opacity = .05; seal.visible = false; ring.material.color.set(0x8a7a5a); }
+    s.pillar = pillar; s.seal = seal; s.ring = ring;
+  }
+  // the mystical bird circling above the summit
+  BIRD = new THREE.Group();
+  const bodyM = toon(0xd2553a), wingM = toon(0x3f6f8a, { side: THREE.DoubleSide }), goldM = toon(0xd9b25a, { side: THREE.DoubleSide });
+  const bb = new THREE.Mesh(G_.sph(3, 12, 10), bodyM); bb.scale.set(1, .8, 2); BIRD.add(bb);
+  const hd = new THREE.Mesh(G_.sph(1.5, 10, 8), toon(0xe8cfa8)); hd.position.set(0, 2.2, 5); BIRD.add(hd);
+  const crown = new THREE.Mesh(G_.cone(1, 2.4, 6), goldM); crown.position.set(0, 4, 5); BIRD.add(crown);
+  for (const sd of [-1, 1]) { const w = new THREE.Mesh(new THREE.PlaneGeometry(14, 6), sd > 0 ? wingM : goldM); w.position.set(sd * 8, 0, 0); w.rotation.x = -Math.PI / 2; BIRD.add(w); BIRD.userData["w" + sd] = w; }
+  for (let k = 0; k < 5; k++) { const t = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 16), k % 2 ? goldM : wingM); t.position.set((k - 2) * 1.5, 0, -12); t.rotation.x = -Math.PI / 2; t.rotation.z = (k - 2) * .15; BIRD.add(t); }
+  BIRD.scale.setScalar(1.4); scene.add(BIRD);
+  // light
+  scene.add(new THREE.HemisphereLight(0xfff8e8, 0x6d7a90, .75));
+  const dl = new THREE.DirectionalLight(0xffffff, .65); dl.position.copy(SUN.value).multiplyScalar(100); scene.add(dl);
+  // walkers on the Tokaido
+  for (let k = 0; k < 40; k++) {
+    const i = (Math.random() * (TOKAIDO.length - 1)) | 0;
+    const p = addPerson(["traveler", "porter", "farmer", "woman", "monk"][k % 5], TOKAIDO[i][0], TOKAIDO[i][1], { path: TOKAIDO.map(q => [q[0] + rand(-4, 4), q[1] + rand(-4, 4)]) });
+    p.seg = i; p.u = Math.random(); p.dir = Math.random() < .5 ? 1 : -1; p.speed = rand(1.4, 2.4);
+  }
+  // farmers bending in the paddies near villages
+  for (const [x, z] of VILLAGES) for (let k = 0; k < 3; k++) { const px = x + rand(-90, 90), pz = z + rand(-90, 90); if (landH(px, pz) > 2) addPerson("farmer", px, pz, { bend: 1 }); }
+  // give a few people the hint lines
+  PEOPLE.forEach((p, i) => { if (!p.line) p.lineIdx = i; });
+}
+const ROAD = { pts: [] };
+function fbmJ(x, z) { return .5 + .25 * Math.sin(x * 1.7 + Math.sin(z * 1.3) * 2) * Math.sin(z * 1.9 + 1) + .15 * Math.sin(x * 4.1 + z * 3.3); }
+
+/* ---------- world update ---------- */
+const _c = new THREE.Color();
+function updateMood(dt) {
+  // weights: each station with a mood pulls the light toward its print within ~700 m
+  const ref = state === "moment" && MOMENT.s ? MOMENT.s.pos : P.pos;
+  let wsum = 0; const acc = {}; for (const k of MOOD_KEYS) acc[k] = new THREE.Color(0, 0, 0); let sp = 0, dk = 0;
+  for (const s of STATIONS) {
+    if (!s.mood) continue;
+    const d = Math.hypot(ref.x - s.x, ref.z - s.z) + (s.view.sky ? Math.max(0, 500 - (ref.y - FUJI_H)) * 2 : 0);
+    const w = sstep(900, 250, d); if (w <= 0) continue;
+    wsum += w;
+    for (const k of MOOD_KEYS) acc[k].add(_c.set(s.mood[k] !== undefined ? s.mood[k] : DEFAULT_MOOD[k]).multiplyScalar(w));
+    sp += (s.mood.speckle || 0) * w; dk += (s.mood.dark || 0) * w;
+  }
+  const wd = Math.max(0, 1 - wsum); const tot = wsum + wd;
+  const k_ = 1 - Math.exp(-dt * 1.5);
+  for (const k of MOOD_KEYS) { _c.set(DEFAULT_MOOD[k]).multiplyScalar(wd).add(acc[k]).multiplyScalar(1 / tot); MOOD[k].lerp(_c, k_); }
+  MOOD.speckle = lerp(MOOD.speckle, sp / tot, k_); MOOD.dark = lerp(MOOD.dark, dk / tot, k_);
+  const su = SKY.material.uniforms; su.cTop.value.copy(MOOD.top); su.cMid.value.copy(MOOD.mid); su.cHor.value.copy(MOOD.hor);
+  FOG.col.value.copy(MOOD.fog); scene.fog.color.copy(MOOD.fog);
+  const fu = FUJI.material.uniforms; fu.cLow.value.copy(MOOD.fLow); fu.cMid.value.copy(MOOD.fMid); fu.cHigh.value.copy(MOOD.fHigh); fu.speckle.value = MOOD.speckle;
+  post.uniforms.flashCol.value.setRGB(1, .95, .85);
+}
+function strikeBolt(b) {
+  while (b.g.children.length) { const c = b.g.children.pop(); c.geometry.dispose(); }
+  const base = new V3(STORM.x + rand(-160, 160), 0, STORM.z + rand(-160, 160)); base.y = landH(base.x, base.z);
+  let p = base.clone(), dir = rand(0, 6.28); b.segs = [];
+  const mk = (a, c, w) => { const d = c.clone().sub(a); const len = d.length(); const m = new THREE.Mesh(new THREE.BoxGeometry(w, len, w * .4), b.mat); m.position.copy(a).add(c).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new V3(0, 1, 0), d.normalize()); b.g.add(m); b.segs.push([a.clone(), c.clone()]); };
+  for (let s = 0; s < 6; s++) { const n = p.clone().add(new V3(Math.cos(dir) * rand(14, 26), rand(14, 26), Math.sin(dir) * rand(14, 26))); mk(p, n, 3); if (Math.random() < .5) mk(n, n.clone().add(new V3(rand(-18, 18), rand(-14, -5), rand(-18, 18))), 2); p = n; dir += rand(-1.6, 1.6); }
+}
+function updateWorld(dt, t) {
+  for (const b of BOATS) { const y = waterH(b.position.x, b.position.z, t); b.position.y = y + .2; b.rotation.x = Math.sin(t * 1.2 + b.position.x) * .1; b.rotation.z = Math.sin(t * .9 + b.position.z) * .06; }
+  for (const wv of WAVES) {
+    animateClaws(wv, t);
+    const L = wv.claws.userData.list, o = wv.grp.position;
+    if (Math.hypot(P.pos.x - o.x, P.pos.z - o.z) < 600) for (let k = 0; k < 3; k++) if (Math.random() < dt * 22 * wv.scale) { const c = L[(Math.random() * L.length) | 0]; if (c) foam.spawn(o.x + c.x + 5 * c.s, o.y + c.y - 2 * c.s, o.z + c.z, { vx: rand(2, 8), vy: rand(-3, 3), vz: rand(-2, 2), g: 7, life: rand(1.4, 2.6), s0: rand(.7, 1.5) * wv.scale, s1: .5 }); }
+  }
+  for (const [x, z, y] of FOAMSPOTS) if (Math.hypot(P.pos.x - x, P.pos.z - z) < 400 && Math.random() < dt * 14) foam.spawn(x + rand(-6, 6), y, z + rand(-4, 4), { vx: rand(-3, 3), vy: rand(2, 7), vz: rand(-3, 3), g: 9, life: rand(.8, 1.6), s0: rand(.8, 1.6), s1: .4 });
+  updatePeople(dt, t);
+  // storm
+  const nearStorm = Math.hypot(P.pos.x - STORM.x, P.pos.z - STORM.z) < 700;
+  for (const b of STORM.bolts) {
+    b.t -= dt;
+    if (b.state === 0 && b.t <= 0 && nearStorm) { strikeBolt(b); b.state = 1; b.t = .8; b.g.visible = true; }
+    else if (b.state === 1) { b.g.visible = Math.floor(b.t * 14) % 2 === 0; if (b.t <= 0) { b.state = 2; b.t = .5; b.g.visible = true; sfx.thunder(); post.uniforms.flash.value = .5; } }
+    else if (b.state === 2 && b.t <= 0) { b.state = 0; b.g.visible = false; b.t = rand(2.5, 6); }
+  }
+  // mystical bird
+  const ba = t * .12; BIRD.position.set(Math.cos(ba) * 260, FUJI_H + 140 + Math.sin(t * .5) * 20, Math.sin(ba) * 260);
+  BIRD.rotation.y = -ba; BIRD.userData["w1"].rotation.y = Math.sin(t * 3) * .5; BIRD.userData["w-1"].rotation.y = -Math.sin(t * 3) * .5;
+  const st = STATIONS.find(s => s.id === 54433); st.pos.copy(BIRD.position); st.marker.position.copy(BIRD.position).add(new V3(0, -6, 0)); st.marker.children[0].visible = false;
+  // markers bob
+  for (const s of STATIONS) if (!s.got) { s.seal.position.y = 7 + Math.sin(t * 2 + s.x) * .6; s.ring.rotation.z = t * .6; }
+  SKY.position.copy(camera.position);
+  updateMood(dt);
+}
+
+/* ---------- player (crane flight + walking) ---------- */
+let state = "menu", T = 0, G = { mode: "fly", boost: 1, boosting: false, boostLock: false };
+const P = { pos: new V3(), fwd: new V3(0, 0, -1), yaw: 0, pitch: 0, roll: 0, speed: 30 };
+const FLY = 34, BOOST = 70, WALK = 8, RUN = 15;
+const walker = new THREE.Group();
+(function () { const g = new THREE.Mesh(personGeo("traveler", 0x24467a), VC); walker.add(g); walker.userData.body = g; walker.scale.setScalar(1.25); walker.visible = false; scene.add(walker); })();
+const MOMENT = { s: null, t: 0, from: null };
+const keys = { left: false, right: false, up: false, down: false, boost: false };
+const mouse = { x: 0, y: 0, active: false, down: false };
+const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
+let lastKeyT = -10, touchBoost = false;
+const KEYMAP = { ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right", ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ShiftLeft: "boost", ShiftRight: "boost", Space: "boost" };
+addEventListener("keydown", e => {
+  const k = KEYMAP[e.code];
+  if (k) { keys[k] = true; lastKeyT = T; e.preventDefault(); return; }
+  if (e.code === "KeyF" || e.code === "KeyE") toggleMode();
+  else if (e.code === "KeyM" || e.code === "Tab") { e.preventDefault(); toggleMap(); }
+  else if (e.code === "KeyP" || e.code === "Escape") togglePause();
+  else if (e.code === "KeyN") toggleMute();
+});
+addEventListener("keyup", e => { const k = KEYMAP[e.code]; if (k) keys[k] = false; });
+addEventListener("blur", () => { for (const k in keys) keys[k] = false; mouse.down = false; });
+addEventListener("pointermove", e => {
+  if (e.pointerType === "mouse") { mouse.x = (e.clientX / innerWidth - .5) * 2; mouse.y = -(e.clientY / innerHeight - .5) * 2; mouse.active = true; }
+  else if (e.pointerId === stick.id) { const dx = e.clientX - stick.ox, dy = e.clientY - stick.oy; stick.x = clamp(dx / 55, -1, 1); stick.y = clamp(-dy / 55, -1, 1); $("stickKnob").style.transform = `translate(${stick.x * 35}px,${-stick.y * 35}px)`; }
+});
+document.addEventListener("mouseleave", () => { mouse.active = false; mouse.down = false; });
+canvas.addEventListener("pointerdown", e => {
+  if (e.pointerType === "mouse") { if (e.button === 0) mouse.down = true; return; }
+  if (stick.id === null) { stick.id = e.pointerId; stick.ox = e.clientX; stick.oy = e.clientY; stick.x = stick.y = 0; const b = $("stickBase"); b.style.left = e.clientX + "px"; b.style.top = e.clientY + "px"; b.hidden = false; $("stickKnob").style.transform = ""; }
+});
+const endStick = e => { if (e.pointerId === stick.id) { stick.id = null; stick.x = stick.y = 0; $("stickBase").hidden = true; } };
+addEventListener("pointerup", e => { if (e.pointerType === "mouse") mouse.down = false; endStick(e); });
+addEventListener("pointercancel", endStick);
+canvas.addEventListener("contextmenu", e => e.preventDefault());
+$("tBoost").addEventListener("pointerdown", e => { e.preventDefault(); touchBoost = true; });
+for (const ev of ["pointerup", "pointerleave", "pointercancel"]) $("tBoost").addEventListener(ev, () => touchBoost = false);
+$("tMode").addEventListener("pointerdown", e => { e.preventDefault(); toggleMode(); });
+$("tMap").addEventListener("pointerdown", e => { e.preventDefault(); toggleMap(); });
+const dz = v => { const a = Math.abs(v); return a < .12 ? 0 : Math.sign(v) * Math.min(1, (a - .12) / .6); };
+function toggleMode() {
+  if (state !== "play") return;
+  if (G.mode === "fly") {
+    const fl = floorAt(P.pos.x, P.pos.z);
+    if (P.pos.y - fl > 25) { toast("רדי נמוך יותר כדי לנחות", 1.6); return; }
+    if (landH(P.pos.x, P.pos.z) < .5) { toast("אי אפשר לנחות על המים", 1.6); return; }
+    G.mode = "walk"; P.pos.y = fl; P.pitch = 0; player.visible = false; walker.visible = true; toast("הלכת ברגל · F כדי לעלות שוב על העגור", 2);
+  } else { G.mode = "fly"; P.pos.y += 4; player.visible = true; walker.visible = false; toast("שוב באוויר", 1.2); }
+  $("modeTxt").textContent = G.mode === "fly" ? "🕊️ טיסה" : "🚶 הליכה";
+}
+const tmp = new V3(), tmp2 = new V3(), tmp3 = new V3();
+function updatePlay(dt) {
+  let ix = 0, iy = 0;
+  if (keys.left) ix -= 1; if (keys.right) ix += 1; if (keys.up) iy += 1; if (keys.down) iy -= 1;
+  if (stick.id !== null) { ix = stick.x; iy = stick.y; }
+  else if (!ix && !iy && mouse.active && T - lastKeyT > 1.5) { ix = dz(mouse.x); iy = dz(mouse.y); }
+  const wantBoost = keys.boost || mouse.down || touchBoost;
+  if (wantBoost && !G.boostLock && G.boost > 0) { G.boosting = true; G.boost -= dt * .25; if (G.boost <= 0) { G.boost = 0; G.boostLock = true; } }
+  else { G.boosting = false; G.boost = Math.min(1, G.boost + dt * .15); if (G.boostLock && G.boost > .3) G.boostLock = false; }
+  $("boostBar").style.width = (G.boost * 100) + "%";
+  if (G.mode === "fly") {
+    P.yaw -= ix * 1.5 * dt;
+    P.pitch += (iy * .7 - P.pitch) * Math.min(1, dt * 2.5);
+    P.roll += (ix * .7 - P.roll) * Math.min(1, dt * 4);
+    P.speed += ((G.boosting ? BOOST : FLY) - P.speed) * Math.min(1, dt * 2);
+    const cp = Math.cos(P.pitch); P.fwd.set(Math.sin(P.yaw) * cp, Math.sin(P.pitch), Math.cos(P.yaw) * cp);
+    const prev = P.pos.clone();
+    P.pos.addScaledVector(P.fwd, P.speed * dt);
+    const fl = floorAt(P.pos.x, P.pos.z) + 1.6;
+    if (P.pos.y < fl) { P.pos.y = fl; if (P.pitch < 0) P.pitch *= .3; if (landH(P.pos.x, P.pos.z) < 0 && T > splashT) { splashT = T + .35; sfx.splash(); for (let k = 0; k < 12; k++) foam.spawn(P.pos.x, P.pos.y, P.pos.z, { vx: rand(-5, 5), vy: rand(6, 12), vz: rand(-5, 5), g: 20, life: rand(.6, 1), s0: rand(.5, 1), s1: .3 }); } }
+    if (P.pos.y > 1500) { P.pos.y = 1500; if (P.pitch > 0) P.pitch *= .5; }
+    for (const wv of WAVES) { const l = waveLocal(wv, P.pos); if (l && inPoly(wv.poly, l.x, l.y)) { P.pos.copy(prev); P.pos.y += 1.5; P.speed *= .6; if (T > splashT) { splashT = T + .3; sfx.splash(); for (let k = 0; k < 20; k++) foam.spawn(P.pos.x, P.pos.y, P.pos.z, { vx: rand(-9, 9), vy: rand(2, 12), vz: rand(-9, 9), g: 14, life: rand(.7, 1.3), s0: rand(.6, 1.3), s1: .3 }); } } }
+    player.position.copy(P.pos); player.rotation.order = "YXZ"; player.rotation.set(-P.pitch, P.yaw, -P.roll);
+  } else {
+    P.yaw -= ix * 2.2 * dt;
+    const sp = (G.boosting ? RUN : WALK) * clamp(iy, -.5, 1);
+    P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
+    const nx = P.pos.x + P.fwd.x * sp * dt, nz = P.pos.z + P.fwd.z * sp * dt;
+    if (landH(nx, nz) > -.6) { P.pos.x = nx; P.pos.z = nz; }
+    P.pos.y = Math.max(landH(P.pos.x, P.pos.z), -.6);
+    walker.position.copy(P.pos); walker.position.y += Math.abs(Math.sin(T * 9)) * .15 * Math.abs(sp) / WALK; walker.rotation.y = P.yaw;
+    walker.userData.body.rotation.z = Math.sin(T * 9) * .05 * Math.abs(sp) / WALK;
+    player.position.copy(P.pos).add(tmp.set(Math.sin(P.yaw + 1.8) * 5, 0, Math.cos(P.yaw + 1.8) * 5)); player.position.y = landH(player.position.x, player.position.z) + 2.2; player.rotation.set(0, P.yaw, 0);
+  }
+  const lim = 2900; P.pos.x = clamp(P.pos.x, -lim, lim); P.pos.z = clamp(P.pos.z, -lim, 3300);
+  // trail
+  if (G.mode === "fly") { const tail = player.localToWorld(tmp.set(0, .2, -2.6)); if (Math.random() < .7) sparks.spawn(tail.x, tail.y, tail.z, { vx: rand(-1, 1), vy: rand(-.5, .5), vz: rand(-1, 1), life: rand(.5, .9), s0: G.boosting ? 1.1 : .7, s1: 0, r: 1, gg: .92, b: .75 }); }
+  // camera
+  const fly = G.mode === "fly", hp = fly ? P.pitch * .5 : -.12, cd = fly ? 12 : 9;
+  tmp2.set(Math.sin(P.yaw) * Math.cos(hp), Math.sin(hp), Math.cos(P.yaw) * Math.cos(hp));
+  tmp3.copy(P.pos).addScaledVector(tmp2, -cd); tmp3.y += fly ? 3.6 : 4.2;
+  camera.position.lerp(tmp3, 1 - Math.exp(-dt * 5));
+  const cf = floorAt(camera.position.x, camera.position.z) + 1.5; if (camera.position.y < cf) camera.position.y = cf;
+  camera.lookAt(tmp.copy(P.pos).addScaledVector(P.fwd, 8).add(tmp2.set(0, fly ? 1.4 : 3, 0)));
+  const fovT = G.boosting && fly ? 72 : 62; if (Math.abs(camera.fov - fovT) > .1) { camera.fov += (fovT - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
+  // stations
+  for (const s of STATIONS) {
+    if (s.got && !s.revisit) continue;
+    const r = s.view.sky ? 30 : 11;
+    if (s.pos.distanceTo(P.pos) < r && !s.got) { startMoment(s); break; }
+  }
+  // people talk
+  let near = null, nd = 9;
+  for (const p of PEOPLE) { const d = p.mesh.position.distanceTo(P.pos); if (d < nd) { nd = d; near = p; } }
+  if (near && near !== talkP) { talkP = near; talkT = 4; const tgt = nearestStation(near.mesh.position); const pool = tgt && Math.random() < .6 ? LINES.hint(tgt) : LINES.generic; $("bubble").textContent = pool[(near.lineIdx || 0) % pool.length]; sfx.talk(); }
+  if (talkP) { talkT -= dt; const v = tmp.copy(talkP.mesh.position); v.y += 5; v.project(camera); const b = $("bubble"); if (talkT > 0 && v.z < 1) { b.hidden = false; b.style.left = ((v.x * .5 + .5) * innerWidth) + "px"; b.style.top = ((-v.y * .5 + .5) * innerHeight) + "px"; } else { b.hidden = true; if (talkT <= 0 && nd > 12) talkP = null; } }
+  updateCompass();
+}
+let splashT = 0, talkP = null, talkT = 0, target = null;
+function nearestStation(p) { let best = null, bd = 1e9; for (const s of STATIONS) if (!s.got) { const d = Math.hypot(s.x - p.x, s.z - p.z); if (d < bd) { bd = d; best = s; } } return best; }
+function updateCompass() {
+  const s = (target && !target.got) ? target : nearestStation(P.pos); if (!s) { $("compass").hidden = true; return; }
+  $("compass").hidden = false;
+  const ang = wrapA(Math.atan2(s.pos.x - P.pos.x, s.pos.z - P.pos.z) - P.yaw);
+  $("compass").style.transform = `rotate(${-ang}rad)`;
+  $("cdist").textContent = `${s.place} · ${Math.round(Math.hypot(s.pos.x - P.pos.x, s.pos.z - P.pos.z))} מ'`;
+}
+/* the print moment: camera glides to where he stood, the land dissolves into the real print */
+function stationView(s) {
+  const v = s.view; const d = v.d || [0, 0];
+  const pos = new V3(s.x + d[0], 0, s.z + d[1]); pos.y = (v.sky ? s.pos.y - 40 : Math.max(landH(pos.x, pos.z), 0)) + v.up;
+  if (v.sky) pos.set(s.pos.x + 60, s.pos.y + 10, s.pos.z + 60);
+  return { pos, look: v.sky ? s.pos.clone() : new V3(v.look[0], v.look[1], v.look[2]), fov: v.fov };
+}
+function startMoment(s) {
+  state = "moment"; MOMENT.s = s; MOMENT.t = 0; MOMENT.from = { pos: camera.position.clone(), q: camera.quaternion.clone(), fov: camera.fov }; MOMENT.view = stationView(s);
+  const t = getPrintTex(s.id); post.uniforms.tP.value = t; post.uniforms.pAsp.value = t.image && t.image.width ? t.image.width / t.image.height : 1.49;
+  sfx.scroll(); $("bubble").hidden = true;
+  $("cap").innerHTML = `<b>${PRINTS[s.id]}</b><br>${s.place} · קאצושיקה הוקוסאי`;
+}
+function updateMoment(dt) {
+  const M_ = MOMENT; M_.t += dt; const v = M_.view;
+  const u = smooth(clamp(M_.t / 2.6, 0, 1));
+  camera.position.lerpVectors(M_.from.pos, v.pos, u);
+  const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(v.pos, v.look, new V3(0, 1, 0)));
+  camera.quaternion.copy(M_.from.q).slerp(q, u); camera.fov = lerp(M_.from.fov, v.fov, u); camera.updateProjectionMatrix();
+  const inT = M_.t - 2.6, holdEnd = 7.2;
+  post.uniforms.pMix.value = M_.t < holdEnd ? clamp(inT / 2.2, 0, 1) : clamp(1 - (M_.t - holdEnd) / 1.8, 0, 1);
+  $("cap").classList.toggle("on", M_.t > 4 && M_.t < holdEnd + .5);
+  if (M_.t > 4.6 && !M_.s.got) {
+    M_.s.got = true; if (!SAVE.have.includes(M_.s.id)) { SAVE.have.push(M_.s.id); writeSave(SAVE); }
+    M_.s.pillar.material.opacity = .05; M_.s.seal.visible = false; M_.s.ring.material.color.set(0x8a7a5a);
+    renderHUD(); sfx.finale();
+    for (let k = 0; k < 40; k++) sparks.spawn(M_.s.pos.x, M_.s.pos.y + 6, M_.s.pos.z, { vx: rand(-10, 10), vy: rand(-4, 14), vz: rand(-10, 10), life: rand(.8, 1.4), s0: 2, s1: 0, r: 1, gg: .85, b: .5 });
+    if (BOT) console.log(`[moment] ${M_.s.id} ${M_.s.place} have=${SAVE.have.length}`);
+  }
+  if (M_.t > holdEnd + 1.9) { state = "play"; post.uniforms.pMix.value = 0; $("cap").classList.remove("on"); if (STATIONS.every(s => s.got)) toast("כל 31 ההדפסים בידייך! 🎉\nאת חלק מהעולם של הוקוסאי", 5); }
+}
+function renderHUD() {
+  const n = STATIONS.filter(s => s.got).length;
+  $("sPrints").textContent = `📜 ${n}/${STATIONS.length} הדפסים`;
+}
+let toastT = 0;
+function toast(msg, d) { const t = $("toast"); t.textContent = msg; t.style.opacity = 1; toastT = d || 2; if (BOT) console.log(`[toast] ${msg}`); }
+function togglePause() { if (state === "play") { state = "pause"; $("pauseScr").hidden = false; music.duck(true); } else if (state === "pause") { state = "play"; $("pauseScr").hidden = true; music.duck(false); } }
+$("pauseBtn").onclick = togglePause; $("resumeBtn").onclick = togglePause; $("muteBtn").onclick = toggleMute;
+$("mapBtn").onclick = toggleMap;
+function toggleMute() { muted = !muted; if (master) master.gain.value = muted ? 0 : .55; $("muteBtn").textContent = muted ? "✕" : "♪"; }
+
+/* ---------- map ---------- */
+let mapImg = null;
+function drawMapBase() {
+  const c = document.createElement("canvas"); c.width = c.height = 600; const g = c.getContext("2d"); const id = g.createImageData(600, 600);
+  for (let j = 0; j < 600; j++) for (let i = 0; i < 600; i++) {
+    const x = MAP.x0 + (i / 600) * (MAP.x1 - MAP.x0), z = MAP.z0 + (j / 600) * (MAP.z1 - MAP.z0), h = landH(x, z); const o = (j * 600 + i) * 4;
+    let r, gg, b; if (h < 0) { const d = clamp(-h / 25, 0, 1); r = 150 - 60 * d; gg = 185 - 60 * d; b = 205 - 40 * d; } else if (h > FUJI_H * .2 && Math.hypot(x, z) < FUJI_R) { const t = h / FUJI_H; r = 170 - t * 40; gg = 120 - t * 30; b = 100; if (t > .78) r = gg = b = 240; } else { const t = clamp(h / 300, 0, 1); r = 225 - 90 * t; gg = 215 - 60 * t; b = 170 - 50 * t; }
+    id.data[o] = r; id.data[o + 1] = gg; id.data[o + 2] = b; id.data[o + 3] = 255;
+  }
+  g.putImageData(id, 0, 0); mapImg = c;
+}
+const toMap = (x, z, W, H) => [(x - MAP.x0) / (MAP.x1 - MAP.x0) * W, (z - MAP.z0) / (MAP.z1 - MAP.z0) * H];
+function toggleMap() {
+  if (state === "map") { state = "play"; $("mapScr").hidden = true; return; }
+  if (state !== "play") return;
+  state = "map"; $("mapScr").hidden = false; renderMap();
+}
+function renderMap() {
+  if (!mapImg) drawMapBase();
+  const cv = $("mapCv"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
+  g.drawImage(mapImg, 0, 0, W, H);
+  g.strokeStyle = "rgba(120,80,40,.6)"; g.setLineDash([6, 5]); g.lineWidth = 2; g.beginPath(); ROAD.pts.forEach((p, i) => { const [x, y] = toMap(p[0], p[1], W, H); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.setLineDash([]);
+  for (const s of STATIONS) { const [x, y] = toMap(s.x, s.z, W, H); g.fillStyle = s.got ? "#8a7a5a" : "#b3362b"; g.strokeStyle = "#f3e5c8"; g.lineWidth = 2; g.fillRect(x - 6, y - 6, 12, 12); g.strokeRect(x - 6, y - 6, 12, 12); if (s === target) { g.strokeStyle = "#1f3d6d"; g.lineWidth = 3; g.strokeRect(x - 10, y - 10, 20, 20); } }
+  const [px, py] = toMap(P.pos.x, P.pos.z, W, H);
+  g.save(); g.translate(px, py); g.rotate(-P.yaw + Math.PI); g.fillStyle = "#1f3d6d"; g.beginPath(); g.moveTo(0, -11); g.lineTo(7, 8); g.lineTo(0, 4); g.lineTo(-7, 8); g.closePath(); g.fill(); g.restore();
+}
+$("mapCv").addEventListener("click", e => {
+  const r = e.target.getBoundingClientRect(); const mx = (e.clientX - r.left) / r.width * e.target.width, my = (e.clientY - r.top) / r.height * e.target.height;
+  let best = null, bd = 20; for (const s of STATIONS) { const [x, y] = toMap(s.x, s.z, e.target.width, e.target.height); const d = Math.hypot(x - mx, y - my); if (d < bd) { bd = d; best = s; } }
+  if (best) { target = best; $("mapInfo").textContent = (best.got ? "✔ " : "🎯 ") + PRINTS[best.id] + " · " + best.place; renderMap(); }
+});
+$("mapClose").onclick = toggleMap;
+
+/* ---------- menu / album ---------- */
+function buildMenu() {
+  SAVE = loadSave(); STATIONS.forEach(s => s.got = SAVE.have.includes(s.id));
+  $("albumCount").textContent = `(${STATIONS.filter(s => s.got).length}/${STATIONS.length})`;
+  $("helpTxt").innerHTML = isTouch ? "גוררים אצבע לנווט · ≫ האצה · 🚶 נחיתה והליכה · 🗺️ מפה" : "חיצים / WASD או העכבר · רווח/Shift האצה · F נחיתה/המראה · M מפה · P הפסקה · N צליל";
+}
+$("albumBtn").onclick = () => {
+  const a = $("album"); a.innerHTML = "";
+  Object.keys(PRINTS).forEach(id => { const has = SAVE.have.includes(+id); const s = STATIONS.find(q => q.id === +id); const f = document.createElement("figure"); if (!has) f.className = "no"; f.innerHTML = `<img src="${imgURL(id)}" alt=""><figcaption>${has ? PRINTS[id] : "??? " + (s ? s.place : "")}</figcaption>`; a.appendChild(f); });
+  $("startScr").hidden = true; $("albumScr").hidden = false;
+};
+$("albumBack").onclick = () => { $("albumScr").hidden = true; $("startScr").hidden = false; };
+$("startBtn").onclick = () => enterWorld();
+function enterWorld() {
+  audioInit();
+  $("startScr").hidden = true; $("hud").hidden = false; $("touch").hidden = !isTouch;
+  const s0 = STATIONS.find(s => s.id === 55458);
+  P.pos.set(s0.x - 40, landH(s0.x - 40, s0.z) + 30, s0.z + 30); P.yaw = Math.atan2(-P.pos.x, -P.pos.z); P.pitch = 0; P.speed = FLY;
+  P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
+  // open on the real Great Wave print, dissolve into the land
+  const v = stationView(STATIONS[0]); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix();
+  post.uniforms.tP.value = getPrintTex(45434); post.uniforms.pAsp.value = 1.49; post.uniforms.pMix.value = 1;
+  state = "intro"; introT = 0; renderHUD(); music.setWorld(0);
+}
+let introT = 0;
+function updateIntro(dt) {
+  introT += dt; post.uniforms.pMix.value = clamp(1 - (introT - .8) / 2.4, 0, 1);
+  const v = stationView(STATIONS[0]);
+  if (introT > 3.4) {
+    const u = smooth(clamp((introT - 3.4) / 3, 0, 1));
+    tmp2.set(Math.sin(P.yaw), 0, Math.cos(P.yaw)); tmp3.copy(P.pos).addScaledVector(tmp2, -12); tmp3.y += 3.6;
+    camera.position.lerpVectors(v.pos, tmp3, u);
+    camera.lookAt(tmp.copy(v.look).lerp(tmp2.copy(P.pos).addScaledVector(P.fwd, 8), u)); camera.fov = lerp(v.fov, 62, u); camera.updateProjectionMatrix();
+  } else { camera.position.copy(v.pos); camera.lookAt(v.look); }
+  player.position.copy(P.pos); player.rotation.set(0, P.yaw, 0);
+  if (introT > 1.4 && introT - dt <= 1.4) toast("עולמו של הוקוסאי\n31 הדפסים מחכים במקומות שבהם צוירו", 3.4);
+  if (introT > 6.4) { state = "play"; toast("עקבי אחרי עמודי האור 🔆 · M למפה", 3); }
+}
+
+/* ---------- loop ---------- */
 function step(dt) {
   T += dt; TIME.value = T; post.uniforms.time.value = T;
-  if (world && world.update) world.update(dt, T);
   if (state === "play") updatePlay(dt);
-  else if (state === "intro") {
-    G.introT += dt; const k = G.introT;
-    post.uniforms.pMix.value = clamp(1 - (k - .8) / 2.4, 0, 1);
-    player.position.copy(P.pos); player.rotation.order = "YXZ"; player.rotation.set(0, P.yaw, 0);
-    if (k > 3.2) {
-      const u = smooth(clamp((k - 3.2) / 2.2, 0, 1));
-      const hp = 0; tmp2.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
-      tmp3.copy(P.pos).addScaledVector(tmp2, -11); tmp3.y += 3.4;
-      camera.position.lerpVectors(world.camEnd.pos, tmp3, u);
-      tmp.copy(world.camEnd.look).lerp(tmp2.copy(P.pos).addScaledVector(P.fwd, 8).add(new V3(0, 1.4, 0)), u);
-      camera.lookAt(tmp); camera.fov = lerp(world.camEnd.fov, 62, u); camera.updateProjectionMatrix();
-      P.pos.addScaledVector(P.fwd, BASE * dt * u);
-    } else { camera.position.copy(world.camEnd.pos); camera.lookAt(world.camEnd.look); }
-    if (k > 1.2 && k - dt <= 1.2) toast(WORLDS[worldIdx].name + "\n" + WORLDS[worldIdx].jp, 2.4);
-    if (k > 5.4) { state = "play"; G.t0 = T; toast(`אספי ${world.seals.length} חותמות אדומות 🔴`, 2.2); }
-  } else if (state === "outro") {
-    G.outroT += dt; const u = smooth(clamp(G.outroT / 3.2, 0, 1));
-    camera.position.lerpVectors(G.outroFrom.pos, world.camEnd.pos, u);
-    const q = new THREE.Quaternion(); const m = new THREE.Matrix4().lookAt(world.camEnd.pos, world.camEnd.look, new V3(0, 1, 0)); q.setFromRotationMatrix(m);
-    camera.quaternion.copy(G.outroFrom.q).slerp(q, u);
-    camera.fov = lerp(G.outroFrom.fov, world.camEnd.fov, u); camera.updateProjectionMatrix();
-    player.position.addScaledVector(P.fwd, BASE * dt);
-    post.uniforms.pMix.value = clamp((G.outroT - 3.2) / 2.6, 0, 1);
-    if (G.outroT > 8.6 && state === "outro") showEnd();
-  } else if (state === "menu") {
-    const a = T * .05; camera.position.set(Math.sin(a) * 160 + 40, 30, Math.cos(a) * 160 + 40); camera.lookAt(0, 22, -20);
-    if (camera.fov !== 60) { camera.fov = 60; camera.updateProjectionMatrix(); }
-  }
-  // wing flap + ribbon
-  const fl = Math.sin(T * (G && G.boosting ? 11 : 6.5));
-  wingL.rotation.z = fl * .55 + .1; wingR.rotation.z = -fl * .55 - .1;
+  else if (state === "moment") updateMoment(dt);
+  else if (state === "intro") updateIntro(dt);
+  else if (state === "menu") { const a = T * .03; camera.position.set(Math.sin(a) * 2300, 420, Math.cos(a) * 2300); camera.lookAt(0, 300, 0); }
+  updateWorld(dt, T);
+  const fl = Math.sin(T * (G.boosting ? 11 : 6.5)); wingL.rotation.z = fl * .55 + .1; wingR.rotation.z = -fl * .55 - .1;
+  if (G.mode === "walk") { wingL.rotation.z = .9; wingR.rotation.z = -.9; }
   if (ribbon) { const pa = ribbon.geometry.attributes.position, b = ribbon.userData.base; for (let i = 0; i < pa.count; i++) { const y = b[i * 3 + 1]; pa.setX(i, b[i * 3] + Math.sin(T * 9 + y * 3) * .25 * -y); pa.setZ(i, Math.sin(T * 7 + y * 2.5) * .3 * -y); } pa.needsUpdate = true; }
-  for (const s of world.seals) if (!s.got) { s.obj.position.y = s.pos.y + Math.sin(T * 2 + s.pos.x) * .5; s.obj.userData.sprite.material.rotation = Math.sin(T * 1.3 + s.pos.z) * .25; }
-  for (const s of world.scrolls) if (s.obj.visible) { s.obj.lookAt(camera.position.x, s.obj.position.y, camera.position.z); s.obj.position.y = s.pos.y + Math.sin(T * .8 + s.pos.x) * 1.2; }
-  if (G && G.finalObj) { G.finalObj.rotation.z += dt * .8; G.finalObj.children[0].scale.setScalar(1 + Math.sin(T * 4) * .05); }
   post.uniforms.flash.value = Math.max(0, post.uniforms.flash.value - dt * 2.2);
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) $("toast").style.opacity = 0; }
   foam.update(dt); sparks.update(dt);
 }
-function render() {
-  renderer.setRenderTarget(rt); renderer.render(scene, camera);
-  renderer.setRenderTarget(null); renderer.render(postScene, postCam);
-}
+function render() { renderer.setRenderTarget(rt); renderer.render(scene, camera); renderer.setRenderTarget(null); renderer.render(postScene, postCam); }
+let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
-  if (BOT && (state === "play" || state === "intro" || state === "outro")) { render(); return; }
-  if (state !== "pause" && state !== "end" && state !== "over") step(dt);
-  else { T += 0; }
+  if (BOT && state !== "menu") { render(); return; }
+  if (state !== "pause" && state !== "map") step(dt);
   render();
 }
+scene.fog = new THREE.Fog(DEFAULT_MOOD.fog, 600, 5200);
+FOG.near.value = 600; FOG.far.value = 5200;
 addEventListener("resize", resize);
 resize();
-loadWorld(0);
-buildMenu();
+buildWorld();
+buildMenu(); renderHUD();
 requestAnimationFrame(frame);
+sfx.talk = () => { if (!AC) return; const t = AC.currentTime; pluck(note(10 + ((Math.random() * 4) | 0)), t, .06, .6); };
 
-/* ---------------- test hooks ---------------- */
+/* ---------- test hooks ---------- */
+const mS = HASH.match(/^#(view|st)(\d+)/);
+if (mS) setTimeout(() => {
+  const s = STATIONS.find(q => q.id === +mS[2]) || STATIONS[+mS[2]];
+  enterWorld(); state = "viewtest"; post.uniforms.pMix.value = 0; $("startScr").hidden = true;
+  P.pos.copy(s.pos); updateMood(10); updateMood(10); updateMood(10);
+  const v = stationView(s); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix();
+  if (mS[1] === "st") { post.uniforms.pMix.value = .55; }
+}, 600);
 const mC = HASH.match(/cam=([-\d.,]+)/);
-if (mC) { const v = mC[1].split(",").map(Number); setTimeout(() => { state = "viewtest"; post.uniforms.pMix.value = 0; $("hud").hidden = true; $("startScr").hidden = true; camera.position.set(v[0], v[1], v[2]); camera.lookAt(v[3], v[4], v[5]); camera.fov = v[6] || 55; camera.updateProjectionMatrix(); }, 900); }
-const mW = HASH.match(/^#(?:w|bot|view|end)(\d)/);
-if (mW) {
-  const wi = +mW[1];
-  setTimeout(() => {
-    startWorld(wi);
-    if (/^#view/.test(HASH)) { G.introT = 0; post.uniforms.pMix.value = 0; state = "viewtest"; }
-    if (/^#w/.test(HASH)) { G.introT = 5.3; }
-    if (/^#end/.test(HASH)) { G.introT = 5.3; setTimeout(() => { state = "play"; world.seals.forEach(s => { s.got = true; s.obj.visible = false; }); G.seals = world.seals.length; G.phase = "final"; addFinal(); finishWorld(); G.outroT = 4.3; }, 300); }
-  }, 300);
-}
+if (mC) { const v = mC[1].split(",").map(Number); setTimeout(() => { enterWorld(); state = "viewtest"; post.uniforms.pMix.value = 0; P.pos.set(v[0], v[1], v[2]); updateMood(10); updateMood(10); camera.position.set(v[0], v[1], v[2]); camera.lookAt(v[3], v[4], v[5]); camera.fov = v[6] || 60; camera.updateProjectionMatrix(); }, 600); }
+if (/^#(play|walk)/.test(HASH)) setTimeout(() => { enterWorld(); introT = 6.3; if (HASH === "#walk") setTimeout(() => { P.pos.y = landH(P.pos.x, P.pos.z) + 5; toggleMode(); }, 300); }, 600);
 if (BOT) {
+  setTimeout(() => { enterWorld(); introT = 6.3; }, 600);
+  let order = null;
   setInterval(() => {
     for (let i = 0; i < 15; i++) {
-      if (state === "play") botStep();
-      if (state === "play" || state === "intro" || state === "outro") step(1 / 30);
+      if (state === "play") {
+        keys.left = keys.right = keys.up = keys.down = keys.boost = false; lastKeyT = T;
+        if (!order) order = STATIONS.slice();
+        const s = nearestStation(P.pos); if (!s) break;
+        const t = s.pos, dx = t.x - P.pos.x, dzz = t.z - P.pos.z, h = Math.hypot(dx, dzz);
+        const diff = wrapA(Math.atan2(dx, dzz) - P.yaw); if (diff > .05) keys.left = true; else if (diff < -.05) keys.right = true;
+        const want = Math.atan2(t.y + (h > 200 ? 60 : 0) - P.pos.y, Math.max(h, 1)) * 1.4; if (want > P.pitch + .05) keys.up = true; else if (want < P.pitch - .05) keys.down = true;
+        keys.boost = h > 150 && Math.abs(diff) < .3;
+      }
+      if (state === "play" || state === "moment" || state === "intro") step(1 / 30);
     }
   }, 50);
-  setInterval(() => { if (G && state === "play") console.log(`[pos] ${P.pos.x.toFixed(0)},${P.pos.y.toFixed(0)},${P.pos.z.toFixed(0)} seals=${G.seals} phase=${G.phase}`); }, 2000);
-  const _se = showEnd; window.__end = () => console.log("END");
+  setInterval(() => { if (state === "play") console.log(`[pos] ${P.pos.x.toFixed(0)},${P.pos.y.toFixed(0)},${P.pos.z.toFixed(0)} have=${STATIONS.filter(s => s.got).length}`); }, 3000);
 }
-window.__dbg = { get state() { return state; }, P, camera, post };
+window.__dbg = { get state() { return state; }, P, STATIONS, camera };
 })();
 </script>
 </body>
