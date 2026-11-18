@@ -88,7 +88,7 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 <div class="scr" id="startScr">
   <div class="card">
     <h1>עולמו של הוקוסאי<span class="seal">北斎</span></h1>
-    <p class="sub">ארץ אחת שלמה סביב הר פוג'י. כל אחד מ-31 ההדפסים הוא מקום אמיתי בה: הגל מול קנגאווה, הגשר באדו, החבית בפוג'ימיגהרה, המפלים, איי ריוקיו… טוסי על העגור, נחתי ולכי בין האיכרים, ומצאי את הנקודות שבהן הצייר עמד.</p>
+    <p class="sub">ארץ אחת שלמה סביב הר פוג'י, ו-31 ההדפסים של הוקוסאי הם מקומות אמיתיים בה: הגל מול קנגאווה, הגשר באדו, החבית בפוג'ימיגהרה, המפלים, איי ריוקיו… לכי ברגל בדרך הטוקאידו, רכבי על סוס, קראי לעגור ועופי, ומצאי את הנקודות שבהן הצייר עמד. בדרך אספי חותמי־יהלום ◆ ובזבזי אותם בעיירה.</p>
     <div class="row"><button class="btn red" id="startBtn">להיכנס לעולם</button><button class="btn ghost" id="albumBtn">📜 אלבום ההדפסים <span id="albumCount"></span></button><a class="btn ghost" href="classic.html" style="text-decoration:none">שלוש הממלכות (הגרסה הקודמת)</a></div>
     <div class="help" id="helpTxt"></div>
     <div class="credit">ההדפסים: אוסף מוזיאון המטרופוליטן לאמנות, ניו יורק, ברשות הציבור (Open Access, CC0). המוזיקה מקורית.</div>
@@ -1863,7 +1863,7 @@ function updateIntro(dt) {
   } else { camera.position.copy(v.pos); camera.lookAt(v.look); }
   if (G.mode === "fly") { player.position.copy(P.pos); player.rotation.set(0, P.yaw, 0); }
   if (introT > 1.4 && introT - dt <= 1.4) toast("עולמו של הוקוסאי\n31 הדפסים מחכים במקומות שבהם צוירו", 3.4);
-  if (introT > 6.4) { state = "play"; toast(isTouch ? "עקבי אחרי עמודי האור 🔆\n🐎 סוס · 🕊️ עגור · 🗺️ מפה" : "עקבי אחרי עמודי האור 🔆\nH סוס · רווח ×3 עגור · M מפה", 4); }
+  if (introT > 6.4) { state = "play"; if (window.GUIDE) GUIDE.start(); }
 }
 
 /* ---------- loop ---------- */
@@ -2434,7 +2434,45 @@ const TOWN_PT = { x: 1400, z: roadZ(1400) };
   };
 })();
 
+/* ---------- the first-minute guide: one small step at a time ---------- */
+const GUIDE = window.GUIDE = (() => {
+  const st = document.createElement("style");
+  st.textContent = `#guide{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:12;background:rgba(246,238,219,.96);border:1.5px solid #3b3a3a;box-shadow:2px 3px 0 rgba(0,0,0,.2);padding:8px 34px 8px 14px;font-size:17px;line-height:1.45;max-width:min(560px,86vw);text-align:center;pointer-events:auto;transition:opacity .4s}
+  #guide[hidden]{display:none}#guide b{color:#b3362b}#guide small{display:block;color:#8a7b62;font-size:12.5px;margin-top:2px}#guideX{position:absolute;top:4px;left:6px;background:none;border:0;font-size:16px;color:#6d5f49;padding:2px 6px}`;
+  document.head.appendChild(st);
+  const d = document.createElement("div"); d.id = "guide"; d.hidden = true; if (isTouch) { d.style.bottom = "auto"; d.style.top = "122px"; } d.innerHTML = `<button id="guideX" title="סגירה">✕</button><div id="guideT"></div>`; document.body.appendChild(d);
+  const T_ = isTouch ? [
+    ["גררי אצבע על המסך כדי <b>ללכת</b>. ≫ כדי לרוץ", "הדרך הזאת היא הטוקאידו"],
+    ["הקישי על <b>🐎</b> והסוס ידהר אלייך", "שוב 🐎 כדי לרדת"],
+    ["הקישי על <b>🕊️</b> והעגור יבוא לקחת אותך לשמיים", "⬇ קרוב לקרקע כדי לנחות"],
+    ["<b>עמודי האור</b> מסמנים את ההדפסים. המצפן האדום מצביע לקרוב", "🗺️ למפה: אפשר לבחור יעד, ולעוף להדפסים שכבר מצאת"],
+    ["אספי <b>◆ חותמים</b> בדרכים ועל הגגות", "בעיירה ממזרח 市 קונים בהם מטריה, תה, מרחץ, קאבוקי…"]
+  ] : [
+    ["<b>חיצים / WASD</b> כדי ללכת · Shift כדי לרוץ", "הדרך הזאת היא הטוקאידו"],
+    ["לחצי <b>H</b> והסוס ידהר אלייך", "H שוב כדי לרדת"],
+    ["הקישי <b>רווח 3 פעמים</b> והעגור יבוא לקחת אותך לשמיים", "F קרוב לקרקע כדי לנחות"],
+    ["<b>עמודי האור</b> מסמנים את ההדפסים. המצפן האדום מצביע לקרוב", "M למפה: אפשר לבחור יעד, ולעוף להדפסים שכבר מצאת"],
+    ["אספי <b>◆ חותמים</b> בדרכים ועל הגגות", "בעיירה ממזרח 市 קונים בהם מטריה, תה, מרחץ, קאבוקי… (E ליד דוכן)"]
+  ];
+  let i = -1, t = 0, walked = 0, last = null;
+  const show = () => { if (i < 0 || i >= T_.length) { d.hidden = true; return; } d.hidden = false; $("guideT").innerHTML = `${T_[i][0]}<small>${T_[i][1]}</small>`; d.style.opacity = 1; sfx.talk(); };
+  const next = () => { i++; t = 0; SAVE.tut = i; writeSave(SAVE); show(); };
+  $("guideX").onclick = () => { i = T_.length; SAVE.tut = i; writeSave(SAVE); d.hidden = true; };
+  PLAY_HOOKS.push(dt => {
+    if (i < 0 || i >= T_.length) return; t += dt;
+    if (last) walked += Math.hypot(P.pos.x - last.x, P.pos.z - last.z); last = { x: P.pos.x, z: P.pos.z };
+    if (i === 0 && (walked > 45 || t > 25)) next();
+    else if (i === 1 && (G.mode === "horse" || t > 25)) next();
+    else if (i === 2 && (G.mode === "fly" || t > 30)) next();
+    else if (i === 3 && (t > 12 || STATIONS.some(s => s.got && s.justGot))) next();
+    else if (i === 4 && t > 14) next();
+  });
+  return { start() { i = SAVE.tut === undefined ? 0 : SAVE.tut; if (i >= T_.length) { toast("עקבי אחרי עמודי האור 🔆", 2.5); return; } toast("עולמו של הוקוסאי", 2); setTimeout(show, 800); }, get step() { return i; } };
+})();
+
 /* ---------- test hooks ---------- */
+if (/fresh/.test(HASH)) setTimeout(() => { $("startBtn").click(); setTimeout(() => { for (let i = 0; i < 230; i++) step(1 / 30); }, 300); }, 500);
+if (/iw/.test(HASH)) setTimeout(() => console.log(`[iw] ${innerWidth}x${innerHeight} dpr=${devicePixelRatio}`), 500);
 const mG = HASH.match(/goto=(-?\d+),(-?\d+)(?:,(-?[\d.]+))?/);
 if (mG) setTimeout(() => {
   enterWorld(); introT = 6.3; step(.05); state = "play";
