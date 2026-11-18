@@ -973,11 +973,12 @@ station(56727, "קג'יקאזאווה על נהר פוג'י", -1985, -260, { up:
   addPerson("fisher", s.x + 4, s.z + 10, { y: 14, ry: Math.PI / 2 }); addPerson("farmer", s.x - 3, s.z + 8, { y: 10, s: .9 });
   FOAMSPOTS.push([s.x, s.z + 10, 14]);
 });
-station(36500, "שדה פוג'ימיגהרה", -1150, -620, { up: 4, d: [-14, -50], look: [0, 260, 0], fov: 50 }, null, s => {
+station(36500, "שדה פוג'ימיגהרה", -2550, -950, { up: 5, d: [-7.5, -2.8], look: [-2529.4, 199, -942.3], fov: 50 }, null, s => {
   const [bx, bz] = toward(s.x, s.z, 0, 0, 22); const ang = Math.atan2(-bx, -bz);
   const barrel = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 3.2, 40, 1, true), toon(0xd9c08c, { side: THREE.DoubleSide }));
   barrel.rotation.z = Math.PI / 2; barrel.rotation.y = ang + Math.PI / 2; barrel.position.set(bx, landH(bx, bz) + 8, bz); scene.add(barrel);
-  for (const k of [-1.4, 1.4]) { const hoop = new THREE.Mesh(new THREE.TorusGeometry(8.05, .22, 6, 40), toon(0x3b3a3a)); hoop.rotation.copy(barrel.rotation); hoop.rotateY(0); hoop.position.copy(barrel.position); hoop.translateY(k); scene.add(hoop); }
+  barrel.updateMatrixWorld(); const ax = new V3(0, 1, 0).applyQuaternion(barrel.quaternion);
+  for (const k of [-1.4, 1.4]) { const hoop = new THREE.Mesh(new THREE.TorusGeometry(8.05, .22, 6, 40), toon(0x3b3a3a)); hoop.quaternion.setFromUnitVectors(new V3(0, 0, 1), ax); hoop.position.copy(barrel.position).addScaledVector(ax, k); scene.add(hoop); }
   addPerson("farmer", bx + .5, bz, { y: landH(bx, bz) + .3, bend: 1, col: 0x3b5f8a });
 });
 station(56216, "מפרץ נובוטו", 1500, 1420, { up: 5, d: [0, -60], look: [1500, 12, 1560], fov: 58 }, null, s => {
@@ -991,7 +992,7 @@ station(56132, "ביצות אושיבורי", 2350, -620, { up: 10, d: [-40, -30
 });
 station(36498, "אגם האקונה", -1250, 900, { up: 40, d: [0, 0], look: [-1450, 0, 600], fov: 60 }, null, s => { VILLAGES.push([-1300, 420, 10]); });
 station(36496, "חוף שיצ'יריגהאמה", -1000, 1650, { up: 18, d: [0, 0], look: [-300, 120, 600], fov: 58 }, null, s => { PINEGROVES.push([s.x + 80, s.z - 60, 60, 25]); });
-station(54868, "השתקפות באגם מיסאקה", -150, -1760, { up: 9, d: [0, 0], look: [-80, 140, -600], fov: 56 }, null, s => { MIRROR_FUJI.on = true; VILLAGES.push([-380, -1650, 8]); });
+station(54868, "השתקפות באגם מיסאקה", -150, -1760, { up: 12, d: [0, 60], look: [-130, 70, -800], fov: 60 }, null, s => { MIRROR_FUJI.on = true; VILLAGES.push([-380, -1650, 8]); });
 station(56786, "מעבר מישימה", -1700, 1050, { up: 3, d: [0, 40], look: [-1500, 180, 600], fov: 58 }, null, s => {
   const [tx, tz] = [s.x, s.z]; const ty = landH(tx, tz);
   const tree = new THREE.Mesh(partsGeo([{ g: G_.cyl(2.6, 3.4, 70, 12), c: 0x58687a, m: M4(0, 35, 0) }, { g: G_.sph(10, 10, 8), c: 0x2c4a42, m: M4(-6, 72, 0, 0, 0, 0, 1.4, .6, 1.2) }, { g: G_.sph(9, 10, 8), c: 0x3a5f52, m: M4(7, 66, 3, 0, 0, 0, 1.3, .55, 1.1) }, { g: G_.sph(7, 10, 8), c: 0x2c4a42, m: M4(2, 80, -2, 0, 0, 0, 1.3, .5, 1) }]), VC);
@@ -1029,8 +1030,8 @@ station(56142, "המפל שבו רחץ יושיצונה את סוסו", 760, -22
 station(36484, "מפל רובן באויאמה", -200, -2420, { up: 5, d: [0, 60], look: [-200, 90, -2520], fov: 55 }, null, s => { FALLS.push([-200, -2520, 110]); for (let k = 0; k < 5; k++) addPerson("farmer", -200 + rand(-14, 14), -2500 + rand(-6, 6), { y: landH(-200, -2500) - 1 }); });
 station(37362, "שקיעה מעל גשר ריוגוקו", 2000, 560, { up: 4, d: [0, 0], look: [2010, 20, 380], fov: 55 }, { top: 0x2b2f3d, mid: 0xead9b6, hor: 0xe7c9a0, fog: 0xd9c7a6 }, s => { BRIDGES.push([2030, 400, 260, 0]); const b = makeBoat(); b.scale.setScalar(.9); b.position.set(2010, 0, 520); b.rotation.y = Math.PI / 2; scene.add(b); BOATS.push(b); });
 station(44981, "שלג על נהר סומידה", 2160, -240, { up: 10, d: [0, 0], look: [2060, 0, -250], fov: 55 }, { top: 0x26344a, mid: 0xece6da, hor: 0xc9c3b4, fog: 0xdcd8ce }, s => { const h = new THREE.Mesh(KIT.minka(), VC); h.position.set(2110, landH(2110, -230), -230); scene.add(h); });
-station(56138, "פריחת הדובדבן ביושינו", -900, -2050, { up: 6, d: [0, 0], look: [-900, 60, -2200], fov: 58 }, null, s => {
-  const list = []; for (let k = 0; k < 160; k++) { const x = s.x + rand(-180, 180), z = s.z + rand(-260, 40); list.push([x, landH(x, z), z, rand(0, 6), rand(.9, 1.6)]); }
+station(56138, "פריחת הדובדבן ביושינו", -900, -2050, { up: 55, d: [0, 170], look: [-900, 185, -2180], fov: 58 }, null, s => {
+  const list = []; for (let k = 0; k < 300; k++) { const x = s.x + rand(-200, 200), z = s.z + rand(-270, 60); list.push([x, landH(x, z) - .5, z, rand(0, 6), rand(1.6, 2.6)]); }
   instances(KIT.cherry(), list);
   const t = new THREE.Mesh(KIT.torii(), VC); t.position.set(s.x + 20, landH(s.x + 20, s.z - 120), s.z - 120); scene.add(t);
 });
@@ -1133,7 +1134,15 @@ function buildWorld() {
   // stations dress their places
   for (const s of STATIONS) s.dress(s);
   // mirrored Fuji under Kawaguchi lake (seen only through the water there)
-  if (MIRROR_FUJI.on) { MIRROR = makeFuji(FUJI_R, FUJI_H, { low: 0x8fa9b8, mid: 0x9db5c4, high: 0x8a9fb2, darkSide: .1 }); MIRROR.userData.setCenter(new V3(0, -10, 0)); MIRROR.scale.y = -1; MIRROR.position.y = -10; scene.add(MIRROR); }
+  if (MIRROR_FUJI.on) {
+    // the reflection: an upside-down Fuji drawn over the lake surface only (clipped to where the view ray meets the lake)
+    MIRROR = makeFuji(FUJI_R, FUJI_H, { low: 0x6d8fa6, mid: 0x86a6bb, high: 0x5f7f99, snow: 0xdfe6e4, darkSide: .1 });
+    const mm = MIRROR.material, Lk = LAKES[1];
+    mm.uniforms.lakeC = { value: new V3(Lk.x, Lk.z, Lk.r * .82) };
+    mm.fragmentShader = mm.fragmentShader.replace("void main(){", "uniform vec3 lakeC; void main(){ { vec3 cp=cameraPosition; float tt=cp.y/max(cp.y-vP.y,1e-3); vec2 hit=cp.xz+(vP.xz-cp.xz)*tt; if(cp.y<1.||length(hit-lakeC.xy)>lakeC.z) discard; }").replace("vec3 q=vP-ctr;", "vec3 q=vP-ctr; q.y=-q.y;");
+    mm.depthTest = false; mm.depthWrite = false; mm.transparent = true; mm.side = THREE.DoubleSide;
+    MIRROR.scale.y = -1; MIRROR.renderOrder = 2; scene.add(MIRROR);
+  }
   // forests around the mountain foot + pines along the Tokaido + groves
   const ced = [], pines = [], houses = [], kuras = [];
   for (let k = 0; k < 4200; k++) { const a = rand(0, 6.28), r = rand(FUJI_R * .62, FUJI_R * 1.5); const x = Math.cos(a) * r, z = Math.sin(a) * r; const y = landH(x, z); if (y < 3 || y > FUJI_H * .16) continue; ced.push([x, y - .5, z, rand(0, 6), rand(.7, 1.4)]); }
