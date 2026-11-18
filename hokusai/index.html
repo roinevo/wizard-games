@@ -46,7 +46,7 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 .lives{position:absolute;bottom:14px;right:14px;font-size:22px;letter-spacing:2px;background:rgba(239,227,198,.85);border:1px solid #a8916a;padding:2px 10px}
 .boost{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);width:160px;height:8px;background:rgba(239,227,198,.8);border:1px solid #7d6b4c}
 .boost i{display:block;height:100%;background:var(--indigo);width:100%}
-#toast{position:absolute;top:30%;left:50%;transform:translateX(-50%);font-size:clamp(20px,3.6vw,30px);color:#f7eedb;text-shadow:0 2px 0 #1c2944,0 0 12px rgba(20,30,60,.8);text-align:center;transition:opacity .4s;opacity:0;white-space:pre-line;width:90vw}
+#toast{position:absolute;top:22%;left:50%;transform:translateX(-50%);font-size:clamp(18px,3.2vw,26px);color:var(--ink);background:rgba(243,233,208,.95);border:1.5px solid #3b3a3a;box-shadow:2px 3px 0 rgba(0,0,0,.18);padding:6px 18px;text-align:center;transition:opacity .4s;opacity:0;white-space:pre-line;width:max-content;max-width:86vw;line-height:1.4;pointer-events:none}
 .tbtns{position:absolute;top:12px;left:12px;display:flex;gap:6px;pointer-events:auto}
 .tbtns button{width:40px;height:40px;background:rgba(239,227,198,.9);border:1px solid #a8916a;font-size:18px;padding:0}
 #touch{position:fixed;inset:0;pointer-events:none;z-index:11}
@@ -177,10 +177,10 @@ const post = new THREE.ShaderMaterial({
     mott*=1.-.04*smoothstep(.55,.9,gr);
     col=mix(qcol*mott,col,isSky*.85);
     // ichimonji bokashi: the Prussian-blue band printed across the top of the sky
-    float topB=smoothstep(.70,.985,uv.y+(vn(vec2(uv.x*4.,0.))-.5)*.02);
+    float topB=smoothstep(.86,.975,uv.y+(vn(vec2(uv.x*4.,0.))-.5)*.015);
     float farM=max(isSky,smoothstep(1200.,3000.,lzc));
     col=mix(col,vec3(.10,.19,.37),farM*topB*.92);
-    col=mix(col,vec3(.20,.34,.55),farM*smoothstep(.55,.72,uv.y)*(1.-topB)*.3);
+    col=mix(col,vec3(.918,.851,.69),isSky*(1.-topB)*smoothstep(.35,.8,uv.y)*.55);
     vec2 px=1.35/res; vec2 u2=uv+wob*.6;
     float wc=W(u2), wl=W(u2-vec2(px.x,0.)), wr=W(u2+vec2(px.x,0.)), wu=W(u2+vec2(0.,px.y)), wd=W(u2-vec2(0.,px.y));
     float mx=max(max(max(wc,wl),max(wr,wu)),wd);
@@ -838,7 +838,7 @@ function snowAt(x, z) { return Math.max(sstep(450, 180, Math.hypot(x - 1450, z +
 
 /* ---------- mood: each print lends its light to the land around it ---------- */
 const MOOD_KEYS = ["top", "mid", "hor", "fog", "fLow", "fMid", "fHigh"];
-const DEFAULT_MOOD = { top: 0x1f4f86, mid: 0xe8dfc8, hor: 0xd6dcd2, fog: 0xcfd2c4, fLow: 0x527b8c, fMid: 0x4a78ad, fHigh: 0x2c4f86, speckle: 0, dark: 0 };
+const DEFAULT_MOOD = { top: 0x9fb4bd, mid: 0xeadcb8, hor: 0xe8dcc0, fog: 0xe2d7bc, fLow: 0x527b8c, fMid: 0x4a78ad, fHigh: 0x2c4f86, speckle: 0, dark: 0 };
 const MOOD = {}; for (const k of MOOD_KEYS) MOOD[k] = new THREE.Color(DEFAULT_MOOD[k]); MOOD.speckle = 0; MOOD.dark = 0;
 
 /* ---------- geometry kit (merged parts with vertex colours) ---------- */
@@ -860,24 +860,25 @@ const G_ = {
 // a roof: triangular prism
 function prism(w, h, d) { const s = new THREE.Shape(); s.moveTo(-w / 2, 0); s.lineTo(0, h); s.lineTo(w / 2, 0); s.closePath(); const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false }); g.translate(0, 0, -d / 2); return g; }
 const KIT = {
-  minka: () => partsGeo([{ g: G_.box(9, 4, 7), c: 0xd9cba8, m: M4(0, 2, 0) }, { g: G_.box(9.2, .6, 7.2), c: 0x3d2f22, m: M4(0, .3, 0) }, { g: prism(11.5, 6.5, 9), c: 0x8a7650, m: M4(0, 4, 0, 0, Math.PI / 2) }, { g: G_.box(.9, .7, 11.4), c: 0x3a3226, m: M4(0, 10.3, 0, 0, Math.PI / 2) }, { g: G_.box(1.6, 2.6, .2), c: 0x2d2a26, m: M4(1.5, 1.3, 3.55) }]),
+  minka: () => partsGeo([{ g: G_.box(9, 4, 7), c: 0xd9cba8, m: M4(0, 2, 0) }, { g: G_.box(9.2, .6, 7.2), c: 0x3d2f22, m: M4(0, .3, 0) }, { g: prism(11.5, 6.5, 9), c: 0x8a7650, m: M4(0, 4, 0, 0, Math.PI / 2) }, { g: G_.box(.9, .7, 11.4), c: 0x3a3226, m: M4(0, 10.3, 0, 0, Math.PI / 2) }, { g: G_.box(1.6, 2.6, .2), c: 0x2d2a26, m: M4(1.5, 1.3, 3.55) }, { g: G_.box(2.2, 1.3, .14), c: 0xf0b860, m: M4(-2.2, 2.3, 3.56) }, { g: G_.box(2.6, 1.3, .14), c: 0xf0b860, m: M4(1, 2.3, -3.56) }, { g: G_.box(.14, 1.2, 1.8), c: 0xf0b860, m: M4(4.56, 2.3, 0) }]),
   kura: () => partsGeo([{ g: G_.box(10, 7, 8), c: 0xf0ead8, m: M4(0, 3.5, 0) }, { g: G_.box(10.2, 1.6, 8.2), c: 0x2f3b4a, m: M4(0, .8, 0) }, { g: prism(12, 3.2, 11), c: 0x2e3442, m: M4(0, 7, 0, 0, Math.PI / 2) }, { g: G_.box(1.4, 1.6, .3), c: 0x22252c, m: M4(0, 4.8, 4.05) }]),
   shrine: () => partsGeo([{ g: G_.box(8, 5, 8), c: 0xa8482e, m: M4(0, 2.5, 0) }, { g: prism(12, 4, 12), c: 0x3b3a3a, m: M4(0, 5, 0) }, { g: G_.box(11, .8, 11), c: 0x2a2a2a, m: M4(0, 5, 0) }, { g: G_.box(9, .6, 9), c: 0x7a6a50, m: M4(0, .3, 0) }]),
   pine: () => {
     const p = [{ g: new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new V3(0, 0, 0), new V3(1.2, 5, .4), new V3(-.8, 10, .2), new V3(1.5, 15, -.5), new V3(3, 18, 0)]), 8, .65, 5), c: 0x5a4636 }];
     for (const [x, y, z, s] of [[3, 18, 0, 1.2], [-1.6, 13.5, 1, .95], [2.8, 11, -1.4, .8], [-3.5, 16.5, -.8, .75], [5.5, 15.5, .8, .7]]) {
-      p.push({ g: G_.sph(3.2, 8, 4), c: 0x24443a, m: M4(x, y, z, 0, 0, 0, 1.6 * s, .38 * s, 1.3 * s) });
-      p.push({ g: G_.sph(3, 8, 4), c: 0x3f6b55, m: M4(x, y + .7 * s, z, 0, 0, 0, 1.3 * s, .22 * s, 1.05 * s) });
+      p.push({ g: G_.sph(3.2, 8, 4), c: 0x3f6b55, m: M4(x, y, z, 0, 0, 0, 1.6 * s, .38 * s, 1.3 * s) });
+      p.push({ g: G_.sph(3, 8, 4), c: 0x6f9a52, m: M4(x, y + .7 * s, z, 0, 0, 0, 1.3 * s, .22 * s, 1.05 * s) });
     }
     return partsGeo(p);
   },
-  cedar: () => partsGeo([{ g: G_.cyl(.4, .5, 3, 5), c: 0x3d3026, m: M4(0, 1.5, 0) }, { g: G_.cone(3.2, 12, 7), c: 0x1f3a33, m: M4(0, 8.5, 0) }, { g: G_.cone(2.4, 7, 7), c: 0x2c4c42, m: M4(0, 12.5, 0) }]),
+  cedar: () => partsGeo([{ g: G_.cyl(.4, .5, 3, 5), c: 0x3d3026, m: M4(0, 1.5, 0) }, { g: G_.cone(3.2, 12, 7), c: 0x3f6b55, m: M4(0, 8.5, 0) }, { g: G_.cone(2.4, 7, 7), c: 0x5f8a50, m: M4(0, 12.5, 0) }]),
   cherry: () => { const p = [{ g: G_.cyl(.5, .8, 6, 6), c: 0x4a3a33, m: M4(0, 3, 0, 0, 0, .1) }]; for (let k = 0; k < 6; k++) p.push({ g: G_.sph(2.6, 8, 6), c: k % 2 ? 0xf2c8cf : 0xe9b0bb, m: M4(rand(-3, 3), rand(6, 9), rand(-3, 3), 0, 0, 0, 1.2, .8, 1.2) }); return partsGeo(p); },
   reed: () => { const p = []; for (let k = 0; k < 7; k++) p.push({ g: G_.cone(.09, rand(2, 3.6), 3), c: k % 2 ? 0xd9c98a : 0xb8b47a, m: M4(rand(-.8, .8), 2, rand(-.8, .8), rand(-.2, .2), 0, rand(-.25, .25)) }); return partsGeo(p); },
   bamboo: () => { const p = []; for (let k = 0; k < 5; k++) { const x = rand(-1.5, 1.5), z = rand(-1.5, 1.5); p.push({ g: G_.cyl(.18, .2, 14, 5), c: 0x6f9a52, m: M4(x, 7, z) }); p.push({ g: G_.sph(1.4, 6, 4), c: 0x4f7a45, m: M4(x, 13.5, z, 0, 0, 0, 1.2, 2, 1.2) }); } return partsGeo(p); },
   rock: () => partsGeo([{ g: new THREE.DodecahedronGeometry(3, 0), c: 0x6f7c86, m: M4(0, 1, 0, 0, 0, 0, 1.3, .8, 1) }, { g: new THREE.DodecahedronGeometry(2, 0), c: 0x56636e, m: M4(2.2, .6, 1, .4, .3, 0) }]),
   torii: (s) => partsGeo([{ g: G_.cyl(.55, .65, 12, 8), c: 0xc0442c, m: M4(-5, 6, 0) }, { g: G_.cyl(.55, .65, 12, 8), c: 0xc0442c, m: M4(5, 6, 0) }, { g: G_.box(15, 1, 1.2), c: 0x2a2626, m: M4(0, 12.4, 0) }, { g: G_.box(13, .9, 1), c: 0xc0442c, m: M4(0, 11.5, 0) }, { g: G_.box(12, .7, .8), c: 0xc0442c, m: M4(0, 9.4, 0) }])
 };
+{ const _mk = KIT.minka; KIT.minka = () => { const g = _mk(); g.userData.glow = true; return g; }; }
 // instanced props, split into ~900 m chunks so whole chunks outside the view are culled
 // instanced props, split into ~900 m chunks; chunks outside the view are skipped (see cullChunks)
 const CHUNKS = [];
@@ -1108,7 +1109,7 @@ function buildWorld() {
     varying float vSnow; uniform vec2 uRoad[9]; uniform float uK;
     void main(){
       float h=vP.y/uK; float n=fbm(vP.xz*.004); float n2=vn(vP.xz*.05);
-      vec3 sand=vec3(.85,.75,.55), field=vec3(.79,.70,.37), grass=vec3(.42,.56,.31), hill=vec3(.25,.42,.33), dark=vec3(.18,.28,.21), mtn=vec3(.32,.48,.55);
+      vec3 sand=vec3(.86,.77,.57), field=vec3(.80,.71,.40), grass=vec3(.58,.65,.37), hill=vec3(.44,.57,.32), dark=vec3(.36,.52,.31), mtn=vec3(.40,.52,.52);
       vec3 c=mix(sand,field,smoothstep(1.,6.,h));
       float paddy=step(.5,fract(vP.x*.012+n*.6))*step(.5,fract(vP.z*.012+n*.4));
       c=mix(c,mix(field,vec3(.62,.7,.38),paddy),smoothstep(4.,10.,h)*(1.-smoothstep(40.,70.,h)));
@@ -1119,7 +1120,7 @@ function buildWorld() {
       float hatch=step(.78,fract(dot(vP.xz,vec2(-hd.y,hd.x))*.22+n*2.))*smoothstep(.12,.22,slope)*step(8.,h);
       c=mix(c,c*.72,hatch*.8);
       float forest=smoothstep(.55,.62,n+fbm(vP.xz*.013)*.25)*smoothstep(15.,30.,h);
-      c=mix(c,mix(dark,vec3(.26,.43,.36),step(.55,n2)),forest);
+      c=mix(c,mix(dark,vec3(.44,.57,.32),step(.55,n2)),forest*.8);
       float rd=1e9; for(int i=0;i<8;i++){ vec2 a=uRoad[i], b=uRoad[i+1]; vec2 pa=vP.xz-a, ba=b-a; float t=clamp(dot(pa,ba)/dot(ba,ba),0.,1.); rd=min(rd,length(pa-ba*t)); }
       c=mix(c,vec3(.8,.7,.5),smoothstep(6.,3.5,rd+n2*2.)*step(1.,h));
       float band=abs(fract(h*.035+n*.8)-.5); c=mix(c,c*.86,smoothstep(.05,.0,band)*smoothstep(60.,90.,h)*.6);
@@ -1288,13 +1289,11 @@ const ROAD = { pts: [] };
 let HOUSE_LIST = [], KURA_LIST = [];
 // a kasumi band: cream mist with stepped, lobed ends and a soft blue under-edge
 const kasumiTex = canvasTex(512, 64, (g) => {
-  g.fillStyle = "#f2ecdc"; g.strokeStyle = "rgba(90,120,160,.85)"; g.lineWidth = 2.5;
+  g.fillStyle = "#f4eedf"; g.strokeStyle = "rgba(120,140,165,.7)"; g.lineWidth = 2;
   g.beginPath(); g.moveTo(40, 34);
   g.quadraticCurveTo(30, 14, 70, 16); g.lineTo(150, 16); g.quadraticCurveTo(160, 6, 190, 8); g.lineTo(380, 8); g.quadraticCurveTo(420, 8, 430, 18); g.lineTo(470, 18); g.quadraticCurveTo(500, 22, 490, 36);
   g.quadraticCurveTo(500, 52, 460, 50); g.lineTo(330, 50); g.quadraticCurveTo(320, 58, 290, 56); g.lineTo(90, 56); g.quadraticCurveTo(60, 56, 56, 46); g.quadraticCurveTo(26, 48, 40, 34);
   g.closePath(); g.fill(); g.stroke();
-  const gr = g.createLinearGradient(0, 36, 0, 56); gr.addColorStop(0, "rgba(120,150,185,0)"); gr.addColorStop(1, "rgba(120,150,185,.45)");
-  g.save(); g.clip(); g.fillStyle = gr; g.fillRect(0, 30, 512, 30); g.restore();
 });
 // many camera-facing quads in one draw call (instead of one Sprite each)
 function billboards(tex, list) {
@@ -2442,6 +2441,18 @@ function paintPrintMap() {
 { const _r2 = renderMap; renderMap = function () { if (!mapImg || !mapImg.printed) { mapImg = paintPrintMap(); mapImg.printed = true; } _r2(); }; }
 $("mapInfo").textContent = "לחצי על חותמת אדומה כדי לכוון אליה את המצפן · 市 העיירה · ✔ נאסף: אפשר לעוף אליו";
 
+// every farmhouse and shop-house glows warm at its windows (one Points draw, built after the rescale)
+function buildHouseGlow() {
+  const L = [], m = new THREE.Matrix4(), v = new V3();
+  for (const c of scene.children) { if (!c.isInstancedMesh || !c.geometry.userData.glow) continue; for (let i = 0; i < c.count; i++) { c.getMatrixAt(i, m); if (m.elements[0] === 0 && m.elements[5] === 0) continue; for (const q of [[-2.2, 2.3, 3.9], [1, 2.3, -3.9]]) { v.set(q[0], q[1], q[2]).applyMatrix4(m).add(c.position); L.push(v.x, v.y, v.z); } } }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(L, 3));
+  const mt = new THREE.ShaderMaterial({ uniforms: { scale: { value: 400 }, tex: { value: glowTex }, time: TIME }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: `uniform float scale,time; varying float vF; void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); vF=(.8+.2*sin(time*2.3+position.x*.7))*(1.-smoothstep(180.,320.,-mv.z)); gl_PointSize=5.*scale/-mv.z; gl_Position=projectionMatrix*mv; }`,
+    fragmentShader: `uniform sampler2D tex; varying float vF; void main(){ vec4 t=texture2D(tex,gl_PointCoord); gl_FragColor=vec4(vec3(1.,.66,.32)*t.rgb,t.a*.55*vF); }` });
+  const p = new THREE.Points(g, mt); p.frustumCulled = false; p.renderOrder = 4; scene.add(p); particles.push({ mat: mt }); mt.uniforms.scale.value = post.uniforms.res.value.y / 2;
+  if (/stats/.test(HASH)) console.log(`[glow] windows=${L.length / 3}`);
+}
+
 /* ---------- crane fast travel from the map ---------- */
 const TOWN_PT = { x: 1400, z: roadZ(1400) };
 (function () {
@@ -2591,6 +2602,7 @@ function rescaleWorld(K) {
   if (/dist|stats/.test(HASH)) console.log(`[rescale] K=${K} objects=${nObj} instances=${nInst} hidden=${nHid}`);
 }
 rescaleWorld(WORLD_K);
+buildHouseGlow();
 
 /* ---------- test hooks ---------- */
 if (/fresh/.test(HASH)) setTimeout(() => { $("startBtn").click(); setTimeout(() => { for (let i = 0; i < 230; i++) step(1 / 30); }, 300); }, 500);
