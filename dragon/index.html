@@ -97,6 +97,23 @@ label{display:block;margin-top:14px;color:var(--soft);font-size:14px}
 a.arena:hover,a.arena:focus-visible{border-color:var(--line);color:var(--ink);outline:none}
 .boardlbl{font-size:13px;color:var(--soft);margin-top:12px}
 @media (max-width:400px){.arenas{grid-template-columns:repeat(2,1fr)}}
+.board{margin-top:14px;text-align:right;background:rgba(255,255,255,.05);border-radius:14px;padding:10px 12px}
+.lbhead{display:flex;justify-content:space-between;align-items:center;gap:8px;font-family:var(--display);color:var(--gold);font-size:16px}
+.tabs{display:flex;gap:4px}
+.lbtab{font-family:var(--body);font-size:12px;color:var(--soft);background:transparent;border:1px solid var(--line);border-radius:10px;padding:3px 8px;cursor:pointer}
+.lbtab.on{background:rgba(255,217,119,.15);color:var(--gold)}
+.lb{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:3px;font-variant-numeric:tabular-nums}
+.lb li{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:8px;font-size:14px}
+.lb .r{width:20px;text-align:center;color:var(--soft)}
+.lb li:nth-child(-n+3) .r{color:var(--gold)}
+.lb .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb .dt{font-size:11px;color:var(--soft)}
+.lb .sc{font-family:var(--display);color:var(--ink);min-width:44px;text-align:left}
+.lb li.me{background:rgba(125,255,176,.12);outline:1px solid var(--green)}
+.lbempty{font-size:13px;color:var(--soft);margin-top:8px}
+.pop{position:absolute;top:44%;font-family:var(--display);font-size:26px;color:var(--gold);text-shadow:0 2px 8px rgba(0,0,0,.7);pointer-events:none;animation:popup 1s ease-out forwards}
+@keyframes popup{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-70px)}}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}}
 @media (max-width:640px){
   .top{flex-wrap:wrap}
   #panel{order:3;flex-basis:100%;min-width:0;padding:6px 10px}
@@ -147,6 +164,7 @@ a.arena:hover,a.arena:focus-visible{border-color:var(--line);color:var(--ink);ou
     <input id="nameIn" maxlength="16" autocomplete="off">
     <div><button class="go" id="startBtn">המריאי! 🧹</button></div>
     <div class="best" id="bestLine"></div>
+    <section class="board"><div class="lbhead"><span>🏆 לוח המנצחים</span><span class="tabs"><button class="lbtab" data-tab="here">הזירה הזו</button><button class="lbtab" data-tab="all">כל הזירות</button></span></div><div class="lbwrap"></div></section>
     <a class="home" href="../" hidden>← לכל המשחקים</a>
   </div>
 </div>
@@ -165,6 +183,7 @@ a.arena:hover,a.arena:focus-visible{border-color:var(--line);color:var(--ink);ou
     <div class="rank" id="overRank"></div>
     <div class="statgrid" id="statgrid"></div>
     <div class="best" id="oBest"></div>
+    <section class="board"><div class="lbhead"><span>🏆 לוח המנצחים</span><span class="tabs"><button class="lbtab" data-tab="here">הזירה הזו</button><button class="lbtab" data-tab="all">כל הזירות</button></span></div><div class="lbwrap"></div></section>
     <button class="go" id="againBtn">עוד טיסה</button>
     <div class="boardlbl">או זירה אחרת</div>
     <nav class="arenas" aria-label="בחירת זירה"></nav>
@@ -625,6 +644,11 @@ let bumpTO = 0;
 function addScore(n) {
   G.score += n; renderHUD();
   const el = $("score"); el.classList.add("bump"); clearTimeout(bumpTO); bumpTO = setTimeout(() => el.classList.remove("bump"), 150);
+  if (n > 0 && state === "play") {
+    const p = document.createElement("div"); p.className = "pop"; p.textContent = "+" + n;
+    p.style.left = (46 + rand(-6, 6)) + "%"; if (n >= 100) p.style.fontSize = "34px";
+    $("hud").appendChild(p); setTimeout(() => p.remove(), 1000);
+  }
 }
 function toast(msg, dur) { const el = $("toast"); el.textContent = msg; el.style.opacity = 1; toastT = dur || 1.8; }
 function hit(msg) {
@@ -712,6 +736,26 @@ const BEST_KEY = "wiz-best-" + A.id;
 $("nameIn").value = store.get("wiz-name", store.get("gan-name", ""));
 function showBest() { const b = +store.get(BEST_KEY, "0"); $("bestLine").textContent = b ? `השיא שלך כאן: ${b} נקודות` : ""; }
 showBest();
+/* leaderboard shared by all games on the same site (same browser storage) */
+const ARENA_ICON = { potions: "🧪", dragon: "🐉", quidditch: "🏆", castle: "🪜" };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let boardTab = "here", myEntry = 0;
+function loadBoard() { try { const v = JSON.parse(store.get("wiz-board", "[]")); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function saveScore(name, s) {
+  const b = loadBoard(), t = Date.now(); b.push({ n: name || "קוסמת אנונימית", s, a: A.id, t });
+  b.sort((x, y) => y.s - x.s); store.set("wiz-board", JSON.stringify(b.slice(0, 300))); return t;
+}
+function renderBoards() {
+  const rows = loadBoard().filter(e => boardTab === "all" || e.a === A.id).slice(0, 10);
+  const html = rows.length ? `<ol class="lb">${rows.map((e, i) => {
+    const d = new Date(e.t), ds = `${d.getDate()}.${d.getMonth() + 1}`;
+    return `<li class="${e.t === myEntry ? "me" : ""}"><span class="r">${i + 1}</span><span class="nm">${boardTab === "all" ? (ARENA_ICON[e.a] || "") + " " : ""}${esc(e.n)}</span><span class="dt">${ds}</span><span class="sc">${e.s}</span></li>`;
+  }).join("")}</ol>` : `<div class="lbempty">עוד אין תוצאות כאן. מי שמשחקת ראשונה נכנסת לראש הטבלה!</div>`;
+  document.querySelectorAll(".lbwrap").forEach(w => w.innerHTML = html);
+  document.querySelectorAll(".lbtab").forEach(t => t.classList.toggle("on", t.dataset.tab === boardTab));
+}
+document.querySelectorAll(".lbtab").forEach(t => t.addEventListener("click", () => { boardTab = t.dataset.tab; renderBoards(); }));
+renderBoards();
 const playerName = () => $("nameIn").value.trim();
 E.playerName = playerName;
 function startGame() {
@@ -739,6 +783,8 @@ function endGame(title, win) {
   const best = Math.max(+store.get(BEST_KEY, "0"), G.score), isNew = G.score > 0 && G.score >= best;
   store.set(BEST_KEY, best);
   const nm = playerName();
+  if (G.score > 0) myEntry = saveScore(nm, G.score);
+  boardTab = "here"; renderBoards();
   $("overTitle").textContent = title || A.overTitle(nm, E);
   $("overRank").textContent = "הדרגה שלך: " + A.ranks.filter(r => G.score >= r[0]).pop()[1];
   const st = A.overStats(E);
@@ -931,6 +977,7 @@ function frame(now) {
 }
 A.build(E);
 requestAnimationFrame(frame);
+if (location.hash === "#endtest") setTimeout(() => { $("nameIn").value = "בדיקה"; startGame(); addScore(250); setTimeout(() => endGame(), 300); }, 400);
 if (location.hash === "#autoplay") setTimeout(() => { startGame(); keys.right = true; setTimeout(() => keys.right = false, 1500); }, 400);
 return E;
 };
