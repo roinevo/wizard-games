@@ -57,15 +57,15 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 .endimg{width:100%;max-height:46vh;object-fit:contain;display:block;margin:4px 0 10px;border:1px solid #9d8865;background:#f6eedb}
 .credit{font-size:12px;color:#8a7b62;margin-top:12px}
 
-#bubble{position:fixed;transform:translate(-50%,-100%);background:#f6eedb;border:1.5px solid #3b3a3a;padding:6px 12px;font-size:16px;max-width:260px;text-align:center;z-index:12;pointer-events:none;box-shadow:2px 3px 0 rgba(0,0,0,.2)}
+#bubble{position:fixed;transform:translate(-50%,-100%);background:#f6eedb;border:1.5px solid #3b3a3a;padding:6px 12px;font-size:16px;max-width:min(260px,70vw);text-align:center;z-index:12;pointer-events:none;box-shadow:2px 3px 0 rgba(0,0,0,.2)}
 #bubble[hidden]{display:none}
 #cap{position:fixed;bottom:7%;left:50%;transform:translateX(-50%);background:rgba(239,227,198,.94);border:1px solid #8a7550;padding:8px 18px;font-size:18px;text-align:center;opacity:0;transition:opacity .8s;z-index:12;pointer-events:none}
 #cap.on{opacity:1}
 #mapScr .card{max-width:min(92vw,86vh)}
 #mapCv{width:100%;aspect-ratio:600/640;display:block;border:1px solid #8a7550;cursor:crosshair}
 .modeTxt{position:absolute;bottom:14px;left:14px;background:rgba(239,227,198,.85);border:1px solid #a8916a;padding:3px 10px;font-size:16px}
-#tMode,#tMap{position:absolute;bottom:160px;left:30px;width:66px;height:66px;border-radius:50%;background:rgba(239,227,198,.85);border:2px solid #8a7550;font-size:26px;pointer-events:auto}
-#tMap{bottom:236px}
+#tCrane,#tHorse,#tMap{position:absolute;bottom:156px;left:30px;width:66px;height:66px;border-radius:50%;background:rgba(239,227,198,.88);border:2px solid #8a7550;font-size:28px;pointer-events:auto;padding:0}
+#tHorse{left:104px;bottom:104px}#tMap{bottom:232px;width:54px;height:54px;font-size:22px;left:36px}
 </style>
 </head>
 <body>
@@ -80,7 +80,7 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 </div>
 <div id="bubble" hidden></div>
 <div id="cap"></div>
-<div id="touch" hidden><div id="stickBase" hidden><div id="stickKnob"></div></div><button id="tBoost">≫</button><button id="tMode">🚶</button><button id="tMap">🗺️</button></div>
+<div id="touch" hidden><div id="stickBase" hidden><div id="stickKnob"></div></div><button id="tBoost">≫</button><button id="tCrane">🕊️</button><button id="tHorse">🐎</button><button id="tMap">🗺️</button></div>
 <div class="scr" id="startScr">
   <div class="card">
     <h1>עולמו של הוקוסאי<span class="seal">北斎</span></h1>
@@ -102,7 +102,7 @@ const V3 = THREE.Vector3;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), rand = (a, b) => a + Math.random() * (b - a), lerp = (a, b, t) => a + (b - a) * t;
 const wrapA = a => Math.atan2(Math.sin(a), Math.cos(a));
 const smooth = t => t * t * (3 - 2 * t);
-const isTouch = (window.matchMedia && matchMedia("(pointer: coarse)").matches) || ("ontouchstart" in window);
+const isTouch = /touch/.test(location.hash) || (window.matchMedia && matchMedia("(pointer: coarse)").matches) || ("ontouchstart" in window);
 const HASH = location.hash;
 const BOT = /^#bot/.test(HASH);
 
@@ -370,6 +370,7 @@ let ribbon;
   const rg = new THREE.PlaneGeometry(.22, 2.2, 1, 8); rg.translate(0, -1.1, 0);
   ribbon = new THREE.Mesh(rg, toon(0xb3362b, { side: THREE.DoubleSide })); ribbon.position.set(0, .9, -.1); ribbon.rotation.x = -Math.PI / 2 + .2; rider.add(ribbon);
   ribbon.userData.base = rg.attributes.position.array.slice();
+  player.userData.rider = rider; player.userData.crane = crane;
   player.scale.setScalar(1.1);
 })();
 scene.add(player);
@@ -1149,22 +1150,122 @@ function updateWorld(dt, t) {
   updateMood(dt);
 }
 
-/* ---------- player (crane flight + walking) ---------- */
-let state = "menu", T = 0, G = { mode: "fly", boost: 1, boosting: false, boostLock: false };
+/* ---------- player: on foot, on horseback, on the crane ---------- */
+let state = "menu", T = 0, G = { mode: "walk", boost: 1, boosting: false, boostLock: false, anim: null, spd: 0 };
 const P = { pos: new V3(), fwd: new V3(0, 0, -1), yaw: 0, pitch: 0, roll: 0, speed: 30 };
-const FLY = 34, BOOST = 70, WALK = 8, RUN = 15;
-const walker = new THREE.Group();
-(function () { const g = new THREE.Mesh(personGeo("traveler", 0x24467a), VC); walker.add(g); walker.userData.body = g; walker.scale.setScalar(1.25); walker.visible = false; scene.add(walker); })();
+const FLY = 34, BOOST = 70, WALK = 8, RUN = 15, TROT = 22, GALLOP = 40;
+// articulated traveler: a woman in a wide straw kasa, tucked-up indigo kimono, staff and bundle
+function makeTraveler(o) {
+  o = o || {};
+  const g = new THREE.Group(), M = c => toon(c);
+  const robe = M(o.robe || 0x24467a), dark = M(0x2a2622), skin = M(SKIN), white = M(0xe9e2d0);
+  const body = new THREE.Group(); body.position.y = 1.12; g.add(body);
+  const legs = [], knees = [], arms = [];
+  for (const s of [-1, 1]) {
+    const hip = new THREE.Group(); hip.position.set(s * .17, 0, 0); body.add(hip);
+    const th = new THREE.Mesh(G_.cyl(.15, .13, .58, 6), white); th.position.y = -.29; hip.add(th);
+    const kn = new THREE.Group(); kn.position.y = -.56; hip.add(kn);
+    const sh = new THREE.Mesh(G_.cyl(.13, .1, .52, 6), white); sh.position.y = -.26; kn.add(sh);
+    const ft = new THREE.Mesh(G_.box(.2, .09, .38), M(0xb08a52)); ft.position.set(0, -.53, .07); kn.add(ft);
+    legs.push(hip); knees.push(kn);
+  }
+  const skirt = new THREE.Mesh(G_.cyl(.33, .46, .95, 10), robe); skirt.position.y = .38; body.add(skirt);
+  const chest = new THREE.Mesh(G_.cyl(.29, .35, .72, 10), robe); chest.position.y = 1.18; body.add(chest);
+  const obi = new THREE.Mesh(G_.cyl(.36, .36, .26, 10), M(o.obi || 0xb3362b)); obi.position.y = .86; body.add(obi);
+  const collar = new THREE.Mesh(G_.box(.34, .3, .08), white); collar.position.set(0, 1.4, .27); collar.rotation.x = -.15; body.add(collar);
+  const head = new THREE.Mesh(G_.sph(.25, 10, 8), skin); head.position.y = 1.78; body.add(head);
+  const hair = new THREE.Mesh(G_.sph(.24, 8, 6), M(0x17171b)); hair.position.set(0, 1.86, -.07); hair.scale.set(1, .85, 1); body.add(hair);
+  const hat = new THREE.Mesh(G_.cone(1.0, .42, 16), M(STRAW)); hat.position.y = 2.12; body.add(hat);
+  const hatBand = new THREE.Mesh(G_.cyl(.3, .3, .06, 12), M(0x7a3b30)); hatBand.position.y = 1.98; body.add(hatBand);
+  const pack = new THREE.Mesh(G_.box(.62, .55, .36), M(o.pack || 0x6f8f6a)); pack.position.set(0, 1.25, -.4); pack.rotation.x = .1; body.add(pack);
+  const knot = new THREE.Mesh(G_.sph(.12, 6, 4), M(o.pack || 0x6f8f6a)); knot.position.set(0, 1.55, -.18); body.add(knot);
+  for (const s of [-1, 1]) {
+    const sp = new THREE.Group(); sp.position.set(s * .37, 1.45, 0); body.add(sp);
+    const sl = new THREE.Mesh(G_.cyl(.11, .17, .72, 6), robe); sl.position.y = -.34; sp.add(sl);
+    const hd = new THREE.Mesh(G_.sph(.09, 6, 4), skin); hd.position.y = -.74; sp.add(hd);
+    if (s > 0) { const st = new THREE.Mesh(G_.cyl(.035, .035, 2.6, 4), M(0x6a5232)); st.position.set(0, -.6, .12); st.rotation.x = .12; sp.add(st); sp.userData.staff = st; }
+    arms.push(sp);
+  }
+  g.userData = { body, legs, knees, arms, head };
+  return g;
+}
+// pose: ph = stride phase, amp 0..1 (0 = standing), sit = riding pose
+function poseTraveler(r, ph, amp, sit) {
+  const u = r.userData;
+  if (sit) {
+    for (let i = 0; i < 2; i++) { u.legs[i].rotation.set(-1.25, 0, (i ? -1 : 1) * .38); u.knees[i].rotation.x = 1.25; u.arms[i].rotation.set(-.9, 0, (i ? -1 : 1) * .15); }
+    u.body.position.y = 1.12; u.body.rotation.x = .08 + Math.sin(ph * 2) * .05 * amp; return;
+  }
+  const s = Math.sin(ph);
+  u.legs[0].rotation.set(-s * .62 * amp, 0, 0); u.legs[1].rotation.set(s * .62 * amp, 0, 0);
+  u.knees[0].rotation.x = amp * (.15 + .75 * Math.max(0, Math.sin(ph + 1.9))); u.knees[1].rotation.x = amp * (.15 + .75 * Math.max(0, Math.sin(ph + 1.9 + Math.PI)));
+  u.arms[0].rotation.set(s * .5 * amp, 0, .08); u.arms[1].rotation.set(-s * .35 * amp - .25, 0, -.08);
+  u.body.position.y = 1.12 + Math.abs(Math.cos(ph)) * .09 * amp - .04 * amp; u.body.rotation.x = .06 * amp;
+  u.body.rotation.z = Math.sin(ph) * .03 * amp;
+}
+// articulated horse (chestnut, red-and-white saddle cloth as at Hodogaya)
+function makeHorse() {
+  const g = new THREE.Group(), M = c => toon(c);
+  const coat = M(0x8a4a2a), dk = M(0x2a1d16), hoofM = M(0x1b1714), cloth = M(0xb3362b), clothW = M(0xefe3c6);
+  const body = new THREE.Group(); body.position.y = 3.05; g.add(body);
+  const barrel = new THREE.Mesh(G_.sph(1, 14, 10), coat); barrel.scale.set(.95, 1.0, 2.3); body.add(barrel);
+  const rump = new THREE.Mesh(G_.sph(1, 12, 8), coat); rump.scale.set(1.0, 1.0, 1.0); rump.position.set(0, .1, -1.55); body.add(rump);
+  const neckG = new THREE.Group(); neckG.position.set(0, .45, 1.9); body.add(neckG);
+  const neck = new THREE.Mesh(G_.cyl(.4, .66, 1.7, 8), coat); neck.position.set(0, .55, .6); neck.rotation.x = .85; neckG.add(neck);
+  const head = new THREE.Mesh(G_.box(.5, .58, 1.35), coat); head.position.set(0, .72, 1.62); head.rotation.x = .8; neckG.add(head);
+  const muzzle = new THREE.Mesh(G_.box(.46, .46, .42), dk); muzzle.position.set(0, .3, 2.05); muzzle.rotation.x = .8; neckG.add(muzzle);
+  for (const s of [-1, 1]) { const ear = new THREE.Mesh(G_.cone(.11, .38, 4), coat); ear.position.set(s * .17, 1.42, 1.08); ear.rotation.x = -.3; neckG.add(ear); }
+  for (const s of [-1, 1]) { const eye = new THREE.Mesh(G_.sph(.07, 5, 4), dk); eye.position.set(s * .26, 1.0, 1.42); neckG.add(eye); }
+  const mane = new THREE.Mesh(G_.box(.16, 1.7, .32), dk); mane.position.set(0, .72, .32); mane.rotation.x = .85; neckG.add(mane);
+  const bridle = new THREE.Mesh(G_.box(.54, .1, .1), M(0xb3362b)); bridle.position.set(0, .62, 1.85); bridle.rotation.x = .8; neckG.add(bridle);
+  const tail = new THREE.Group(); tail.position.set(0, .45, -2.45); body.add(tail);
+  const tl = new THREE.Mesh(G_.cone(.32, 1.9, 6), dk); tl.position.y = -.85; tl.rotation.x = Math.PI; tail.add(tl);
+  const saddle = new THREE.Mesh(G_.box(1.98, .5, 1.6), cloth); saddle.position.set(0, .82, -.1); body.add(saddle);
+  const trim = new THREE.Mesh(G_.box(2.02, .16, 1.64), clothW); trim.position.set(0, .54, -.1); body.add(trim);
+  for (const s of [-1, 1]) for (const z of [-.6, .4]) { const ts = new THREE.Mesh(G_.cyl(.06, .12, .6, 5), cloth); ts.position.set(s * 1.0, .2, z); body.add(ts); }
+  const legs = [];
+  for (const [x, z] of [[-.5, 1.55], [.5, 1.55], [-.5, -1.65], [.5, -1.65]]) {
+    const hip = new THREE.Group(); hip.position.set(x, -.35, z); body.add(hip);
+    const up = new THREE.Mesh(G_.cyl(.32, .2, 1.35, 6), coat); up.position.y = -.65; hip.add(up);
+    const kn = new THREE.Group(); kn.position.y = -1.3; hip.add(kn);
+    const lo = new THREE.Mesh(G_.cyl(.15, .13, 1.25, 5), coat); lo.position.y = -.62; kn.add(lo);
+    const hf = new THREE.Mesh(G_.cyl(.17, .2, .25, 6), hoofM); hf.position.y = -1.3; kn.add(hf);
+    legs.push({ hip, kn, front: z > 0 });
+  }
+  const seat = new THREE.Group(); seat.position.set(0, 1.0, -.05); body.add(seat);
+  g.userData = { body, legs, neckG, tail, seat };
+  return g;
+}
+// gallop: amp 0..1, fast true = gallop gait, else walk gait
+function poseHorse(h, ph, amp, fast) {
+  const u = h.userData;
+  const off = fast ? [0, .35, Math.PI + .1, Math.PI + .5] : [0, Math.PI, Math.PI * 1.5, Math.PI * .5];
+  u.legs.forEach((L, i) => {
+    const s = Math.sin(ph + off[i]);
+    L.hip.rotation.x = (L.front ? -1 : 1) * s * (fast ? .75 : .38) * amp;
+    L.kn.rotation.x = (L.front ? 1 : -1) * amp * (fast ? 1.1 : .55) * Math.max(0, Math.sin(ph + off[i] + (L.front ? 1.4 : -1.4)));
+  });
+  u.body.position.y = 3.05 + (fast ? Math.abs(Math.sin(ph)) * .35 : Math.abs(Math.sin(ph * 2)) * .08) * amp;
+  u.body.rotation.x = (fast ? Math.sin(ph + .6) * .09 : 0) * amp;
+  u.neckG.rotation.x = (fast ? Math.sin(ph + 1.5) * .18 : Math.sin(ph * 2) * .06) * amp + (1 - amp) * Math.sin(T * .6) * .05;
+  u.tail.rotation.x = .35 + (fast ? .5 : .1) * amp + Math.sin(T * 3) * .1;
+}
+const walker = makeTraveler(); walker.scale.setScalar(1.25); walker.visible = false; scene.add(walker);
+const horse = makeHorse(); horse.scale.setScalar(1.25); horse.visible = false; scene.add(horse);
+const HORSE = { ph: 0, here: false };
 const MOMENT = { s: null, t: 0, from: null };
 const keys = { left: false, right: false, up: false, down: false, boost: false };
 const mouse = { x: 0, y: 0, active: false, down: false };
 const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
 let lastKeyT = -10, touchBoost = false;
 const KEYMAP = { ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right", ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ShiftLeft: "boost", ShiftRight: "boost", Space: "boost" };
+let spaceTaps = [];
 addEventListener("keydown", e => {
   const k = KEYMAP[e.code];
+  if (e.code === "Space" && !e.repeat) { spaceTaps = spaceTaps.filter(t => performance.now() - t < 900); spaceTaps.push(performance.now()); if (spaceTaps.length >= 3) { spaceTaps = []; callCrane(); } }
   if (k) { keys[k] = true; lastKeyT = T; e.preventDefault(); return; }
-  if (e.code === "KeyF" || e.code === "KeyE") toggleMode();
+  if (e.code === "KeyF") { if (G.mode === "fly") landCrane(); else callCrane(); }
+  else if (e.code === "KeyH") toggleHorse();
   else if (e.code === "KeyM" || e.code === "Tab") { e.preventDefault(); toggleMap(); }
   else if (e.code === "KeyP" || e.code === "Escape") togglePause();
   else if (e.code === "KeyN") toggleMute();
@@ -1186,18 +1287,47 @@ addEventListener("pointercancel", endStick);
 canvas.addEventListener("contextmenu", e => e.preventDefault());
 $("tBoost").addEventListener("pointerdown", e => { e.preventDefault(); touchBoost = true; });
 for (const ev of ["pointerup", "pointerleave", "pointercancel"]) $("tBoost").addEventListener(ev, () => touchBoost = false);
-$("tMode").addEventListener("pointerdown", e => { e.preventDefault(); toggleMode(); });
+$("tCrane").addEventListener("pointerdown", e => { e.preventDefault(); if (G.mode === "fly") landCrane(); else callCrane(); });
+$("tHorse").addEventListener("pointerdown", e => { e.preventDefault(); toggleHorse(); });
 $("tMap").addEventListener("pointerdown", e => { e.preventDefault(); toggleMap(); });
 const dz = v => { const a = Math.abs(v); return a < .12 ? 0 : Math.sign(v) * Math.min(1, (a - .12) / .6); };
-function toggleMode() {
-  if (state !== "play") return;
-  if (G.mode === "fly") {
-    const fl = floorAt(P.pos.x, P.pos.z);
-    if (P.pos.y - fl > 25) { toast("רדי נמוך יותר כדי לנחות", 1.6); return; }
-    if (landH(P.pos.x, P.pos.z) < .5) { toast("אי אפשר לנחות על המים", 1.6); return; }
-    G.mode = "walk"; P.pos.y = fl; P.pitch = 0; player.visible = false; walker.visible = true; toast("הלכת ברגל · F כדי לעלות שוב על העגור", 2);
-  } else { G.mode = "fly"; P.pos.y += 4; player.visible = true; walker.visible = false; toast("שוב באוויר", 1.2); }
-  $("modeTxt").textContent = G.mode === "fly" ? "🕊️ טיסה" : "🚶 הליכה";
+function setModeHUD() {
+  $("modeTxt").textContent = G.mode === "fly" ? "🕊️ על העגור" : G.mode === "horse" ? "🐎 על הסוס" : "🚶 ברגל";
+  $("tCrane").textContent = G.mode === "fly" ? "⬇" : "🕊️"; $("tHorse").style.opacity = G.mode === "fly" ? .4 : 1;
+  $("tHorse").textContent = G.mode === "horse" ? "🚶" : "🐎";
+}
+function callCrane() {
+  if (state !== "play" || G.mode === "fly" || G.anim) return;
+  if (G.mode === "horse") { HORSE.here = true; HORSE.x = P.pos.x; HORSE.z = P.pos.z; HORSE.yaw = P.yaw; }
+  const fw = new V3(Math.sin(P.yaw), 0, Math.cos(P.yaw)), sd = new V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw));
+  G.anim = { type: "craneIn", t: 0, from: P.pos.clone().addScaledVector(fw, 80).addScaledVector(sd, 45).add(new V3(0, 55, 0)) };
+  player.visible = true; player.userData.rider.visible = false;
+  sfx.craneCall(); toast("העגור שומע אותך…", 1.6);
+}
+function landCrane() {
+  if (state !== "play" || G.mode !== "fly" || G.anim) return;
+  const fl = floorAt(P.pos.x, P.pos.z);
+  if (P.pos.y - fl > 25) { toast("רדי נמוך יותר כדי לנחות", 1.6); return; }
+  if (landH(P.pos.x, P.pos.z) < .5) { toast("אי אפשר לנחות על המים", 1.6); return; }
+  G.mode = "walk"; P.pos.y = landH(P.pos.x, P.pos.z); P.pitch = 0; P.roll = 0; walker.visible = true;
+  player.userData.rider.visible = false;
+  G.anim = { type: "craneOut", t: 0, from: player.position.clone(), yaw: P.yaw };
+  for (let k = 0; k < 18; k++) foam.spawn(P.pos.x + rand(-2, 2), P.pos.y + .5, P.pos.z + rand(-2, 2), { vx: rand(-6, 6), vy: rand(1, 4), vz: rand(-6, 6), g: 3, life: rand(.6, 1.1), s0: rand(.6, 1.1), s1: .2, r: .86, gg: .8, b: .66 });
+  toast("ברגל · 🐎 H לסוס · רווח ×3 לקרוא לעגור", 2.6); setModeHUD();
+}
+function toggleHorse() {
+  if (state !== "play" || G.mode === "fly" || G.anim) { if (G.mode === "fly") toast("נחתי קודם (F)", 1.4); return; }
+  if (G.mode === "horse") {
+    G.mode = "walk"; HORSE.here = true; HORSE.x = P.pos.x; HORSE.z = P.pos.z; HORSE.yaw = P.yaw;
+    const side = new V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw)); P.pos.addScaledVector(side, 2.6); P.pos.y = landH(P.pos.x, P.pos.z);
+    toast("ירדת מהסוס · H כדי לעלות שוב", 1.8); sfx.neigh(); setModeHUD(); return;
+  }
+  // the horse comes trotting from where it was (or from behind, down the road)
+  let fx, fz;
+  if (HORSE.here && Math.hypot(HORSE.x - P.pos.x, HORSE.z - P.pos.z) < 90) { fx = HORSE.x; fz = HORSE.z; }
+  else { fx = P.pos.x - Math.sin(P.yaw) * 45 + 8; fz = P.pos.z - Math.cos(P.yaw) * 45; }
+  G.anim = { type: "horseIn", t: 0, fx, fz, dur: clamp(Math.hypot(fx - P.pos.x, fz - P.pos.z) / 30, .5, 1.8) };
+  horse.visible = true; sfx.neigh(); toast("הסוס דוהר אלייך…", 1.4);
 }
 const tmp = new V3(), tmp2 = new V3(), tmp3 = new V3();
 function updatePlay(dt) {
@@ -1223,27 +1353,46 @@ function updatePlay(dt) {
     for (const wv of WAVES) { const l = waveLocal(wv, P.pos); if (l && inPoly(wv.poly, l.x, l.y)) { P.pos.copy(prev); P.pos.y += 1.5; P.speed *= .6; if (T > splashT) { splashT = T + .3; sfx.splash(); for (let k = 0; k < 20; k++) foam.spawn(P.pos.x, P.pos.y, P.pos.z, { vx: rand(-9, 9), vy: rand(2, 12), vz: rand(-9, 9), g: 14, life: rand(.7, 1.3), s0: rand(.6, 1.3), s1: .3 }); } } }
     player.position.copy(P.pos); player.rotation.order = "YXZ"; player.rotation.set(-P.pitch, P.yaw, -P.roll);
   } else {
-    P.yaw -= ix * 2.2 * dt;
-    const sp = (G.boosting ? RUN : WALK) * clamp(iy, -.5, 1);
+    const onHorse = G.mode === "horse", locked = G.anim && (G.anim.type === "craneIn" || G.anim.type === "horseIn");
+    if (locked) { ix = 0; iy = 0; }
+    P.yaw -= ix * (onHorse ? 1.7 : 2.4) * dt;
+    const top = onHorse ? (G.boosting ? GALLOP : TROT) : (G.boosting ? RUN : WALK);
+    const want = top * clamp(iy, -.5, 1);
+    G.spd += (want - G.spd) * Math.min(1, dt * (onHorse ? 2.2 : 6));
+    const sp = G.spd;
     P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
     const nx = P.pos.x + P.fwd.x * sp * dt, nz = P.pos.z + P.fwd.z * sp * dt;
-    if (landH(nx, nz) > -.6) { P.pos.x = nx; P.pos.z = nz; }
+    if (landH(nx, nz) > -.6) { P.pos.x = nx; P.pos.z = nz; } else G.spd *= .5;
     P.pos.y = Math.max(landH(P.pos.x, P.pos.z), -.6);
-    walker.position.copy(P.pos); walker.position.y += Math.abs(Math.sin(T * 9)) * .15 * Math.abs(sp) / WALK; walker.rotation.y = P.yaw;
-    walker.userData.body.rotation.z = Math.sin(T * 9) * .05 * Math.abs(sp) / WALK;
-    player.position.copy(P.pos).add(tmp.set(Math.sin(P.yaw + 1.8) * 5, 0, Math.cos(P.yaw + 1.8) * 5)); player.position.y = landH(player.position.x, player.position.z) + 2.2; player.rotation.set(0, P.yaw, 0);
+    const a = Math.abs(sp);
+    if (onHorse) {
+      const fast = a > TROT * .8, prevPh = HORSE.ph;
+      HORSE.ph += dt * (fast ? 2 + a * .16 : a * .55) * Math.sign(sp || 1);
+      poseHorse(horse, HORSE.ph, clamp(a / 8, 0, 1), fast);
+      horse.position.copy(P.pos); horse.rotation.set(0, P.yaw, -ix * Math.min(1, a / 20) * .12);
+      walker.position.copy(horse.userData.seat.getWorldPosition(tmp)); walker.position.y -= 1.4; walker.rotation.set(horse.userData.body.rotation.x, P.yaw, 0);
+      poseTraveler(walker, HORSE.ph, clamp(a / 20, 0, 1), true);
+      if (a > 2 && Math.floor(prevPh / Math.PI) !== Math.floor(HORSE.ph / Math.PI)) { sfx.hoof(fast); if (fast) for (let k = 0; k < 3; k++) foam.spawn(P.pos.x + rand(-1.5, 1.5), P.pos.y + .3, P.pos.z + rand(-1.5, 1.5), { vx: rand(-2, 2) - P.fwd.x * 4, vy: rand(1, 3), vz: rand(-2, 2) - P.fwd.z * 4, g: 2, life: rand(.4, .7), s0: rand(.35, .6), s1: .9, r: .84, gg: .77, b: .6 }); }
+    } else {
+      const prevPh = walker.userData.ph || 0; const ph = prevPh + dt * a * (a > WALK + 1 ? .95 : 1.15); walker.userData.ph = ph;
+      poseTraveler(walker, ph, clamp(a / 4, 0, 1) * (a > WALK + 1 ? 1.25 : 1), false);
+      walker.position.copy(P.pos); walker.rotation.set(0, P.yaw, 0);
+      if (a > 1 && Math.floor(prevPh / Math.PI) !== Math.floor(ph / Math.PI)) sfx.step();
+    }
   }
+  updateMounts(dt);
   const lim = 2900; P.pos.x = clamp(P.pos.x, -lim, lim); P.pos.z = clamp(P.pos.z, -lim, 3300);
   // trail
   if (G.mode === "fly") { const tail = player.localToWorld(tmp.set(0, .2, -2.6)); if (Math.random() < .7) sparks.spawn(tail.x, tail.y, tail.z, { vx: rand(-1, 1), vy: rand(-.5, .5), vz: rand(-1, 1), life: rand(.5, .9), s0: G.boosting ? 1.1 : .7, s1: 0, r: 1, gg: .92, b: .75 }); }
   // camera
-  const fly = G.mode === "fly", hp = fly ? P.pitch * .5 : -.12, cd = fly ? 12 : 9;
+  const fly = G.mode === "fly", rideH = G.mode === "horse", hp = fly ? P.pitch * .5 : -.12, cd = fly ? 12 : rideH ? 15 : 10;
   tmp2.set(Math.sin(P.yaw) * Math.cos(hp), Math.sin(hp), Math.cos(P.yaw) * Math.cos(hp));
-  tmp3.copy(P.pos).addScaledVector(tmp2, -cd); tmp3.y += fly ? 3.6 : 4.2;
+  tmp3.copy(P.pos).addScaledVector(tmp2, -cd); tmp3.y += fly ? 3.6 : rideH ? 7.5 : 5;
+  if (G.anim && G.anim.type === "craneIn") tmp3.y += 6 * smooth(clamp(G.anim.t / 1.9, 0, 1));
   camera.position.lerp(tmp3, 1 - Math.exp(-dt * 5));
   const cf = floorAt(camera.position.x, camera.position.z) + 1.5; if (camera.position.y < cf) camera.position.y = cf;
-  camera.lookAt(tmp.copy(P.pos).addScaledVector(P.fwd, 8).add(tmp2.set(0, fly ? 1.4 : 3, 0)));
-  const fovT = G.boosting && fly ? 72 : 62; if (Math.abs(camera.fov - fovT) > .1) { camera.fov += (fovT - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
+  camera.lookAt(tmp.copy(P.pos).addScaledVector(P.fwd, 8).add(tmp2.set(0, fly ? 1.4 : rideH ? 5 : 3.4, 0)));
+  const fovT = G.boosting && (fly || rideH) && G.spd >= 0 ? (fly ? 72 : 68) : 62; if (Math.abs(camera.fov - fovT) > .1) { camera.fov += (fovT - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
   // stations
   for (const s of STATIONS) {
     if (s.got && !s.revisit) continue;
@@ -1254,8 +1403,48 @@ function updatePlay(dt) {
   let near = null, nd = 9;
   for (const p of PEOPLE) { const d = p.mesh.position.distanceTo(P.pos); if (d < nd) { nd = d; near = p; } }
   if (near && near !== talkP) { talkP = near; talkT = 4; const tgt = nearestStation(near.mesh.position); const pool = tgt && Math.random() < .6 ? LINES.hint(tgt) : LINES.generic; $("bubble").textContent = pool[(near.lineIdx || 0) % pool.length]; sfx.talk(); }
-  if (talkP) { talkT -= dt; const v = tmp.copy(talkP.mesh.position); v.y += 5; v.project(camera); const b = $("bubble"); if (talkT > 0 && v.z < 1) { b.hidden = false; b.style.left = ((v.x * .5 + .5) * innerWidth) + "px"; b.style.top = ((-v.y * .5 + .5) * innerHeight) + "px"; } else { b.hidden = true; if (talkT <= 0 && nd > 12) talkP = null; } }
+  if (talkP) { talkT -= dt; const v = tmp.copy(talkP.mesh.position); v.y += 5; v.project(camera); const b = $("bubble"); if (talkT > 0 && v.z < 1) { b.hidden = false; const hw = Math.min(135, innerWidth * .36); b.style.left = clamp((v.x * .5 + .5) * innerWidth, hw + 6, innerWidth - hw - 6) + "px"; b.style.top = clamp((-v.y * .5 + .5) * innerHeight, 70, innerHeight - 20) + "px"; } else { b.hidden = true; if (talkT <= 0 && nd > 12) talkP = null; } }
   updateCompass();
+}
+function setMode(m) {
+  G.mode = m; G.anim = null; G.spd = 0;
+  player.visible = m === "fly"; player.userData.rider.visible = true; walker.visible = m !== "fly"; horse.visible = m === "horse";
+  if (m !== "fly") { P.pos.y = Math.max(landH(P.pos.x, P.pos.z), -.6); P.pitch = 0; P.roll = 0; }
+  setModeHUD();
+}
+function updateMounts(dt) {
+  const A = G.anim;
+  if (HORSE.here && G.mode !== "horse" && !(A && A.type === "horseIn")) {
+    const d = Math.hypot(HORSE.x - P.pos.x, HORSE.z - P.pos.z); horse.visible = d < 500;
+    if (horse.visible) { horse.position.set(HORSE.x, landH(HORSE.x, HORSE.z), HORSE.z); horse.rotation.set(0, HORSE.yaw, 0); poseHorse(horse, 0, 0, false); horse.userData.neckG.rotation.x = .55 + Math.sin(T * .7) * .08; }
+  }
+  if (!A) return;
+  A.t += dt;
+  if (A.type === "craneIn") {
+    const u = smooth(clamp(A.t / 1.9, 0, 1));
+    const to = tmp2.copy(P.pos); to.y += 2.4;
+    player.position.lerpVectors(A.from, to, u); player.position.y += Math.sin(u * Math.PI) * 14;
+    player.rotation.order = "YXZ"; player.rotation.set(.25 * (1 - u), Math.atan2(to.x - A.from.x, to.z - A.from.z), Math.sin(A.t * 2) * .15 * (1 - u));
+    if (A.t >= 1.9) {
+      G.anim = null; G.mode = "fly"; walker.visible = false; horse.visible = HORSE.here; player.userData.rider.visible = true;
+      P.pos.y += 3; P.pitch = .5; P.roll = 0; P.speed = FLY * .8;
+      for (let k = 0; k < 30; k++) sparks.spawn(P.pos.x, P.pos.y, P.pos.z, { vx: rand(-8, 8), vy: rand(-2, 8), vz: rand(-8, 8), life: rand(.6, 1.1), s0: 1.4, s1: 0, r: 1, gg: .92, b: .75 });
+      sfx.flap(); toast("לעוף! · F קרוב לקרקע כדי לנחות", 2.2); setModeHUD();
+    }
+  } else if (A.type === "craneOut") {
+    const t = A.t; player.visible = t < 3.2;
+    player.position.copy(A.from).add(tmp2.set(Math.sin(A.yaw) * t * 26, t * 9 + t * t * 5, Math.cos(A.yaw) * t * 26));
+    player.rotation.order = "YXZ"; player.rotation.set(-.35, A.yaw, 0);
+    if (t >= 3.2) { G.anim = null; player.userData.rider.visible = true; }
+  } else if (A.type === "horseIn") {
+    const u = clamp(A.t / A.dur, 0, 1), e = smooth(u);
+    const x = lerp(A.fx, P.pos.x, e), z = lerp(A.fz, P.pos.z, e);
+    horse.position.set(x, landH(x, z), z);
+    if (u < .97) horse.rotation.set(0, Math.atan2(P.pos.x - A.fx, P.pos.z - A.fz), 0);
+    HORSE.ph += dt * 9 * (1 - e * .7); poseHorse(horse, HORSE.ph, 1 - e * .8, true);
+    if (Math.random() < dt * 10) foam.spawn(x, horse.position.y + .3, z, { vx: rand(-2, 2), vy: rand(1, 3), vz: rand(-2, 2), g: 2, life: .8, s0: 1, s1: 2.2, r: .82, gg: .74, b: .58 });
+    if (u >= 1) { G.anim = null; G.mode = "horse"; HORSE.here = false; HORSE.ph = 0; toast("על הסוס! רווח/Shift לדהרה · H כדי לרדת", 2.4); sfx.neigh(); setModeHUD(); }
+  }
 }
 let splashT = 0, talkP = null, talkT = 0, target = null;
 function nearestStation(p) { let best = null, bd = 1e9; for (const s of STATIONS) if (!s.got) { const d = Math.hypot(s.x - p.x, s.z - p.z); if (d < bd) { bd = d; best = s; } } return best; }
@@ -1345,7 +1534,7 @@ $("mapClose").onclick = toggleMap;
 function buildMenu() {
   SAVE = loadSave(); STATIONS.forEach(s => s.got = SAVE.have.includes(s.id));
   $("albumCount").textContent = `(${STATIONS.filter(s => s.got).length}/${STATIONS.length})`;
-  $("helpTxt").innerHTML = isTouch ? "גוררים אצבע לנווט · ≫ האצה · 🚶 נחיתה והליכה · 🗺️ מפה" : "חיצים / WASD או העכבר · רווח/Shift האצה · F נחיתה/המראה · M מפה · P הפסקה · N צליל";
+  $("helpTxt").innerHTML = isTouch ? "גוררים אצבע כדי ללכת · ≫ ריצה/דהרה · 🐎 לעלות על סוס · 🕊️ לקרוא לעגור ולנחות · 🗺️ מפה" : "חיצים / WASD או העכבר ללכת · Shift ריצה · <b>H</b> סוס · <b>רווח ×3</b> לקרוא לעגור · <b>F</b> לנחות · M מפה · P הפסקה · N צליל";
 }
 $("albumBtn").onclick = () => {
   const a = $("album"); a.innerHTML = "";
@@ -1358,8 +1547,9 @@ function enterWorld() {
   audioInit();
   $("startScr").hidden = true; $("hud").hidden = false; $("touch").hidden = !isTouch;
   const s0 = STATIONS.find(s => s.id === 55458);
-  P.pos.set(s0.x - 40, landH(s0.x - 40, s0.z) + 30, s0.z + 30); P.yaw = Math.atan2(-P.pos.x, -P.pos.z); P.pitch = 0; P.speed = FLY;
+  P.pos.set(s0.x - 40, 0, s0.z + 30); P.yaw = Math.atan2(-P.pos.x, -P.pos.z); P.pitch = 0; P.speed = FLY;
   P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
+  setMode("walk"); poseTraveler(walker, 0, 0, false); walker.position.copy(P.pos); walker.rotation.set(0, P.yaw, 0);
   // open on the real Great Wave print, dissolve into the land
   const v = stationView(STATIONS[0]); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix();
   post.uniforms.tP.value = getPrintTex(45434); post.uniforms.pAsp.value = 1.49; post.uniforms.pMix.value = 1;
@@ -1371,13 +1561,13 @@ function updateIntro(dt) {
   const v = stationView(STATIONS[0]);
   if (introT > 3.4) {
     const u = smooth(clamp((introT - 3.4) / 3, 0, 1));
-    tmp2.set(Math.sin(P.yaw), 0, Math.cos(P.yaw)); tmp3.copy(P.pos).addScaledVector(tmp2, -12); tmp3.y += 3.6;
+    tmp2.set(Math.sin(P.yaw), 0, Math.cos(P.yaw)); tmp3.copy(P.pos).addScaledVector(tmp2, -10); tmp3.y += 5;
     camera.position.lerpVectors(v.pos, tmp3, u);
-    camera.lookAt(tmp.copy(v.look).lerp(tmp2.copy(P.pos).addScaledVector(P.fwd, 8), u)); camera.fov = lerp(v.fov, 62, u); camera.updateProjectionMatrix();
+    camera.lookAt(tmp.copy(v.look).lerp(tmp2.copy(P.pos).addScaledVector(P.fwd, 8).add(tmp3.set(0, 3.4, 0)), u)); camera.fov = lerp(v.fov, 62, u); camera.updateProjectionMatrix();
   } else { camera.position.copy(v.pos); camera.lookAt(v.look); }
-  player.position.copy(P.pos); player.rotation.set(0, P.yaw, 0);
+  if (G.mode === "fly") { player.position.copy(P.pos); player.rotation.set(0, P.yaw, 0); }
   if (introT > 1.4 && introT - dt <= 1.4) toast("עולמו של הוקוסאי\n31 הדפסים מחכים במקומות שבהם צוירו", 3.4);
-  if (introT > 6.4) { state = "play"; toast("עקבי אחרי עמודי האור 🔆 · M למפה", 3); }
+  if (introT > 6.4) { state = "play"; toast(isTouch ? "עקבי אחרי עמודי האור 🔆\n🐎 סוס · 🕊️ עגור · 🗺️ מפה" : "עקבי אחרי עמודי האור 🔆\nH סוס · רווח ×3 עגור · M מפה", 4); }
 }
 
 /* ---------- loop ---------- */
@@ -1389,7 +1579,8 @@ function step(dt) {
   else if (state === "menu") { const a = T * .03; camera.position.set(Math.sin(a) * 2300, 420, Math.cos(a) * 2300); camera.lookAt(0, 300, 0); }
   updateWorld(dt, T);
   const fl = Math.sin(T * (G.boosting ? 11 : 6.5)); wingL.rotation.z = fl * .55 + .1; wingR.rotation.z = -fl * .55 - .1;
-  if (G.mode === "walk") { wingL.rotation.z = .9; wingR.rotation.z = -.9; }
+  if (G.anim && G.anim.type === "craneIn" && G.anim.t > 1.4) { const f2 = Math.sin(T * 14); wingL.rotation.z = f2 * .8; wingR.rotation.z = -f2 * .8; }
+  else if (G.mode !== "fly" && !G.anim) { wingL.rotation.z = .9; wingR.rotation.z = -.9; }
   if (ribbon) { const pa = ribbon.geometry.attributes.position, b = ribbon.userData.base; for (let i = 0; i < pa.count; i++) { const y = b[i * 3 + 1]; pa.setX(i, b[i * 3] + Math.sin(T * 9 + y * 3) * .25 * -y); pa.setZ(i, Math.sin(T * 7 + y * 2.5) * .3 * -y); } pa.needsUpdate = true; }
   post.uniforms.flash.value = Math.max(0, post.uniforms.flash.value - dt * 2.2);
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) $("toast").style.opacity = 0; }
@@ -1412,6 +1603,11 @@ buildWorld();
 buildMenu(); renderHUD();
 requestAnimationFrame(frame);
 sfx.talk = () => { if (!AC) return; const t = AC.currentTime; pluck(note(10 + ((Math.random() * 4) | 0)), t, .06, .6); };
+sfx.step = () => { if (!AC) return; noiseHit(AC.currentTime, rand(500, 800), 1.2, .07, .045); };
+sfx.hoof = fast => { if (!AC) return; const t = AC.currentTime; noiseHit(t, rand(900, 1300), 5, .05, fast ? .09 : .06); noiseHit(t + .07, rand(700, 1000), 5, .05, fast ? .07 : .045); const o = AC.createOscillator(), g = AC.createGain(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(60, t + .1); g.gain.setValueAtTime(fast ? .12 : .07, t); g.gain.exponentialRampToValueAtTime(.001, t + .12); o.connect(g); out(g, .1); o.start(t); o.stop(t + .14); };
+sfx.neigh = () => { if (!AC) return; const t = AC.currentTime; const o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter(), v = AC.createOscillator(), vg = AC.createGain(); o.type = "sawtooth"; f.type = "bandpass"; f.frequency.value = 1300; f.Q.value = 2; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(880, t + .18); o.frequency.linearRampToValueAtTime(600, t + .5); o.frequency.linearRampToValueAtTime(380, t + .9); v.frequency.value = 22; vg.gain.value = 40; v.connect(vg); vg.connect(o.frequency); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.09, t + .05); g.gain.exponentialRampToValueAtTime(.001, t + .95); o.connect(f); f.connect(g); out(g, .4); o.start(t); v.start(t); o.stop(t + 1); v.stop(t + 1); };
+sfx.craneCall = () => { if (!AC) return; const t = AC.currentTime; [[0, 990, 1250], [.32, 1050, 1350], [.7, 990, 1300]].forEach(([d, a, b]) => { const o = AC.createOscillator(), g = AC.createGain(); o.type = "triangle"; o.frequency.setValueAtTime(a, t + d); o.frequency.exponentialRampToValueAtTime(b, t + d + .08); o.frequency.exponentialRampToValueAtTime(a * .9, t + d + .22); g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(.08, t + d + .02); g.gain.exponentialRampToValueAtTime(.001, t + d + .26); o.connect(g); out(g, .7); o.start(t + d); o.stop(t + d + .3); }); };
+sfx.flap = () => { if (!AC) return; const t = AC.currentTime; for (let k = 0; k < 3; k++) noiseHit(t + k * .18, 380, .8, .16, .16, "lowpass"); };
 
 /* ---------- test hooks ---------- */
 const mS = HASH.match(/^#(view|st)(\d+)/);
@@ -1424,9 +1620,22 @@ if (mS) setTimeout(() => {
 }, 600);
 const mC = HASH.match(/cam=([-\d.,]+)/);
 if (mC) { const v = mC[1].split(",").map(Number); setTimeout(() => { enterWorld(); state = "viewtest"; post.uniforms.pMix.value = 0; P.pos.set(v[0], v[1], v[2]); updateMood(10); updateMood(10); camera.position.set(v[0], v[1], v[2]); camera.lookAt(v[3], v[4], v[5]); camera.fov = v[6] || 60; camera.updateProjectionMatrix(); }, 600); }
-if (/^#(play|walk)/.test(HASH)) setTimeout(() => { enterWorld(); introT = 6.3; if (HASH === "#walk") setTimeout(() => { P.pos.y = landH(P.pos.x, P.pos.z) + 5; toggleMode(); }, 300); }, 600);
+// #play (fly) · #walk · #horse · #crane (mid call) · #gallop · all walk forward for a moment
+const mP = HASH.match(/^#(play|walk|horse|crane|gallop|land)/);
+if (mP) setTimeout(() => {
+  enterWorld(); introT = 6.3; step(.05); state = "play"; const m = mP[1];
+  if (m === "play") { P.pos.y = landH(P.pos.x, P.pos.z) + 30; setMode("fly"); }
+  if (m === "horse" || m === "gallop") { setMode("horse"); HORSE.here = false; }
+  if (m === "crane") callCrane();
+  if (m === "land") { P.pos.y = landH(P.pos.x, P.pos.z) + 8; setMode("fly"); landCrane(); }
+  keys.up = m !== "play" && m !== "crane"; keys.boost = m === "gallop";
+  if (m === "crane") { for (let i = 0; i < 40; i++) step(1 / 30); }
+  else for (let i = 0; i < 45; i++) step(1 / 30);
+  keys.up = keys.boost = false;
+  if (/side/.test(HASH)) { state = "viewtest"; const sd = new V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw)); camera.position.copy(P.pos).addScaledVector(sd, m === "walk" ? 7 : 12).add(new V3(0, 3, 0)); camera.lookAt(P.pos.x, P.pos.y + 2.6, P.pos.z); }
+}, 600);
 if (BOT) {
-  setTimeout(() => { enterWorld(); introT = 6.3; }, 600);
+  setTimeout(() => { enterWorld(); introT = 6.3; P.pos.y = landH(P.pos.x, P.pos.z) + 30; setMode("fly"); }, 600);
   let order = null;
   setInterval(() => {
     for (let i = 0; i < 15; i++) {
