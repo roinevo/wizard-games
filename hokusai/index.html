@@ -88,7 +88,7 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 <div class="scr" id="startScr">
   <div class="card">
     <h1>עולמו של הוקוסאי<span class="seal">北斎</span></h1>
-    <p class="sub">ארץ אחת שלמה סביב הר פוג'י, ו-31 ההדפסים של הוקוסאי הם מקומות אמיתיים בה: הגל מול קנגאווה, הגשר באדו, החבית בפוג'ימיגהרה, המפלים, איי ריוקיו… לכי ברגל בדרך הטוקאידו, רכבי על סוס, קראי לעגור ועופי, ומצאי את הנקודות שבהן הצייר עמד. בדרך אספי חותמי־יהלום ◆ ובזבזי אותם בעיירה.</p>
+    <p class="sub">ארץ אחת שלמה סביב הר פוג'י, ו-31 ההדפסים של הוקוסאי הם מקומות אמיתיים בה: הגל מול קנגאווה, הגשר באדו, החבית בפוג'ימיגהרה, המפלים, איי ריוקיו… אפשר ללכת ברגל בדרך הטוקאידו, לרכוב על סוס, לקרוא לעגור ולעוף, ולמצוא את הנקודות שבהן הצייר עמד. בדרך אוספים חותמי־יהלום ◆ ומבזבזים אותם בעיירה.</p>
     <div class="row"><button class="btn red" id="startBtn">להיכנס לעולם</button><button class="btn ghost" id="albumBtn">📜 אלבום ההדפסים <span id="albumCount"></span></button><a class="btn ghost" href="classic.html" style="text-decoration:none">שלוש הממלכות (הגרסה הקודמת)</a></div>
     <div class="help" id="helpTxt"></div>
     <div class="credit">ההדפסים: אוסף מוזיאון המטרופוליטן לאמנות, ניו יורק, ברשות הציבור (Open Access, CC0). המוזיקה מקורית.</div>
@@ -96,7 +96,7 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 </div>
 <div class="scr" id="albumScr" hidden><div class="card"><h1 style="font-size:30px">אלבום ההדפסים</h1><p class="sub">כל הדפס נכנס לכאן כשמגיעים למקום שבו צויר.</p><div class="album" id="album"></div><div class="row"><button class="btn" id="albumBack">חזרה</button></div></div></div>
 <div class="scr" id="pauseScr" hidden><div class="card" style="max-width:380px;text-align:center"><h1 style="font-size:30px">הפסקה</h1><div class="row" style="justify-content:center"><button class="btn" id="resumeBtn">להמשיך</button></div></div></div>
-<div class="scr" id="mapScr" hidden><div class="card"><h1 style="font-size:26px;margin-bottom:6px">מפת המסע</h1><canvas id="mapCv" width="600" height="640"></canvas><div class="row"><span id="mapInfo" style="flex:1">לחצי על חותמת כדי לכוון אליה את המצפן</span><button class="btn" id="mapClose">חזרה</button></div></div></div>
+<div class="scr" id="mapScr" hidden><div class="card"><h1 style="font-size:26px;margin-bottom:6px">מפת המסע</h1><canvas id="mapCv" width="600" height="640"></canvas><div class="row"><span id="mapInfo" style="flex:1">לחיצה על חותמת מכוונת אליה את המצפן</span><button class="btn" id="mapClose">חזרה</button></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (() => {
@@ -938,18 +938,17 @@ const VCW = printMat(PRINT_FS, `attribute float aTag; uniform float time; varyin
     vec4 w=modelMatrix*vec4(pp,1.); vP=w.xyz; vN=normalize(mat3(modelMatrix)*nn); vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`, { uCol: { value: new THREE.Color(0xffffff) } }, { vertexColors: true });
 const PLAY_HOOKS = []; let SCENE_HOOK = null; // filled by world_places.js
 const LINES = {
-  generic: ["אוהיו! בוקר טוב, איזה עגור יפה יש לך", "ההר מסתכל עלינו מכל מקום", "הוקוסאי? הזקן שמצייר את ההר שוב ושוב?", "הדרך ארוכה, אבל הנוף שווה", "פעם ראיתי עגור לבן כמו שלך, ליד האגם", "לאן את רוכבת היום?"],
+  generic: ["אוהיו! בוקר טוב, איזה עגור יפה יש לך", "ההר מסתכל עלינו מכל מקום", "הוקוסאי? הזקן שמצייר את ההר שוב ושוב?", "הדרך ארוכה, אבל הנוף שווה", "פעם ראיתי עגור לבן כמו שלך, ליד האגם", "לאן הדרך מובילה היום?"],
   type: {
     samurai: ["הדרך לאדו בטוחה, כל עוד אני כאן", "החרב שלי ישנה יותר ממני", "גם סמוראי עוצר להסתכל על ההר"],
     pilgrim: ["אני עולה לפסגה, כמו כל עולי הרגל", "מי שמגיע לפסגת פוג'י, מקבל ברכה לשנה שלמה", "בלבן הולכים אל ההר. ככה מכבדים אותו"],
-    parasol: ["השמש חזקה היום, טוב שיש מטריה", "ראית את פריחת הדובדבן ביושינו?", "בעיירה מוכרים מטריות יפות יותר משלי"],
-    child: ["תשחקי איתי? אני עוף!", "אמא אמרה שהעגור שלך מביא מזל", "ראיתי חותם זהב על הגג של השכן!"],
+    parasol: ["השמש חזקה היום, טוב שיש מטריה", "ראיתם את פריחת הדובדבן ביושינו?", "בעיירה מוכרים מטריות יפות יותר משלי"],
+    child: ["משחקים איתי? אני עוף!", "אמא אמרה שהעגור שלך מביא מזל", "ראיתי חותם זהב על הגג של השכן!"],
     fisher: ["הגלים היום גבוהים כמו הר", "דג גדול כמעט משך אותי למים!", "בים, ההר נראה כאילו הוא צף"],
     porter: ["המשא כבד, אבל השכר טוב", "עוד ריו אחד ואני בעיירה"],
     monk: ["כל צעד בדרך הוא תפילה קטנה", "הפעמון בעיירה מצלצל בבקרים"]
   },
-  hint: (s, from) => { const dx = s.x - from.x, dz = s.z - from.z, d = Math.round(Math.hypot(dx, dz)); const dir = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? "מזרחה, לכיוון אדו" : "מערבה") : (dz > 0 ? "דרומה, לכיוון הים" : "צפונה, אל ההרים"); return [`הצייר הזקן ישב פעם ב${s.place}. זה ${dir}, בערך ${d} צעדים`, `שמעתי שמ${s.place} רואים את ההר הכי יפה. לכי ${dir}`, `לכי ${dir} אל ${s.place}, ותביני למה הוא צייר שם`]; },
-  hintOld: s => [`שמעתי שמ${s.place} רואים את ההר הכי יפה`, `הצייר הזקן ישב פעם ב${s.place}`, `לכי ל${s.place}, ותביני למה הוא צייר שם`]
+  hint: (s, from) => { const dx = s.x - from.x, dz = s.z - from.z, d = Math.round(Math.hypot(dx, dz)); const dir = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? "מזרחה, לכיוון אדו" : "מערבה") : (dz > 0 ? "דרומה, לכיוון הים" : "צפונה, אל ההרים"); return [`הצייר הזקן ישב פעם ב${s.place}. זה ${dir}, בערך ${d} צעדים מכאן`, `שמעתי שמ${s.place} רואים את ההר הכי יפה. זה ${dir}`, `שווה ללכת ${dir} אל ${s.place}. שם מבינים למה הוא צייר`]; },
 };
 function addPerson(type, x, z, o) {
   o = o || {};
@@ -1394,7 +1393,7 @@ function pickCrest(c) {
   CRESTS.glow.geometry.attributes.size.array[c.id] = 0; CRESTS.glow.geometry.attributes.size.needsUpdate = true;
   for (let k = 0; k < 26; k++) { const a = rand(0, 6.28), v = rand(4, 11); sparks.spawn(c.x, c.y, c.z, { vx: Math.cos(a) * v, vy: rand(-2, 9), vz: Math.sin(a) * v, life: rand(.5, 1), s0: rand(.8, 1.6), s1: 0, r: 1, gg: k % 3 ? .78 : .35, b: k % 3 ? .3 : .2 }); }
   sfx.crest(CRESTS.n); renderHUD(); const el = $("sCrests"); el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop");
-  if (CRESTS.n === 1) toast("מצאת חותם־יהלום 菱\nאספי אותם: זה הכסף של העולם הזה", 3.4);
+  if (CRESTS.n === 1) toast("חותם־יהלום ראשון 菱\nכדאי לאסוף אותם: זה הכסף של העולם הזה", 3.4);
   else if (c.kind === "summit" && !G.summitT) { G.summitT = 1; toast("על פסגת פוג׳י! 🗻", 2.2); }
   if (BOT) console.log(`[crest] ${c.id} ${c.kind} n=${CRESTS.n}`);
 }
@@ -1617,7 +1616,7 @@ function callCrane() {
 function landCrane() {
   if (state !== "play" || G.mode !== "fly" || G.anim) return;
   const fl = floorAt(P.pos.x, P.pos.z);
-  if (P.pos.y - fl > 25) { toast("רדי נמוך יותר כדי לנחות", 1.6); return; }
+  if (P.pos.y - fl > 25) { toast("צריך לרדת נמוך יותר כדי לנחות", 1.6); return; }
   if (landH(P.pos.x, P.pos.z) < .5) { toast("אי אפשר לנחות על המים", 1.6); return; }
   G.mode = "walk"; P.pos.y = landH(P.pos.x, P.pos.z); P.pitch = 0; P.roll = 0; walker.visible = true;
   player.userData.rider.visible = false;
@@ -1626,7 +1625,7 @@ function landCrane() {
   toast("ברגל · 🐎 H לסוס · רווח ×3 לקרוא לעגור", 2.6); setModeHUD();
 }
 function toggleHorse() {
-  if (state !== "play" || G.mode === "fly" || G.anim) { if (G.mode === "fly") toast("נחתי קודם (F)", 1.4); return; }
+  if (state !== "play" || G.mode === "fly" || G.anim) { if (G.mode === "fly") toast("קודם לנחות (F)", 1.4); return; }
   if (G.mode === "horse") {
     G.mode = "walk"; HORSE.here = true; HORSE.x = P.pos.x; HORSE.z = P.pos.z; HORSE.yaw = P.yaw;
     const side = new V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw)); P.pos.addScaledVector(side, 2.6); P.pos.y = landH(P.pos.x, P.pos.z);
@@ -1637,7 +1636,7 @@ function toggleHorse() {
   if (HORSE.here && Math.hypot(HORSE.x - P.pos.x, HORSE.z - P.pos.z) < 90) { fx = HORSE.x; fz = HORSE.z; }
   else { fx = P.pos.x - Math.sin(P.yaw) * 45 + 8; fz = P.pos.z - Math.cos(P.yaw) * 45; }
   G.anim = { type: "horseIn", t: 0, fx, fz, dur: clamp(Math.hypot(fx - P.pos.x, fz - P.pos.z) / 30, .5, 1.8) };
-  horse.visible = true; sfx.neigh(); toast("הסוס דוהר אלייך…", 1.4);
+  horse.visible = true; sfx.neigh(); toast("הסוס כבר בדרך…", 1.4);
 }
 const tmp = new V3(), tmp2 = new V3(), tmp3 = new V3();
 function updatePlay(dt) {
@@ -1712,7 +1711,7 @@ function updatePlay(dt) {
   // people talk
   let near = null, nd = 9;
   for (const p of PEOPLE) { const d = p.mesh.position.distanceTo(P.pos); if (d < nd) { nd = d; near = p; } }
-  if (near && near !== talkP) { talkP = near; talkT = 4; const tgt = nearestStation(near.mesh.position); const tl = LINES.type[near.type]; const pool = near.line ? near.line : tgt && Math.random() < .45 ? LINES.hint(tgt, near.mesh.position) : tl && Math.random() < .7 ? tl : LINES.generic; near.lineIdx = (near.lineIdx || 0) + 1; $("bubble").textContent = pool[(near.lineIdx || 0) % pool.length]; sfx.talk(); }
+  if (near && near !== talkP) { talkP = near; talkT = 4; const tgt = nearestStation(near.mesh.position); $("bubble").textContent = npcLine(near); sfx.talk(); }
   if (talkP) { talkT -= dt; const v = tmp.copy(talkP.mesh.position); v.y += 5; v.project(camera); const b = $("bubble"); if (talkT > 0 && v.z < 1) { b.hidden = false; const hw = Math.min(135, innerWidth * .36); b.style.left = clamp((v.x * .5 + .5) * innerWidth, hw + 6, innerWidth - hw - 6) + "px"; b.style.top = clamp((-v.y * .5 + .5) * innerHeight, 70, innerHeight - 20) + "px"; } else { b.hidden = true; if (talkT <= 0 && nd > 12) talkP = null; } }
   updateCompass();
   for (const f of PLAY_HOOKS) f(dt);
@@ -1795,7 +1794,7 @@ function updateMoment(dt) {
     for (let k = 0; k < 40; k++) sparks.spawn(M_.s.pos.x, M_.s.pos.y + 6, M_.s.pos.z, { vx: rand(-10, 10), vy: rand(-4, 14), vz: rand(-10, 10), life: rand(.8, 1.4), s0: 2, s1: 0, r: 1, gg: .85, b: .5 });
     if (BOT) console.log(`[moment] ${M_.s.id} ${M_.s.place} have=${SAVE.have.length}`);
   }
-  if (M_.t > holdEnd + 1.9) { state = "play"; M_.s.marker.visible = true; post.uniforms.pMix.value = 0; $("cap").classList.remove("on"); if (STATIONS.every(s => s.got)) toast("כל 31 ההדפסים בידייך! 🎉\nאת חלק מהעולם של הוקוסאי", 5); }
+  if (M_.t > holdEnd + 1.9) { state = "play"; M_.s.marker.visible = true; post.uniforms.pMix.value = 0; $("cap").classList.remove("on"); if (STATIONS.every(s => s.got)) toast("כל 31 ההדפסים באלבום! 🎉\nעכשיו העולם של הוקוסאי שלך", 5); }
 }
 function renderHUD() {
   const n = STATIONS.filter(s => s.got).length;
@@ -2012,9 +2011,9 @@ function stallGeo(awn, awn2, kind) {
 }
 const SELLER_LINES = {
   kasa: ["מטריות נייר! הכי יפות בכל הטוקאידו", "אדומה? כחולה? יש לי מטריה לכל מזג אוויר", "גשם בהרים? עם מטריה שלי לא תירטבי"],
-  fan: ["מניפה לימי הקיץ החמים?", "כל מניפה מצוירת ביד, אין שתיים דומות", "נפנפי קצת, ותרגישי כמו שחקנית קאבוקי"],
+  fan: ["מניפה לימי הקיץ החמים?", "כל מניפה מצוירת ביד, אין שתיים דומות", "נפנוף קטן, וכבר מרגישים כמו שחקן קאבוקי"],
   dye: ["אני צובעת סרטים. רוצה לצבוע את הסמל של העגור שלך?", "אינדיגו, אדום, זהב... איזה צבע את אוהבת?", "את הכחול הזה מביאים מאירופה, קוראים לו כחול פרוסי"],
-  dango: ["דנגו טריים! שלושה כדורים על מקל", "לכי לבית התה, שם מגישים אותם עם תה ירוק"],
+  dango: ["דנגו טריים! שלושה כדורים על מקל", "בבית התה מגישים אותם עם תה ירוק"],
   fish: ["דגים מהמפרץ! טריים מהבוקר", "הסירות של קנגאווה הביאו אותם, אם הגל הגדול הרשה"],
   veg: ["צנוניות! דלעות! הכל מהשדות של הכפר", "הכי טעים מה שגדל בצל של פוג'י"]
 };
@@ -2048,7 +2047,7 @@ addMesh(partsGeo([
 ]), CHAYA.x, CHAYA.z, 0, 1.1, CHAYA.y - .2);
 { const sg = signMesh("茶", "#efe6d2", "#1c2944", 1.3, 2.6); sg.position.set(CHAYA.x - 5.6, CHAYA.y + 3, CHAYA.z + 3.6); scene.add(sg); }
 CHAYA.seat = new V3(CHAYA.x - 1.1, CHAYA.y + .75 * 1.1 - .2, CHAYA.z + 4.6 * 1.1);
-const chayaLady = addPerson("woman", CHAYA.x + 1.5, CHAYA.z + 2.5, { ry: 0, col: 0x7a3b30, line: ["שבי, תנוחי. תה ירוק ודנגו בשני חותמים", "מהבית שלי רואים את פוג'י, כשאין עננים", "הנוסעים בדרך עוצרים כאן כבר מאה שנה", "את נראית עייפה. דנגו יחזיר לך את הכוח"] });
+const chayaLady = addPerson("woman", CHAYA.x + 1.5, CHAYA.z + 2.5, { ry: 0, col: 0x7a3b30, line: ["שבו, תנוחו. תה ירוק ודנגו בשני חותמים", "מהבית שלי רואים את פוג'י, כשאין עננים", "הנוסעים בדרך עוצרים כאן כבר מאה שנה", "נראה שהדרך הייתה ארוכה. דנגו מחזיר את הכוח"] });
 
 /* ---------- the temple bell (shoro) on the knoll north of the road ---------- */
 const BELL = { x: 1335, z: 985 }; BELL.y = landH(BELL.x, BELL.z);
@@ -2059,7 +2058,7 @@ addMesh(partsGeo([
 ]), BELL.x, BELL.z, 0, 1, BELL.y - .2);
 const bellMesh = addMesh(partsGeo([{ g: G_.cyl(1.25, 1.55, 2.8, 14), c: 0x4f5a4a, m: M4(0, -1.4, 0) }, { g: G_.sph(1.25, 12, 6), c: 0x4f5a4a, m: M4(0, 0, 0, 0, 0, 0, 1, .5, 1) }, { g: G_.cyl(1.6, 1.6, .2, 14), c: 0x3a4236, m: M4(0, -2.75, 0) }, { g: G_.cyl(.2, .2, .7, 6), c: 0x3a4236, m: M4(0, .8, 0) }]), BELL.x, BELL.z, 0, 1, BELL.y + 7.7);
 const striker = addMesh(partsGeo([{ g: G_.cyl(.28, .28, 3.6, 7), c: 0x8a6a42, m: M4(0, 0, 0, 0, 0, Math.PI / 2) }]), BELL.x + 3.2, BELL.z, 0, 1, BELL.y + 5.6);
-const bellMonk = addPerson("monk", BELL.x + 4.5, BELL.z + 4, { ry: -2.2, col: 0x3b3a3a, line: ["הקישי בפעמון, והקול יגיע עד ההר", "כל צלצול מגרש דאגה אחת", "בסוף השנה מצלצלים כאן מאה ושמונה פעמים"] });
+const bellMonk = addPerson("monk", BELL.x + 4.5, BELL.z + 4, { ry: -2.2, col: 0x3b3a3a, line: ["מקישים בפעמון, והקול מגיע עד ההר", "כל צלצול מגרש דאגה אחת", "בסוף השנה מצלצלים כאן מאה ושמונה פעמים"] });
 
 /* ---------- held items and the crane's crest colour ---------- */
 const umbrella = new THREE.Group();
@@ -2113,7 +2112,7 @@ function openShop(title, who, items) {
 }
 function closeShop() { $("shop").hidden = true; if (state === "shop") state = "play"; }
 function buy(it) {
-  if (purse() < it.price) { toast(`חסרים לך עוד ${it.price - purse()} חותמים ◆\nאספי עוד בדרכים ועל הגגות`, 2.6); sfx.no(); return false; }
+  if (purse() < it.price) { toast(`חסרים לך עוד ${it.price - purse()} חותמים ◆\nאפשר לאסוף עוד בדרכים ועל הגגות`, 2.6); sfx.no(); return false; }
   SAVE.spent = (SAVE.spent || 0) + it.price; writeSave(SAVE); renderHUD(); sfx.coin();
   it.got(); return true;
 }
@@ -2121,7 +2120,7 @@ function own(id) { SAVE.items = SAVE.items || []; if (!SAVE.items.includes(id)) 
 const CREST_COLS = [[0xb3362b, "אדום שני"], [0x24467a, "כחול פרוסי"], [0xd9a74a, "זהב"], [0x416d63, "ירוק אורן"], [0x7a3b6a, "סגול שזיף"]];
 PLACES.push(
   { x: STALL_POS.kasa[0], z: STALL_POS.kasa[1], label: "דוכן המטריות", act: () => openShop("דוכן המטריות 傘", "מטריית וואגאסה מנייר שמן ובמבוק. תלווה אותך בכל הליכה.", [{ name: "מטריית נייר אדומה", price: 8, owned: () => (SAVE.items || []).includes("kasa"), got: () => { own("kasa"); toast("מטריה חדשה! ☂", 2); } }]) },
-  { x: STALL_POS.fan[0], z: STALL_POS.fan[1], label: "דוכן המניפות", act: () => openShop("דוכן המניפות 扇", "מניפת נייר מצוירת ביד, לימים החמים בדרך.", [{ name: "מניפה מוזהבת", price: 5, owned: () => (SAVE.items || []).includes("fan"), got: () => { own("fan"); toast("מניפה! עכשיו את מנפנפת בדרך", 2); } }]) },
+  { x: STALL_POS.fan[0], z: STALL_POS.fan[1], label: "דוכן המניפות", act: () => openShop("דוכן המניפות 扇", "מניפת נייר מצוירת ביד, לימים החמים בדרך.", [{ name: "מניפה מוזהבת", price: 5, owned: () => (SAVE.items || []).includes("fan"), got: () => { own("fan"); toast("מניפה! עכשיו אפשר לנפנף בדרך", 2); } }]) },
   { x: STALL_POS.dye[0], z: STALL_POS.dye[1], label: "הצובעת", act: () => openShop("הצובעת 染", "אצבע את הסרט ואת הכתר של העגור שלך בכל צבע.", CREST_COLS.map(([c, n]) => ({ name: n, color: c, price: 6, reuse: true, owned: () => SAVE.craneCol === c, ownedTxt: "עכשיו", got: () => { SAVE.craneCol = c; writeSave(SAVE); applyItems(); toast(`העגור שלך לובש עכשיו ${n}`, 2.2); } }))) },
   { x: STALL_POS.dango[0], z: STALL_POS.dango[1], label: "דנגו", act: () => openShop("דוכן הדנגו 団", "שלושה כדורי אורז על מקל: ורוד, לבן וירוק.", [{ name: "מקל דנגו (ממלא את הכוח)", price: 1, reuse: true, got: () => { G.boost = 1; G.boostLock = false; toast("ממממ! הכוח מלא", 1.8); } }]) },
   { x: CHAYA.x - 1, z: CHAYA.z + 8.5, label: "בית התה", act: () => openShop("בית התה 茶", "לשבת על הספסל האדום, לשתות תה ירוק ולאכול דנגו.", [{ name: "לשבת לתה ודנגו", price: 2, reuse: true, got: sitTea }]) },
@@ -2169,8 +2168,10 @@ PLAY_HOOKS.push(dt => {
   lineTick += dt; if (lineTick > 5) { lineTick = 0; for (const p of PEOPLE) if (p.line) p.lineIdx = (p.lineIdx || 0) + 1; }
   let best = null, bd = 1e9;
   if (G.mode !== "fly") for (const pl of PLACES) { const d = Math.hypot(pl.x - P.pos.x, pl.z - P.pos.z); if (d < 6.5 && d < bd) { bd = d; best = pl; } }
+  if (!best && G.mode !== "fly") { let np = null, nd = 7; for (const p of PEOPLE) { if (!p.mesh.visible) continue; const d = Math.hypot(p.mesh.position.x - P.pos.x, p.mesh.position.z - P.pos.z); if (d < nd) { nd = d; np = p; } } if (np) { TALK_PLACE.p = np; best = TALK_PLACE; } }
   if (best !== placeNear) { placeNear = best; const b = $("actBtn"); b.hidden = !best; if (best) { b.textContent = (isTouch ? "👆 " : "E · ") + best.label; sfx.talk(); } }
 });
+const TALK_PLACE = { label: "לדבר 💬", act: () => talkTo(TALK_PLACE.p) };
 function doAct() { if (placeNear && state === "play") placeNear.act(); }
 addEventListener("keydown", e => { if (e.code === "KeyE" && !e.repeat) { if (state === "shop") closeShop(); else doAct(); } else if (e.code === "Escape" && state === "shop") closeShop(); });
 
@@ -2224,7 +2225,7 @@ for (let k = 0; k < 6; k++) { const x = KAB.x - 10 + k * 4, z = KAB.z - 14; cons
   scene.add(g); BANNERS.push(fl); }
 const actor = new THREE.Mesh(personGeo("woman", 0xf3efe4), VC); actor.scale.setScalar(1.5); actor.position.set(KAB.x, KAB.y + 1.3, KAB.z - 8.5 * 1); actor.rotation.y = Math.PI; scene.add(actor);
 const actorFace = new THREE.Mesh(G_.box(.5, .16, .05), toon(0xb3362b)); actorFace.position.set(0, 2.98, -.26); actor.add(actorFace);
-addPerson("traveler", KAB.x + 9, KAB.z - 12, { ry: Math.PI, col: 0x7a3b30, line: ["הלהקה הכי טובה באדו מופיעה היום!", "בואי לראות את ה'מיה'! ההקפאה של השחקן", "שלושה חותמים, ואת רואה את כל ההצגה"] });
+addPerson("traveler", KAB.x + 9, KAB.z - 12, { ry: Math.PI, col: 0x7a3b30, line: ["הלהקה הכי טובה באדו מופיעה היום!", "בואו לראות את ה'מיה'! ההקפאה של השחקן", "שלושה חותמים, וכל ההצגה לפניכם"] });
 PLACES.push({ x: KAB.x, z: KAB.z - 14, label: "תיאטרון הקאבוקי", act: () => openShop("תיאטרון הקאבוקי 歌舞伎", "השחקן הגדול בתפקיד הגיבור. היום: \"הגל שהציל את הדייגים\".", [{ name: "לצפות בהצגה", price: 3, reuse: true, got: watchKabuki }]) });
 function watchKabuki() {
   const st = new V3(KAB.x, KAB.y + 1.3, KAB.z - 8.5);
@@ -2256,10 +2257,10 @@ function flyKite(kite, hx, hy, hz, t, ph) {
   const pa = kite.userData.str.geometry.attributes.position; pa.setXYZ(0, hx, hy, hz); pa.setXYZ(1, kx, ky - 1.4, kz); pa.needsUpdate = true;
 }
 const KIDS = [];
-for (let k = 0; k < 3; k++) { const x = KITE.x + (k - 1) * 14, z = KITE.z + rand(-6, 6); const p = addPerson(k % 2 ? "woman" : "farmer", x, z, { ry: -1, s: .8, col: [0xb3362b, 0x24467a, 0xd9a74a][k], line: ["תראי כמה גבוה העפיפון שלי!", "הרוח היום מהים, הכי טוב לעפיפונים", "רוצה עפיפון משלך? הזקן שם מוכר"] }); KIDS.push({ p, kite: makeKite(["龍", "鶴", "富"][k]), ph: k * 2.1 }); }
+for (let k = 0; k < 3; k++) { const x = KITE.x + (k - 1) * 14, z = KITE.z + rand(-6, 6); const p = addPerson(k % 2 ? "woman" : "farmer", x, z, { ry: -1, s: .8, col: [0xb3362b, 0x24467a, 0xd9a74a][k], line: ["תראי כמה גבוה העפיפון שלי!", "הרוח היום מהים, הכי טוב לעפיפונים", "עפיפון משלכם? הזקן שם מוכר"] }); KIDS.push({ p, kite: makeKite(["龍", "鶴", "富"][k]), ph: k * 2.1 }); }
 const myKite = makeKite("北"); myKite.visible = false; myKite.userData.str.visible = false; let kiteT = 0;
 addPerson("monk", KITE.x + 24, KITE.z - 8, { ry: -2, col: 0x6b4a3a, line: ["עפיפונים! הדרקון, העגור, ההר... בשני חותמים", "עפיפון טוב עף עד העננים"] });
-PLACES.push({ x: KITE.x + 22, z: KITE.z - 5, label: "עפיפונים", act: () => openShop("מוכר העפיפונים 凧", "עפיפון נייר עם החותם של הוקוסאי. יעוף אחרייך בדרך.", [{ name: "עפיפון 北 (לכמה דקות)", price: 2, reuse: true, got: () => { kiteT = 180; myKite.visible = myKite.userData.str.visible = true; toast("העפיפון עולה! הוא ילך איתך לאן שתלכי 🪁", 2.4); } }]) });
+PLACES.push({ x: KITE.x + 22, z: KITE.z - 5, label: "עפיפונים", act: () => openShop("מוכר העפיפונים 凧", "עפיפון נייר עם החותם של הוקוסאי. יעוף אחרייך בדרך.", [{ name: "עפיפון 北 (לכמה דקות)", price: 2, reuse: true, got: () => { kiteT = 180; myKite.visible = myKite.userData.str.visible = true; toast("העפיפון עולה! הוא ילווה אותך בדרך 🪁", 2.4); } }]) });
 PLAY_HOOKS.push(dt => {
   const near = Math.hypot(P.pos.x - KITE.x, P.pos.z - KITE.z) < 500;
   for (const K of KIDS) { K.kite.visible = K.kite.userData.str.visible = near; if (near) { const m = K.p.mesh.position; flyKite(K.kite, m.x, m.y + 3, m.z, T, K.ph); } }
@@ -2292,7 +2293,7 @@ function betSumo(side) {
     end: () => { const won = bout.win === bout.side; if (won) { SAVE.spent = (SAVE.spent || 0) - 4; writeSave(SAVE); renderHUD(); sfx.crest(5); toast(`${bout.side ? "המערב" : "המזרח"} ניצח! זכית ב-4 חותמים ◆`, 2.6); } else toast(`${bout.win ? "המערב" : "המזרח"} ניצח... בפעם הבאה!`, 2.4); bout = null; } };
   state = "scene";
 }
-PLACES.push({ x: SUMO.x + 4, z: SUMO.z + 9, label: "זירת הסומו", act: () => openShop("זירת הסומו 相撲", "שני מתאבקים, מזרח ומערב. על מי את מהמרת? (2◆, הזוכה מקבלת 4)", [{ name: "המזרח 東 (חגורה כחולה)", color: 0x24467a, price: 2, reuse: true, got: () => betSumo(0) }, { name: "המערב 西 (חגורה אדומה)", color: 0xb3362b, price: 2, reuse: true, got: () => betSumo(1) }]) });
+PLACES.push({ x: SUMO.x + 4, z: SUMO.z + 9, label: "זירת הסומו", act: () => openShop("זירת הסומו 相撲", "שני מתאבקים, מזרח ומערב. על מי מהמרים? (2◆, הימור נכון מחזיר 4)", [{ name: "המזרח 東 (חגורה כחולה)", color: 0x24467a, price: 2, reuse: true, got: () => betSumo(0) }, { name: "המערב 西 (חגורה אדומה)", color: 0xb3362b, price: 2, reuse: true, got: () => betSumo(1) }]) });
 sfx.clap = () => { if (!AC) return; const t = AC.currentTime; noiseHit(t, 2600, 8, .07, .35); noiseHit(t + .01, 1800, 6, .05, .2); };
 
 /* =====================================================================
@@ -2301,7 +2302,7 @@ sfx.clap = () => { if (!AC) return; const t = AC.currentTime; noiseHit(t, 2600, 
    ===================================================================== */
 const WAY_LINES = [
   ["אני הולך לעלות לרגל להר. עוד שבוע של הליכה", "בכל צומת יש ג'יזו קטן ששומר על ההולכים"],
-  ["המשא כבד, אבל העיירה כבר קרובה", "אם תלכי מהר, תגיעי לפני השקיעה"],
+  ["המשא כבד, אבל העיירה כבר קרובה", "בקצב טוב מגיעים לפני השקיעה"],
   ["ראיתי את הצייר הזקן יושב פה עם מכחול", "הדרך הזאת מחברת בין כל ההדפסים"],
   ["פעמון המקדש בעיירה מצלצל רחוק", "מישהו אמר שעל הגגות מסתתרים חותמים"]
 ];
@@ -2446,7 +2447,7 @@ function paintPrintMap() {
   return c;
 }
 { const _r2 = renderMap; renderMap = function () { if (!mapImg || !mapImg.printed) { mapImg = paintPrintMap(); mapImg.printed = true; } _r2(); }; }
-$("mapInfo").textContent = "לחצי על חותמת אדומה כדי לכוון אליה את המצפן · 市 העיירה · ✔ נאסף: אפשר לעוף אליו";
+$("mapInfo").textContent = "לחיצה על חותמת אדומה מכוונת אליה את המצפן · 市 העיירה · ✔ נאסף: אפשר לעוף אליו";
 
 // every farmhouse and shop-house glows warm at its windows (one Points draw, built after the rescale)
 function buildHouseGlow() {
@@ -2498,17 +2499,17 @@ const GUIDE = window.GUIDE = (() => {
   document.head.appendChild(st);
   const d = document.createElement("div"); d.id = "guide"; d.hidden = true; if (isTouch) { d.style.bottom = "auto"; d.style.top = "122px"; } d.innerHTML = `<button id="guideX" title="סגירה">✕</button><div id="guideT"></div>`; document.body.appendChild(d);
   const T_ = isTouch ? [
-    ["גררי אצבע על המסך כדי <b>ללכת</b>. ≫ כדי לרוץ", "הדרך הזאת היא הטוקאידו"],
-    ["הקישי על <b>🐎</b> והסוס ידהר אלייך", "שוב 🐎 כדי לרדת"],
-    ["הקישי על <b>🕊️</b> והעגור יבוא לקחת אותך לשמיים", "⬇ קרוב לקרקע כדי לנחות"],
-    ["<b>עמודי האור</b> מסמנים את ההדפסים. המצפן האדום מצביע לקרוב", "🗺️ למפה: אפשר לבחור יעד, ולעוף להדפסים שכבר מצאת"],
-    ["אספי <b>◆ חותמים</b> בדרכים ועל הגגות", "בעיירה ממזרח 市 קונים בהם מטריה, תה, מרחץ, קאבוקי…"]
+    ["גוררים אצבע על המסך כדי <b>ללכת</b>. ≫ כדי לרוץ", "זו העיירה שעל דרך הטוקאידו. ליד דוכן או אדם: 👆"],
+    ["<b>🐎</b> קורא לסוס, והוא דוהר אל הדרך", "שוב 🐎 כדי לרדת"],
+    ["<b>🕊️</b> קורא לעגור, והוא נוחת ולוקח לשמיים", "⬇ קרוב לקרקע כדי לנחות"],
+    ["<b>עמודי האור</b> מסמנים את ההדפסים. המצפן האדום מצביע לקרוב", "🗺️ למפה: אפשר לבחור יעד, ולעוף להדפסים שכבר נאספו"],
+    ["<b>◆ חותמים</b> מחכים בדרכים ועל הגגות", "בעיירה הזאת קונים בהם מטריה, תה, מרחץ, קאבוקי…"]
   ] : [
-    ["<b>חיצים / WASD</b> כדי ללכת · Shift כדי לרוץ", "הדרך הזאת היא הטוקאידו"],
-    ["לחצי <b>H</b> והסוס ידהר אלייך", "H שוב כדי לרדת"],
-    ["הקישי <b>רווח 3 פעמים</b> והעגור יבוא לקחת אותך לשמיים", "F קרוב לקרקע כדי לנחות"],
-    ["<b>עמודי האור</b> מסמנים את ההדפסים. המצפן האדום מצביע לקרוב", "M למפה: אפשר לבחור יעד, ולעוף להדפסים שכבר מצאת"],
-    ["אספי <b>◆ חותמים</b> בדרכים ועל הגגות", "בעיירה ממזרח 市 קונים בהם מטריה, תה, מרחץ, קאבוקי… (E ליד דוכן)"]
+    ["<b>חיצים / WASD</b> כדי ללכת · Shift כדי לרוץ", "זו העיירה שעל דרך הטוקאידו. E ליד דוכן או אדם"],
+    ["<b>H</b> קורא לסוס, והוא דוהר אל הדרך", "H שוב כדי לרדת"],
+    ["<b>רווח 3 פעמים</b> קורא לעגור, והוא נוחת ולוקח לשמיים", "F קרוב לקרקע כדי לנחות"],
+    ["<b>עמודי האור</b> מסמנים את ההדפסים. המצפן האדום מצביע לקרוב", "M למפה: אפשר לבחור יעד, ולעוף להדפסים שכבר נאספו"],
+    ["<b>◆ חותמים</b> מחכים בדרכים ועל הגגות", "בעיירה הזאת קונים בהם מטריה, תה, מרחץ, קאבוקי… (E ליד דוכן)"]
   ];
   let i = -1, t = 0, walked = 0, last = null;
   const show = () => { if (i < 0 || i >= T_.length) { d.hidden = true; return; } d.hidden = false; $("guideT").innerHTML = `${T_[i][0]}<small>${T_[i][1]}</small>`; d.style.opacity = 1; sfx.talk(); };
@@ -2523,8 +2524,72 @@ const GUIDE = window.GUIDE = (() => {
     else if (i === 3 && (t > 12 || STATIONS.some(s => s.got && s.justGot))) next();
     else if (i === 4 && t > 14) next();
   });
-  return { start() { i = SAVE.tut === undefined ? 0 : SAVE.tut; if (i >= T_.length) { toast("עקבי אחרי עמודי האור 🔆", 2.5); return; } toast("עולמו של הוקוסאי", 2); setTimeout(show, 800); }, get step() { return i; } };
+  return { start() { i = SAVE.tut === undefined ? 0 : SAVE.tut; if (i >= T_.length) { toast("עמודי האור 🔆 מסמנים את ההדפסים", 2.5); return; } toast("עולמו של הוקוסאי", 2); setTimeout(show, 800); }, get step() { return i; } };
 })();
+
+/* ---------- what people say: a voice per kind, the day, the weather, and what they notice ---------- */
+const VOICES = {
+  farmer: ["השנה האורז גבוה עד הברך. אם הגשם יבוא בזמן, יהיה קציר טוב", "אני שותל אורז מאז שהייתי בגובה של שתיל", "הגב כואב, אבל כשהשדה מוצף והשמיים משתקפים בו, שוכחים", "הדחליל שלי מפחיד רק את העורבים העצלנים", "אחרי הקציר נייבש את האורז על המתלים, ואז נחגוג", "כשפוג'י חובש כובע של ענן, מחר יירד גשם. ככה אמר סבא שלי", "צפרדעים שרות בשדה בלילה. זה השיר הכי ישן ביפן", "ראיתי פעם את הצייר הזקן מצייר את השדה שלי. הוא צייר אותי קטן כמו נמלה", "בוץ עד הקרסוליים ושמש על הראש. ככה זה באמצע הקיץ", "השכן שלי טוען שהדחליל שלו מצא חותם זהב. הדחליל!", "המים זורמים מההר לשדות. ההר הזה מאכיל את כולנו", "עדיף לשתול שורה ישרה אחת מאשר לחלום על עשר", "בחורף אני קולע סנדלי קש. זוג אחד מחזיק עונה שלמה", "הרוח מהים מביאה מלח. האורז ליד החוף קצת מלוח", "המס על האורז כבד, אבל השוק בעיירה קונה כל מה שנשאר"],
+  fisher: ["הים היום רגוע. אתמול הגלים היו כמו ציפורניים לבנות", "בבוקר תפסתי בוניטו גדול כמו ילד. הוא כבר בדרך לשוק של אדו", "מהסירה, פוג'י נראה כאילו הוא צף על המים", "אומרים שהגל הגדול כמעט בלע שלוש סירות. אנחנו חזרנו כולנו", "דייג טוב מקשיב לשחפים, לא לסוחרים", "הרשת קרועה שוב. כנראה דג שלא אהב את השכונה", "בלילה הדגים עולים לראות את הירח", "הסירה שלי ישנה יותר ממני, והיא שוחה טוב יותר", "בגאות שותקים, בשפל מספרים סיפורים", "אשתי אומרת שאני מריח כמו ים. אני חושב שזו מחמאה", "צדפים בחוף נובוטו, תמנונים בצוקודה. לכל חוף האוצר שלו", "כשהגל עולה, מצמידים את המשוטים ומתפללים", "הים לא שואל מי אתה. הוא רק בודק אם אתה יודע לחתור", "מי שמסתכל רק על הגלים, מפספס את הדגים", "מהמים רואים את כל ההר, מהשורש עד השלג"],
+  porter: ["שני סלים, מוט אחד, וגב שזוכר כל עלייה", "עוד ריו אחד ואני בתחנה הבאה. ריו זה בערך ארבעה קילומטר", "אני סוחב סאקה לאדו. אסור לי לטעום. זה הכי קשה בעבודה", "במעבר נהר אוי סוחבים את הנוסעים על הכתפיים. סלים לפחות לא מתלוננים", "בטוקאידו יש חמישים ושלוש תחנות. ספרתי את כולן בכאב גב", "אם המשא שלי היה נוצות, הייתי עף כמו העגור הזה", "הדנגו בבית התה הוא השכר האמיתי שלי", "המוט מתכופף, אבל לא נשבר. גם אני", "פעם סחבתי ארון מאדו לקיוטו. הבעלים ישב בתוכו", "הרגליים יודעות את הדרך. הראש רק מצטרף", "גשם? מכסים את הסלים בקש, ואת עצמי בתקווה", "השכר טוב, אבל הסנדלים נגמרים מהר יותר מהכסף", "כל אבן בדרך הזאת מכירה אותי בשם", "מי שסוחב את העולם על הכתפיים, לפחות רואה אותו מקרוב", "שמעתי שיש עגור שנושא נוסעים. סוף סוף מתחרה"],
+  traveler: ["יצאתי מאדו לפני שבוע. עוד שלושה שבועות לקיוטו, אם הרגליים ירצו", "בכל תחנה אני קונה הדפס קטן למזכרת. התיק כבר כבד מתמונות", "הדרך הכי יפה היא זו שלא ממהרים בה", "בהודוגאיה ישנתי בפונדק עם אוכל טוב ופשפשים מצוינים", "צריך מכתב מעבר כדי לעבור במחסום הקונה. השומרים שם לא מחייכים", "כשפוג'י מימין, הולכים לקיוטו. כשהוא משמאל, חוזרים הביתה", "קניתי סנדלי קש חדשים. הישנים ממשיכים ללכת בלעדיי", "מטיילים נפגשים, מחליפים סיפורים ונפרדים. כמו עננים", "הכי טעים באוכל של הדרך זה הרעב", "אני כותב יומן מסע. בינתיים יש בו בעיקר מזג אוויר", "אמא שלי אמרה: מי שהולך לאט, הולך רחוק", "פגשתי צייר זקן ומשונה שצייר את פוג'י מתוך חבית", "בלילה בפונדק כולם מספרים על רוחות. אף אחד לא ישן", "הדרך לא נגמרת. רק המטיילים מתחלפים", "יש אומרים שהטוקאידו היא הדרך החשובה בעולם. הם כנראה לא היו בסין"],
+  woman: ["אני מביאה אוכל לבעלי בשדה. הוא תמיד אומר שאיחרתי, ותמיד אוכל הכל", "הקימונו הזה היה של סבתא שלי. הכחול לא דהה", "בעיירה יש צובעת שמכירה כל גוון של כחול", "קמתי לפני השמש לשאוב מים. ההר היה ורוד", "שמעתי שבתיאטרון מציגים היום את הסיפור על הגל והדייגים", "הבת שלי רוצה לשחק בקאבוקי. אמרתי לה שרק גברים משחקים שם. היא צחקה", "כשהדובדבן פורח ביושינו, כל הכפר נוסע לראות", "אני אורגת בערבים. כל בד מספר מה חשבתי באותו שבוע", "המשפחה שלי גרה למרגלות ההר כבר עשרה דורות", "בבית התה סיפרו שראו עגור לבן עם רוכב. אמרתי שזה שטויות. ואז ראיתי", "העיקר בחיים: מרק חם, גג שלא דולף ושכנים שלא מרכלים. שניים מתוך שלושה זה טוב", "צריך להוריד את הכביסה. פוג'י כבר חובש כובע של ענן", "בחג הפנסים כל הנהר מתמלא אורות קטנים", "הבן שלי אסף שלושה חותמי־יהלום ולא מוכן לספר איפה", "יש לי מתכון לדנגו שאפילו בית התה מקנא בו"],
+  monk: ["כל צעד בדרך הוא תפילה קטנה", "הפעמון בעיירה מצלצל מאה ושמונה פעמים בסוף השנה. צלצול לכל תשוקה", "ההר לא ממהר לשום מקום, ובכל זאת כולם באים אליו", "שאלו פעם מורה מה היא הדרך. הוא ענה: לשתות תה כשצמאים", "אני הולך למקדש בהרים. התה שם מר והנוף מתוק", "גם עלה שנופל יודע לאן הוא הולך", "מי שמחפש שקט ימצא אותו בין שתי נשימות", "שוב ענן מסתיר את פוג'י. גם זה שיעור", "הצייר הזקן שינה את שמו שלושים פעם. אולי חיפש את השם האמיתי", "כשהמים צלולים רואים את הירח. כשהלב צלול, רואים הכל", "אני מקבל אורז ונותן ברכה. החלפה הוגנת", "נזיר אחד ישב מול קיר תשע שנים. אני מחזיק מעמד עשר דקות", "גם הר גבוה מתחיל באבן אחת", "היום ביקשתי מהגשם לחכות. הוא לא הקשיב. גם זה בסדר", "החתול של המקדש יודע יותר זן מכולנו"],
+  samurai: ["הדרך לאדו בטוחה, כל עוד אני כאן", "החרב שלי ישנה יותר ממני, והיא עוד לא נשלפה בקרב", "כל שנתיים הלורד צועד לאדו עם כל הפמליה. אני הולך מאחור וסופר סוסים", "סמוראי בלי אדון נקרא רונין. אני רק בחופשה", "גם סמוראי עוצר להסתכל על ההר", "אני מתאמן בקליגרפיה. המכחול קשה יותר מהחרב", "כבוד זה לעמוד במילה, גם כשאף אחד לא שומע", "שמעתי שמוכרים פה דנגו מצוין. זו משימה חשובה", "השקט לפני קרב דומה מאוד לשקט לפני ארוחת ערב", "אבי לימד אותי: חרב חדה, לב רגוע, סנדלים שלמים", "בתיאטרון משחקים סמוראים טוב יותר ממני. הם גם צועקים חזק יותר", "מי שמנצח בלי להילחם, מנצח פעמיים", "אני שומר על הגשר. בעיקר מפני ברווזים", "אפילו השוגון מחכה כשהנהר עולה", "פעם הייתי צעיר וממהר. עכשיו אני רק ממהר"],
+  pilgrim: ["אני עולה לפסגה, כמו כל עולי הרגל. בלבן, כדי שההר יכיר אותנו", "מי שמגיע לפסגת פוג'י מקבל ברכה לשנה שלמה", "בדרך לפסגה יש עשר תחנות. מהשמינית כבר רואים את כל העולם", "הפעמון על המקל שלי מצלצל בכל צעד. ככה ההר יודע שאני בא", "אני אוסף חותמות מכל מקדש בדרך. הספר שלי כמעט מלא", "בלילה ישנים בבקתות על ההר, ובבוקר השמש עולה מתחת לרגליים", "בקהילה שלנו כל אחד חוסך מטבע בחודש, כדי שלפחות אחד יגיע לפסגה", "האוויר דליל למעלה. גם המחשבות נעשות קלות", "בדרך חזרה תמיד קל יותר. אולי זאת הברכה", "באדו בונים פוג'י קטן מאבנים, בשביל מי שלא יכול לטפס", "אני מבקש מההר בריאות לאמא שלי", "השלג על הפסגה לא נמס אף פעם. ההר שומר עליו כמו על סוד", "כל אחד מגיע לפסגה בדרך שלו. אני בדרך הארוכה", "יש אומרים שפוג'י פירושו 'אין שני לו'. אני מסכים", "פעם בשישים שנה, בשנת הקוף, ההר מברך כפול"],
+  parasol: ["השמש חזקה היום. טוב שיש מטריה", "המטריה הזאת עשויה נייר שמן ובמבוק. היא שרדה שלושה טייפונים", "ראיתם את פריחת הדובדבן ביושינו? כל ההר ורוד", "בעיירה מוכרים מטריות יפות יותר משלי, אבל לשלי יש זיכרונות", "אני בדרך לבית התה לפגוש חברה. היא תמיד מאחרת, אז גם אני", "בגשם המטריה מתופפת שיר. בשמש היא שותקת", "סבתא אמרה שמטריה ישנה מקבלת נשמה אחרי מאה שנה. לשלי נשארו שמונים", "יש לי קימונו לכל עונה ומטריה לכל מצב רוח", "השמש של אחר הצהריים הכי יפה על השדות", "בפסטיבל הקיץ כולם לובשים יוקטה ואוכלים קרח מגורר", "השחקן הראשי בקאבוקי מסתכל על הקהל כאילו הוא מכיר כל אחד", "אם מטריה נקרעת, תופרים עליה ציפור. ככה עושים אצלנו", "בערב נדלקים הפנסים בגשר ריוגוקו, והנהר נראה כמו שמיים הפוכים", "אני אוספת הדפסים של שחקנים. יש לי כבר מאה", "הרוח היום רוצה לקחת לי את המטריה. היא לא תצליח"],
+  child: ["רוצים לשחק תופסת? אני הכי מהיר בכפר!", "אמא אמרה שהעגור הזה מביא מזל", "ראיתי חותם זהב על הגג של השכן!", "אני יודע לספור עד מאה. אחת, שתיים... בעצם עד עשרים", "סבא אומר שבהר גר דרקון. אני חושב שזה סתם ענן", "העפיפון שלי הגיע עד הציפורים!", "תפסתי צפרדע וקראתי לה פוג'י", "כשאגדל אהיה סמוראי. או מוכר דנגו. עוד לא החלטתי", "אם עומדים על ראש ההר, אפשר לגעת בירח?", "החתול של השכנים גנב דג מהשוק ואף אחד לא ראה. חוץ ממני", "בחורף אנחנו בונים בובת שלג בצורת פוג'י", "יש לי חותם יהלום אחד. אני שומר אותו מתחת לכרית", "אני מצייר את ההר בפחם. יוצא לי משולש", "אמרו לי לא להתרחק. אז אני רץ במעגלים", "הסוס הזה גדול! הוא אוכל ילדים? לא? טוב"]
+};
+const SHARED = [
+  "בטוקאידו יש חמישים ושלוש תחנות בין אדו לקיוטו", "הוקוסאי החליף את שמו בערך שלושים פעם, ועבר דירה תשעים ושלוש פעמים!", "אומרים שהוקוסאי עבר דירה בכל פעם שהבית נהיה מלוכלך מדי. פשוט ארז והלך",
+  "הוקוסאי אמר שרק בגיל מאה ועשר כל קו שלו יהיה חי. הוא הגיע לתשעים", "את ההדפסים מדפיסים מלוחות עץ, לוח לכל צבע. מדפיס טוב לא מפספס אפילו שערה", "הכחול החדש בהדפסים מגיע מאירופה. קוראים לו כחול פרוסי",
+  "אוּקיוֹ־אֶה פירושו 'תמונות של העולם הצף'. כלומר, של מה שחולף", "הדפס של הוקוסאי עולה בערך כמו שתי קערות סובה", "באדו גרים מיליון אנשים. יותר מכל עיר בעולם, אומרים",
+  "שלושים ושש תמונות של פוג'י, ואז הוסיפו עוד עשר, כי הן נמכרו כל כך טוב", "הבת של הוקוסאי, אוֹאִי, ציירת בעצמה. יש אומרים שבאור ובצל היא טובה ממנו",
+  "נופלים שבע פעמים, קמים שמונה", "גם קוף נופל מעץ", "אומרים אצלנו: דנגו עדיף על פרחים. כלומר, הבטן לפני היופי", "צפרדע בבאר לא יודעת שיש ים", "גם אבן מתחממת אם יושבים עליה שלוש שנים", "מי שממהר, שיעשה סיבוב",
+  "בריכה עתיקה / צפרדע קופצת / קול המים (באשו)", "שקט / אל תוך הסלע נספג / קול הציקדה (באשו)", "ערפל וגשם / יום שלא רואים בו את פוג'י / ובכל זאת נעים (באשו)", "על ענף יבש / עורב יושב / ערב של סתיו (באשו)", "ירח הקציר / הלכתי סביב הבריכה / כל הלילה (באשו)",
+  "למה פוג'י תמיד רגוע? כי כבר מאה שנה הוא לא התפרץ. בערך", "שאלתי את הדחליל מה שלומו. הוא לא ענה. מנומס מדי", "אומרים שהגל הגדול מפחיד. הם לא פגשו את חמותי"
+];
+const MOMENTS = {
+  morning: ["בוקר טוב! בבוקר ההר נקי מעננים", "השמש עוד נמוכה, והשדות מלאים טל", "כבר שתיתי שלוש כוסות תה, ועוד לא התחלתי לעבוד"],
+  day: ["צהריים חמים. טוב לנוח בצל של אורן", "בשעה כזאת אפילו הצפרדעים ישנות", "השמש בדיוק מעל הראש. הצל שלי מתחבא מתחת לסנדלים"],
+  evening: ["ערב טוב. עוד מעט ידליקו את הפנסים", "השמש שוקעת מאחורי ההר, והכל נהיה כתום", "בערב הריח של אורז מתבשל עובר בכל הכפר"],
+  night: ["מאוחר! גם העגורים כבר ישנים", "בלילה ההר שחור, והשלג שלו זוהר", "כוכבים מעל פוג'י. כמו אורז שנשפך על בד כחול"],
+  storm: ["רעם על ההר! לא לעמוד מתחת לעץ גבוה", "הגשם הזה ישטוף את כל הדרך", "הברקים אדומים היום. ההר כועס על משהו"],
+  snow: ["השלג מכסה הכל. אפילו את העקבות", "קר! בבית התה יש מרק חם", "בשלג כל הצלילים נעשים שקטים"],
+  blossom: ["הדובדבנים פורחים! עוד שבוע וכולם ייפלו", "תחת הפריחה כולם חברים", "עלי הכותרת נופלים כמו שלג ורוד"],
+  sea: ["רוח מלוחה היום. הדגים בטח שמחים", "הים הכחול הזה ממשיך עד סין", "השחפים צועקים. סימן שהסירות חוזרות"],
+  horse: ["איזה סוס יפה! הבד האדום על האוכף כמו בתהלוכה של לורד", "לא לדהור בתוך הכפר, בבקשה! יש פה תרנגולות", "הסוס הזה נראה חכם יותר מהשליח של השוגון"],
+  crane: ["עגור עם רוכב! אף אחד לא יאמין לי", "מלמעלה בטח רואים את כל ההדפסים"],
+  umbrella: ["מטריה אדומה! מהשוק בעיירה?", "המטריה הזאת יפה יותר משלי"],
+  rich: ["הכיס נראה כבד מחותמים. בעיירה יש מה לקנות", "כל כך הרבה חותמים! אולי להמר בזירת הסומו?"],
+  dyed: ["הכתר של העגור צבוע בצבע חדש! הצובעת בעיירה עשתה עבודה יפה"]
+};
+const lastSaid = new Set(); let lastLine = "";
+function npcLine(p) {
+  const hr = new Date().getHours(), got = STATIONS.filter(s => s.got).length, x = p.mesh.position.x, z = p.mesh.position.z;
+  const ctx = [...MOMENTS[hr < 5 ? "night" : hr < 11 ? "morning" : hr < 17 ? "day" : hr < 21 ? "evening" : "night"]];
+  if (Math.hypot(x - STORM.x, z - STORM.z) < 320) ctx.push(...MOMENTS.storm, ...MOMENTS.storm);
+  for (const id of [53787, 44981]) { const s = STATIONS.find(q => q.id === id); if (Math.hypot(x - s.x, z - s.z) < 180) ctx.push(...MOMENTS.snow, ...MOMENTS.snow); }
+  { const s = STATIONS.find(q => q.id === 56138); if (Math.hypot(x - s.x, z - s.z) < 220) ctx.push(...MOMENTS.blossom, ...MOMENTS.blossom); }
+  if (seaness(x, z + 60) > .5) ctx.push(...MOMENTS.sea);
+  if (G.mode === "horse") ctx.push(...MOMENTS.horse, ...MOMENTS.horse); if (G.mode === "fly") ctx.push(...MOMENTS.crane, ...MOMENTS.crane);
+  if (umbrella.visible) ctx.push(...MOMENTS.umbrella); if (purse() >= 15) ctx.push(...MOMENTS.rich); if (SAVE.craneCol) ctx.push(...MOMENTS.dyed);
+  if (got >= 3) ctx.push(`כבר ${got} הדפסים באלבום? הצייר הזקן היה מחייך`, `${got} מקומות של הוקוסאי! נשארו עוד ${STATIONS.length - got}`);
+  const pickFrom = L => { for (let k = 0; k < 8; k++) { const l = L[(Math.random() * L.length) | 0]; if (l !== lastLine && !lastSaid.has(l)) return l; } return L[(Math.random() * L.length) | 0]; };
+  let line;
+  if (p.line) line = pickFrom(p.line);
+  else {
+    const r = Math.random(), tgt = nearestStation(p.mesh.position);
+    if (r < .25 && tgt) line = pickFrom(LINES.hint(tgt, p.mesh.position));
+    else if (r < .45 && ctx.length) line = pickFrom(ctx);
+    else if (r < .62) line = pickFrom(SHARED);
+    else line = pickFrom(VOICES[p.type] || VOICES.traveler);
+  }
+  lastLine = line; lastSaid.add(line); if (lastSaid.size > 40) lastSaid.delete(lastSaid.values().next().value);
+  return line;
+}
+// pressing E (or the button) next to someone: they say something new
+function talkTo(p) { talkP = p; talkT = 5; $("bubble").textContent = npcLine(p); sfx.talk(); }
 
 /* ---------- the town gate: new travellers arrive here ---------- */
 const TOWN_GATE = { x: 1478, z: roadZ(1478), yaw: -1.64 };
@@ -2659,6 +2724,11 @@ fillCountryside();
 buildHouseGlow();
 
 /* ---------- test hooks ---------- */
+if (/talktest/.test(HASH)) setTimeout(() => { enterWorld(); introT = 6.3; step(.05); state = "play";
+  const p = PEOPLE.filter(q => q.type === "samurai" || q.type === "pilgrim").sort((a, b) => a.mesh.position.distanceTo(P.pos) - b.mesh.position.distanceTo(P.pos))[0];
+  p.path = null; P.pos.set(p.mesh.position.x + 5, landH(p.mesh.position.x + 5, p.mesh.position.z), p.mesh.position.z); P.yaw = -Math.PI / 2; for (let i = 0; i < 10; i++) step(1 / 30);
+  const out = []; for (let k = 0; k < 6; k++) out.push(npcLine(p)); console.log("[talk] " + p.type + " | " + out.join(" | "));
+  doAct(); for (let i = 0; i < 10; i++) step(1 / 30); console.log("[talk] act=" + (placeNear && placeNear.label) + " bubble=" + $("bubble").textContent); }, 1200);
 const mF = HASH.match(/farm(\d+)/);
 if (mF) setTimeout(() => { enterWorld(); introT = 6.3; step(.05); state = "play"; const f = FARMS.slice().sort((a, b) => Math.hypot(a[0] - TOWN_GATE.x, a[1] - TOWN_GATE.z) - Math.hypot(b[0] - TOWN_GATE.x, b[1] - TOWN_GATE.z))[+mF[1]];
   P.pos.set(f[0] + 45, landH(f[0] + 45, f[1] + 20), f[1] + 20); P.yaw = Math.atan2(f[0] - P.pos.x, f[1] - P.pos.z); for (let i = 0; i < 40; i++) step(1 / 30); }, 1200);
