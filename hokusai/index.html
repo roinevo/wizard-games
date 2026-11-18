@@ -794,6 +794,7 @@ const RIVERS = [
   { name: "sumida", w: 55, pts: [[2050, -2400], [2000, -1300], [2080, -400], [1980, 300], [2060, 900], [2120, 1700]] },
   { name: "fujikawa", w: 60, pts: [[-1900, -2400], [-2000, -900], [-1950, -200], [-2050, 600], [-1900, 1700]] },
   { name: "oi", w: 120, pts: [[-760, 400], [-720, 900], [-700, 1300], [-690, 1800]] },
+  { name: "nihonbashi", w: 16, pts: [[1985, 848], [1530, 655]] },
   { name: "sano", w: 70, pts: [[1100, -2400], [1350, -1900], [1450, -1500], [1700, -1300], [2000, -1300]] }
 ];
 const ISLANDS = [[-1700, 2750, 170], [-900, 2950, 140], [-200, 3050, 160], [500, 2900, 150], [1200, 3000, 170], [1900, 2750, 150], [2500, 2550, 120], [-2400, 2500, 140], [2300, 1650, 70]];
@@ -1014,7 +1015,10 @@ station(55458, "שדרת האורנים בהודוגאיה", 1150, 1050, { up: 3
   ROADPINES.push(s);
   for (let k = 0; k < 6; k++) addPerson(["traveler", "porter", "monk", "woman"][k % 4], s.x + rand(-30, 30), s.z + rand(-10, 10), { path: [[s.x - 300, s.z + 80], [s.x + 300, s.z - 60]] });
 });
-station(55237, "הגשר ניהונבאשי באדו", 1920, 820, { up: 6, d: [0, 0], look: [0, 300, 0], fov: 55 }, null, s => { EDO.x = s.x; EDO.z = s.z; });
+station(55237, "הגשר ניהונבאשי באדו", 1920, 820, { up: 25, d: [46, 20], look: [1560, 6, 667], fov: 56 }, null, s => {
+  EDO.x = s.x; EDO.z = s.z;
+  for (const [t, ry] of [[70, .1], [150, -.15], [230, .05]]) { const b = makeBoat(); b.scale.setScalar(.75); b.position.set(s.x - .92 * t + rand(-3, 3), 0, s.z - .39 * t); b.rotation.y = Math.atan2(-.92, -.39) + ry; scene.add(b); BOATS.push(b); }
+});
 station(53787, "גשר הסירות בסאנו בשלג", 1350, -1640, { up: 12, d: [0, 0], look: [1520, 0, -1520], fov: 58 }, { top: 0x2c3242, mid: 0xe9e3d6, hor: 0xb8b3a8, fog: 0xd8d4cc }, s => {
   const pts = [[1380, -1600], [1430, -1560], [1490, -1530], [1560, -1500]];
   const pp = []; for (let k = 0; k < 18; k++) { const u = k / 17; const x = lerp(1380, 1560, u), z = lerp(-1600, -1500, u) + Math.sin(u * 3) * 10; pp.push({ g: G_.box(5, 1.2, 9), c: 0x7a5f3a, m: M4(x, 0, z, 0, Math.atan2(180, 100) + Math.PI / 2, 0) }); } scene.add(new THREE.Mesh(partsGeo(pp), VC));
@@ -1143,9 +1147,12 @@ function buildWorld() {
   // villages along the Tokaido
   for (let i = 1; i < TOKAIDO.length - 1; i += 2) { const [x, z] = TOKAIDO[i]; for (let k = 0; k < 7; k++) { const px = x + rand(-70, 70), pz = z + rand(20, 60) * (k % 2 ? 1 : -1); const y = landH(px, pz); if (y > 2) houses.push([px, y - .3, pz, Math.atan2(TOKAIDO[i + 1][0] - x, TOKAIDO[i + 1][1] - z), rand(.9, 1.2)]); } }
   // Edo: rows of warehouses along the canal, Nihonbashi bridge
-  for (let k = 0; k < 26; k++) for (const sd of [-1, 1]) { const x = EDO.x + 30 + k * 13, z = EDO.z + sd * 22; kuras.push([x, landH(x, z) - .3, z, Math.PI / 2, 1]); }
+  // white-walled warehouses lining both banks of the canal, converging toward Fuji (Nihonbashi print)
+  { const dx = -.92, dz = -.39, nx = .39, nz = -.92, ry = Math.atan2(-dz, dx);
+    for (let k = 0; k < 36; k++) for (const sd of [-1, 1]) { const t = 28 + k * 10.4, x = EDO.x + dx * t + nx * sd * 28, z = EDO.z + dz * t + nz * sd * 28; kuras.push([x, Math.max(landH(x, z), 1) - .3, z, ry, 1.02]); }
+    for (let k = 0; k < 8; k++) for (const sd of [-1, 1]) { const t = 30 + k * 45, x = EDO.x + dx * t + nx * sd * 38, z = EDO.z + dz * t + nz * sd * 38; houses.push([x, Math.max(landH(x, z), 1) - .3, z, ry, 1.1]); } }
   for (let k = 0; k < 90; k++) { const x = EDO.x + rand(-60, 380), z = EDO.z + rand(60, 260) * (k % 2 ? 1 : -1); const y = landH(x, z); if (y > 1.5) (k % 3 ? houses : kuras).push([x, y - .3, z, Math.PI / 2, rand(.9, 1.1)]); }
-  BRIDGES.push([EDO.x + 10, EDO.z, 70, Math.PI / 2]);
+  BRIDGES.push([EDO.x - 4, EDO.z - 2, 56, Math.atan2(.92, .39)]);
   const snowTint = (o, c) => { const s = snowAt(o[0], o[2]); return c.setRGB(1, 1, 1).lerp(new THREE.Color(0xffffff), 0).multiplyScalar(1).lerp(new THREE.Color(1.25, 1.25, 1.3), s); };
   instances(KIT.cedar(), ced); instances(KIT.pine(), pines); instances(KIT.minka(), houses, null, snowTint); instances(KIT.kura(), kuras); HOUSE_LIST = houses; KURA_LIST = kuras;
   // bridges
@@ -1700,7 +1707,7 @@ function stationView(s) {
   return { pos, look: v.sky ? s.pos.clone() : new V3(v.look[0], v.look[1], v.look[2]), fov: v.fov };
 }
 function startMoment(s) {
-  state = "moment"; MOMENT.s = s; MOMENT.t = 0; MOMENT.from = { pos: camera.position.clone(), q: camera.quaternion.clone(), fov: camera.fov }; MOMENT.view = stationView(s);
+  state = "moment"; MOMENT.s = s; s.marker.visible = false; MOMENT.t = 0; MOMENT.from = { pos: camera.position.clone(), q: camera.quaternion.clone(), fov: camera.fov }; MOMENT.view = stationView(s);
   const t = getPrintTex(s.id); post.uniforms.tP.value = t; post.uniforms.pAsp.value = t.image && t.image.width ? t.image.width / t.image.height : 1.49;
   sfx.scroll(); $("bubble").hidden = true;
   $("cap").innerHTML = `<b>${PRINTS[s.id]}</b><br>${s.place} · קאצושיקה הוקוסאי`;
@@ -1721,7 +1728,7 @@ function updateMoment(dt) {
     for (let k = 0; k < 40; k++) sparks.spawn(M_.s.pos.x, M_.s.pos.y + 6, M_.s.pos.z, { vx: rand(-10, 10), vy: rand(-4, 14), vz: rand(-10, 10), life: rand(.8, 1.4), s0: 2, s1: 0, r: 1, gg: .85, b: .5 });
     if (BOT) console.log(`[moment] ${M_.s.id} ${M_.s.place} have=${SAVE.have.length}`);
   }
-  if (M_.t > holdEnd + 1.9) { state = "play"; post.uniforms.pMix.value = 0; $("cap").classList.remove("on"); if (STATIONS.every(s => s.got)) toast("כל 31 ההדפסים בידייך! 🎉\nאת חלק מהעולם של הוקוסאי", 5); }
+  if (M_.t > holdEnd + 1.9) { state = "play"; M_.s.marker.visible = true; post.uniforms.pMix.value = 0; $("cap").classList.remove("on"); if (STATIONS.every(s => s.got)) toast("כל 31 ההדפסים בידייך! 🎉\nאת חלק מהעולם של הוקוסאי", 5); }
 }
 function renderHUD() {
   const n = STATIONS.filter(s => s.got).length;
@@ -1855,8 +1862,8 @@ if (mS) setTimeout(() => {
   const s = STATIONS.find(q => q.id === +mS[2]) || STATIONS[+mS[2]];
   enterWorld(); state = "viewtest"; post.uniforms.pMix.value = 0; $("startScr").hidden = true;
   P.pos.copy(s.pos); updateMood(10); updateMood(10); updateMood(10);
-  const v = stationView(s); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix();
-  if (mS[1] === "st") { post.uniforms.pMix.value = .55; }
+  s.marker.visible = false; const v = stationView(s); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix();
+  if (mS[1] === "st") { const tx = getPrintTex(s.id); post.uniforms.tP.value = tx; setTimeout(() => { post.uniforms.pAsp.value = tx.image && tx.image.width ? tx.image.width / tx.image.height : 1.49; }, 900); post.uniforms.pMix.value = .55; }
 }, 600);
 const mC = HASH.match(/cam=([-\d.,]+)/);
 if (mC) { const v = mC[1].split(",").map(Number); setTimeout(() => { enterWorld(); state = "viewtest"; post.uniforms.pMix.value = 0; P.pos.set(v[0], v[1], v[2]); updateMood(10); updateMood(10); camera.position.set(v[0], v[1], v[2]); camera.lookAt(v[3], v[4], v[5]); camera.fov = v[6] || 60; camera.updateProjectionMatrix(); }, 600); }
@@ -1898,6 +1905,7 @@ if (/stats/.test(HASH)) setTimeout(() => { const L = []; scene.traverse(o => { i
 if (/stats/.test(HASH)) setInterval(() => console.log("[stats] calls=" + renderer.info.render.calls + " tris=" + renderer.info.render.triangles + " progs=" + renderer.info.programs.length), 2500);
 if (/nullchk/.test(HASH)) setTimeout(() => scene.traverse(o => { if (o.isMesh || o.isPoints) o.onBeforeRender = () => { window.__last = o.type + " geo:" + Object.keys(o.geometry.attributes).join("/") + " idx:" + !!o.geometry.index + " mat:" + o.material.type + " vc:" + o.material.vertexColors + " ic:" + !!o.instanceColor + " n:" + o.geometry.attributes.position.count + " at:" + o.getWorldPosition(new V3()).toArray().map(Math.round) + " par:" + (o.parent && o.parent.type) + " box:" + (o.geometry.computeBoundingBox(), o.geometry.boundingBox.getSize(new V3()).toArray().map(v => v.toFixed(1))) + " vis:" + o.visible + " id:" + o.id + " pidx:" + PEOPLE.findIndex(p => p.mesh === o); }; if (o.geometry) { for (const a in o.geometry.attributes) if (!o.geometry.attributes[a]) console.log("[null] " + o.type + " attr " + a + " count " + o.count + " parent " + (o.parent && o.parent.type)); if (o.geometry.index === undefined) console.log("[undefidx] " + o.type); } }), 2000);
 if (/hdbg/.test(HASH)) setTimeout(() => console.log("[h] " + [[760, 2330], [760, 2100], [1500, 1600], [0, 2000]].map(q => landH(q[0], q[1]).toFixed(1) + "/" + HGRID[Math.round((q[1] - MAP.z0) / GZ) * (GN + 1) + Math.round((q[0] - MAP.x0) / GX)].toFixed(1)).join(" ")), 1500);
+const mH = HASH.match(/hq=([-0-9.,;]+)/); if (mH) setTimeout(() => console.log("[hq] " + mH[1].split(";").map(q => { const [x, z] = q.split(",").map(Number); return q + ":" + landH(x, z).toFixed(1); }).join("  ")), 800);
 window.__dbg = { get state() { return state; }, P, STATIONS, camera };
 })();
 </script>
