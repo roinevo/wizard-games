@@ -151,7 +151,9 @@ const post = new THREE.ShaderMaterial({
   uniform sampler2D tC,tD,tP; uniform vec2 res; uniform float near,far,pMix,pAsp,sAsp,flash,inkAmt,time,dmg; uniform vec3 flashCol;
   ${NOISE_GLSL}
   vec3 PAL(int i){ if(i==0) return vec3(0.275,0.259,0.255); if(i==1) return vec3(0.216,0.337,0.435); if(i==2) return vec3(0.369,0.416,0.404); if(i==3) return vec3(0.322,0.482,0.549); if(i==4) return vec3(0.471,0.514,0.467); if(i==5) return vec3(0.706,0.486,0.408); if(i==6) return vec3(0.604,0.584,0.498); if(i==7) return vec3(0.510,0.631,0.620); if(i==8) return vec3(0.694,0.655,0.537); if(i==9) return vec3(0.820,0.698,0.494); if(i==10) return vec3(0.643,0.714,0.659); if(i==11) return vec3(0.796,0.729,0.616); if(i==12) return vec3(0.753,0.776,0.698); if(i==13) return vec3(0.918,0.784,0.549); if(i==14) return vec3(0.855,0.812,0.702); if(i==15) return vec3(0.933,0.847,0.714); if(i==16) return vec3(0.973,0.894,0.765); if(i==17) return vec3(0.965,0.945,0.882); if(i==18) return vec3(0.106,0.184,0.341); if(i==19) return vec3(0.173,0.310,0.525); if(i==20) return vec3(0.290,0.471,0.678); if(i==21) return vec3(0.659,0.263,0.173); if(i==22) return vec3(0.176,0.275,0.212); if(i==23) return vec3(0.118,0.133,0.149); if(i==24) return vec3(0.906,0.722,0.722); if(i==25) return vec3(0.416,0.561,0.306); if(i==26) return vec3(0.561,0.639,0.353); if(i==27) return vec3(0.788,0.702,0.369); if(i==28) return vec3(0.247,0.420,0.333); if(i==29) return vec3(0.851,0.753,0.549); return vec3(0.); }
-  float QI(vec3 c){ float bd=1e9; float bi=0.; for(int i=0;i<30;i++){ vec3 d=c-PAL(i); d*=vec3(1.,1.25,.9); float e=dot(d,d); if(e<bd){bd=e;bi=float(i);} } return bi; }
+  uniform sampler2D tLut;
+  // nearest palette entry via a 32^3 lookup table (built once in JS) instead of a 30-way search per sample
+  float QI(vec3 c){ c=clamp(c,0.,1.)*31.+.5; float b=floor(c.b); vec2 l=vec2((b*32.+floor(c.r)+.5)/1024.,(floor(c.g)+.5)/32.); return floor(texture2D(tLut,l).a*255.+.5); }
   vec3 QC(float f){ return PAL(int(f+.5)); }
   float W(vec2 uv){float d=texture2D(tD,uv).r; float z=d*2.-1.; float lz=2.*near*far/(far+near-z*(far-near)); return 1./lz;}
   void main(){
@@ -159,14 +161,26 @@ const post = new THREE.ShaderMaterial({
     vec2 wob=(vec2(vn(fc*.045),vn(fc*.045+17.3))-.5)*2.2/res;
     vec3 col=texture2D(tC,uv+wob).rgb;
     float lzc=1./max(W(uv),1e-6); float isSky=step(7800.,lzc);
-    float pn=(fbm(fc*.03)-.5)*.06+(vn(fc*.25)-.5)*.02;
+    float pn=(fbm(fc*.018)-.5)*.05;
     vec2 o1=vec2(1.4,0.)/res, o2=vec2(0.,1.4)/res;
     float qi=QI(col+pn);
     float qa=QI(texture2D(tC,uv+wob+o1).rgb+pn), qb=QI(texture2D(tC,uv+wob-o1).rgb+pn), qc=QI(texture2D(tC,uv+wob+o2).rgb+pn), qd=QI(texture2D(tC,uv+wob-o2).rgb+pn);
     float regionEdge=step(.5,abs(qa-qi))+step(.5,abs(qb-qi))+step(.5,abs(qc-qi))+step(.5,abs(qd-qi));
-    vec3 qcol=QC(qi);
-    float mott=1.+.07*(fbm(fc*.012+qi*3.1)-.5)+.05*(vn(vec2(fc.x*.02,fc.y*.6)+qi)-.5);
+    // misregistration: the colour blocks are printed slightly off the keyline block
+    vec2 mis=vec2(1.6,-1.2)/res*(1.+.5*vn(uv*3.));
+    float qm=QI(texture2D(tC,uv+wob+mis).rgb+pn);
+    vec3 qcol=QC(qm);
+    float mott=1.+.07*(fbm(fc*.012+qm*3.1)-.5)+.05*(vn(vec2(fc.x*.02,fc.y*.6)+qm)-.5);
+    // woodgrain: each colour block was cut from its own plank, so the grain turns with the block
+    float ga=qm*1.7; vec2 gd=vec2(cos(ga),sin(ga));
+    float gr=vn(vec2(dot(fc,gd)*.004+vn(fc*.003+qm)*1.5,dot(fc,vec2(-gd.y,gd.x))*.16+vn(fc*.01)*2.));
+    mott*=1.-.055*smoothstep(.55,.9,gr);
     col=mix(qcol*mott,col,isSky*.85);
+    // ichimonji bokashi: the Prussian-blue band printed across the top of the sky
+    float topB=smoothstep(.70,.985,uv.y+(vn(vec2(uv.x*4.,0.))-.5)*.02);
+    float farM=max(isSky,smoothstep(1200.,3000.,lzc));
+    col=mix(col,vec3(.10,.19,.37),farM*topB*.92);
+    col=mix(col,vec3(.20,.34,.55),farM*smoothstep(.55,.72,uv.y)*(1.-topB)*.3);
     vec2 px=1.35/res; vec2 u2=uv+wob*.6;
     float wc=W(u2), wl=W(u2-vec2(px.x,0.)), wr=W(u2+vec2(px.x,0.)), wu=W(u2+vec2(0.,px.y)), wd=W(u2-vec2(0.,px.y));
     float mx=max(max(max(wc,wl),max(wr,wu)),wd);
@@ -188,7 +202,13 @@ const post = new THREE.ShaderMaterial({
     // woodgrain in flat ink
     col*=1.-.035*vn(vec2(uv.x*3.,uv.y*140.+vn(uv*8.)*20.));
     float d=length((uv-.5)*vec2(sAsp,1.)/max(sAsp,1.)*1.6);
-    col=mix(col,col*vec3(.78,.66,.5),smoothstep(.55,1.05,d)*.55);
+    col=mix(col,col*vec3(.78,.66,.5),smoothstep(.55,1.05,d)*.35);
+    // the edge of the block: the image stops in chisel-cut steps and the bare paper shows
+    { vec2 e2=min(uv,1.-uv)*vec2(sAsp,1.); float ed=min(e2.x,e2.y); float al=e2.x<e2.y?uv.y:uv.x*sAsp;
+      float thr=.008+.007*vn(vec2(al*9.,1.))+.006*step(.55,vn(vec2(floor(al*38.),3.)))+.004*step(.6,h21(vec2(floor(al*110.),7.)));
+      float inEdge=smoothstep(thr-.0015,thr+.0015,ed);
+      col=mix(col,vec3(.12,.15,.24),(1.-smoothstep(0.,.003,abs(ed-thr)))*.55);
+      col=mix(bgP*vec3(1.,.985,.95),col,inEdge); }
     // the real print
     if(pMix>0.){
       vec2 q=uv-.5; float s=.86; vec2 pu;
@@ -206,6 +226,19 @@ const post = new THREE.ShaderMaterial({
   }`,
   depthTest: false, depthWrite: false
 });
+// palette lookup table: 32 blue slices of 32x32 (r,g), alpha = palette index
+(function buildLut() {
+  const body = post.fragmentShader.slice(post.fragmentShader.indexOf("vec3 PAL(int i)"), post.fragmentShader.indexOf("return vec3(0.); }"));
+  const pal = [...body.matchAll(/vec3\(([\d.]+),([\d.]+),([\d.]+)\)/g)].map(m => [+m[1], +m[2], +m[3]]);
+  const data = new Uint8Array(1024 * 32 * 4);
+  for (let b = 0; b < 32; b++) for (let g = 0; g < 32; g++) for (let r = 0; r < 32; r++) {
+    const R = r / 31, Gc = g / 31, B = b / 31; let bd = 1e9, bi = 0;
+    for (let i = 0; i < pal.length; i++) { const dr = R - pal[i][0], dg = (Gc - pal[i][1]) * 1.25, db = (B - pal[i][2]) * .9; const e = dr * dr + dg * dg + db * db; if (e < bd) { bd = e; bi = i; } }
+    const o = (g * 1024 + b * 32 + r) * 4; data[o] = pal[bi][0] * 255; data[o + 1] = pal[bi][1] * 255; data[o + 2] = pal[bi][2] * 255; data[o + 3] = bi;
+  }
+  const t = new THREE.DataTexture(data, 1024, 32, THREE.RGBAFormat); t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
+  post.uniforms.tLut = { value: t };
+})();
 const postScene = new THREE.Scene(), postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), post));
 function resize() {
@@ -605,7 +638,7 @@ function makeFuji(R, H, pal) {
     void main(){
       vec3 q=vP-ctr; float yn=q.y/H; float ang=atan(q.x,q.z);
       float n=fbm(vec2(ang*6.,yn*12.));
-      vec3 c=mix(cLow,cMid,smoothstep(.12,.42,yn+n*.06)); c=mix(c,cHigh,smoothstep(.5,.92,yn));
+      vec3 c=mix(cLow,cMid,smoothstep(.26,.28,yn+n*.06)); c=mix(c,cHigh,smoothstep(.6,.62,yn+n*.03));
       float sp=step(.58,h21(floor(vec2(ang*260.,yn*190.))));
       c=mix(c,c*.62,sp*speckle*smoothstep(.35,.55,yn));
       float streak=sin(ang*19.+n*5.)*.5+.5; float sl=.8-pow(streak,3.)*.22-n*.04;
@@ -615,7 +648,7 @@ function makeFuji(R, H, pal) {
       float dts=step(.5,vn(vec2(ang*240.,yn*300.)));
       c=mix(c,mix(cF1,cF2,dts),fb*forest);
       float l=dot(normalize(vN),sun);
-      c*=mix(1.-darkSide,1.,smoothstep(-.1,.25,l));
+      c*=mix(1.-darkSide,1.,smoothstep(.04,.08,l));
       c*= l>.0?1.:.9;
       gl_FragColor=vec4(fogIt(c),1.);
     }`, null, { cLow: { value: new THREE.Color(pal.low) }, cMid: { value: new THREE.Color(pal.mid) }, cHigh: { value: new THREE.Color(pal.high) }, cSnow: { value: new THREE.Color(pal.snow || 0xf2eee4) },
@@ -767,7 +800,7 @@ function snowAt(x, z) { return Math.max(sstep(450, 180, Math.hypot(x - 1450, z +
 
 /* ---------- mood: each print lends its light to the land around it ---------- */
 const MOOD_KEYS = ["top", "mid", "hor", "fog", "fLow", "fMid", "fHigh"];
-const DEFAULT_MOOD = { top: 0x1f4f86, mid: 0xe8dfc8, hor: 0xd6dcd2, fog: 0xcfd2c4, fLow: 0x5f7896, fMid: 0x6d86a6, fHigh: 0x4e5f7c, speckle: 0, dark: 0 };
+const DEFAULT_MOOD = { top: 0x1f4f86, mid: 0xe8dfc8, hor: 0xd6dcd2, fog: 0xcfd2c4, fLow: 0x527b8c, fMid: 0x4a78ad, fHigh: 0x2c4f86, speckle: 0, dark: 0 };
 const MOOD = {}; for (const k of MOOD_KEYS) MOOD[k] = new THREE.Color(DEFAULT_MOOD[k]); MOOD.speckle = 0; MOOD.dark = 0;
 
 /* ---------- geometry kit (merged parts with vertex colours) ---------- */
@@ -985,16 +1018,19 @@ function buildWorld() {
       vec3 c=mix(sand,field,smoothstep(1.,6.,h));
       float paddy=step(.5,fract(vP.x*.012+n*.6))*step(.5,fract(vP.z*.012+n*.4));
       c=mix(c,mix(field,vec3(.62,.7,.38),paddy),smoothstep(4.,10.,h)*(1.-smoothstep(40.,70.,h)));
-      c=mix(c,grass,smoothstep(30.,60.,h+n*30.));
-      c=mix(c,hill,smoothstep(70.,130.,h+n*40.));
-      c=mix(c,mtn,smoothstep(150.,260.,h));
+      c=mix(c,grass,smoothstep(43.,46.,h+n*30.));
+      c=mix(c,hill,smoothstep(98.,102.,h+n*40.));
+      c=mix(c,mtn,smoothstep(200.,205.,h+n*30.));
+      float slope=1.-normalize(vN).y; vec2 hd=normalize(normalize(vN).xz+1e-4);
+      float hatch=step(.78,fract(dot(vP.xz,vec2(-hd.y,hd.x))*.22+n*2.))*smoothstep(.12,.22,slope)*step(8.,h);
+      c=mix(c,c*.72,hatch*.8);
       float forest=smoothstep(.55,.62,n+fbm(vP.xz*.013)*.25)*smoothstep(15.,30.,h);
       c=mix(c,mix(dark,vec3(.26,.43,.36),step(.55,n2)),forest);
       float rd=1e9; for(int i=0;i<8;i++){ vec2 a=uRoad[i], b=uRoad[i+1]; vec2 pa=vP.xz-a, ba=b-a; float t=clamp(dot(pa,ba)/dot(ba,ba),0.,1.); rd=min(rd,length(pa-ba*t)); }
       c=mix(c,vec3(.8,.7,.5),smoothstep(6.,3.5,rd+n2*2.)*step(1.,h));
       float band=abs(fract(h*.035+n*.8)-.5); c=mix(c,c*.86,smoothstep(.05,.0,band)*smoothstep(60.,90.,h)*.6);
       c=mix(c,vec3(.95,.95,.93),vSnow*smoothstep(-1.,2.,h));
-      float l=dot(normalize(vN),sun); c*= mix(.8,1.,smoothstep(.0,.4,l));
+      float l=dot(normalize(vN),sun); c*= mix(.8,1.,smoothstep(.18,.22,l));
       gl_FragColor=vec4(fogIt(c),1.);
     }`, `attribute float aSnow; varying float vSnow; varying vec3 vP; varying vec3 vN; varying float vDist;
     void main(){ vSnow=aSnow; vec4 w=modelMatrix*vec4(position,1.); vP=w.xyz; vN=normalize(mat3(modelMatrix)*normal); vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`));
