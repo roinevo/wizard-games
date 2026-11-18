@@ -788,7 +788,8 @@ const MAP = { x0: -3000, x1: 3000, z0: -3000, z1: 3400, N: 320 };
 const LAKES = [
   { name: "hakone", x: -1450, z: 650, r: 230 },
   { name: "kawaguchi", x: -150, z: -1450, r: 260 },
-  { name: "suwa", x: -2150, z: -2000, r: 300 }
+  { name: "suwa", x: -2150, z: -2000, r: 300 },
+  { name: "ushibori", x: 2385, z: -565, r: 95 }
 ];
 const RIVERS = [
   { name: "sumida", w: 55, pts: [[2050, -2400], [2000, -1300], [2080, -400], [1980, 300], [2060, 900], [2120, 1700]] },
@@ -865,7 +866,7 @@ const KIT = {
   },
   cedar: () => partsGeo([{ g: G_.cyl(.4, .5, 3, 5), c: 0x3d3026, m: M4(0, 1.5, 0) }, { g: G_.cone(3.2, 12, 7), c: 0x1f3a33, m: M4(0, 8.5, 0) }, { g: G_.cone(2.4, 7, 7), c: 0x2c4c42, m: M4(0, 12.5, 0) }]),
   cherry: () => { const p = [{ g: G_.cyl(.5, .8, 6, 6), c: 0x4a3a33, m: M4(0, 3, 0, 0, 0, .1) }]; for (let k = 0; k < 6; k++) p.push({ g: G_.sph(2.6, 8, 6), c: k % 2 ? 0xf2c8cf : 0xe9b0bb, m: M4(rand(-3, 3), rand(6, 9), rand(-3, 3), 0, 0, 0, 1.2, .8, 1.2) }); return partsGeo(p); },
-  reed: () => { const p = []; for (let k = 0; k < 7; k++) p.push({ g: G_.cone(.12, rand(3, 5.5), 3), c: k % 2 ? 0xb9a96a : 0x8f9a5a, m: M4(rand(-.8, .8), 2, rand(-.8, .8), rand(-.2, .2), 0, rand(-.25, .25)) }); return partsGeo(p); },
+  reed: () => { const p = []; for (let k = 0; k < 7; k++) p.push({ g: G_.cone(.09, rand(2, 3.6), 3), c: k % 2 ? 0xd9c98a : 0xb8b47a, m: M4(rand(-.8, .8), 2, rand(-.8, .8), rand(-.2, .2), 0, rand(-.25, .25)) }); return partsGeo(p); },
   bamboo: () => { const p = []; for (let k = 0; k < 5; k++) { const x = rand(-1.5, 1.5), z = rand(-1.5, 1.5); p.push({ g: G_.cyl(.18, .2, 14, 5), c: 0x6f9a52, m: M4(x, 7, z) }); p.push({ g: G_.sph(1.4, 6, 4), c: 0x4f7a45, m: M4(x, 13.5, z, 0, 0, 0, 1.2, 2, 1.2) }); } return partsGeo(p); },
   rock: () => partsGeo([{ g: new THREE.DodecahedronGeometry(3, 0), c: 0x6f7c86, m: M4(0, 1, 0, 0, 0, 0, 1.3, .8, 1) }, { g: new THREE.DodecahedronGeometry(2, 0), c: 0x56636e, m: M4(2.2, .6, 1, .4, .3, 0) }]),
   torii: (s) => partsGeo([{ g: G_.cyl(.55, .65, 12, 8), c: 0xc0442c, m: M4(-5, 6, 0) }, { g: G_.cyl(.55, .65, 12, 8), c: 0xc0442c, m: M4(5, 6, 0) }, { g: G_.box(15, 1, 1.2), c: 0x2a2626, m: M4(0, 12.4, 0) }, { g: G_.box(13, .9, 1), c: 0xc0442c, m: M4(0, 11.5, 0) }, { g: G_.box(12, .7, .8), c: 0xc0442c, m: M4(0, 9.4, 0) }])
@@ -966,7 +967,7 @@ station(45434, "מול חופי קנגאווה", 760, 2330, { up: 7, look: [180,
   WAVES.push(big, w2, w3);
   for (const [dx, dz, ry] of [[-110, -175, .15], [-20, -110, -.25], [60, -260, .4]]) { const b = makeBoat(); b.position.set(s.x + dx, 0, s.z + dz); b.rotation.y = ry; scene.add(b); BOATS.push(b); }
 });
-station(36490, "גבעת היער שממערב להר", -2350, 420, { up: 14, look: [-200, 380, -100], fov: 55 }, { top: 0x1d4a86, mid: 0x4a7fb2, hor: 0xd4e2dc, fog: 0xa9c3c7, fLow: 0x9a4a35, fMid: 0xb9462d, fHigh: 0x6d2a20 }, s => { MACKEREL.push([s.x, s.z]); });
+station(36490, "גבעת היער שממערב להר", -2350, 420, { up: 14, look: [-260, 300, -860], fov: 36 }, { top: 0x1d4a86, mid: 0x4a7fb2, hor: 0xd4e2dc, fog: 0xa9c3c7, fLow: 0x9a4a35, fMid: 0xb9462d, fHigh: 0x6d2a20 }, s => { MACKEREL.push([s.x, s.z]); });
 station(36492, "המדרון המזרחי של ההר", 980, 330, { up: 6, look: [0, 520, 0], fov: 60 }, { top: 0x16335f, mid: 0xece2c6, hor: 0x9eb0b4, fog: 0x8d8a7c, fLow: 0x1c1714, fMid: 0x82321f, fHigh: 0xa9482b, speckle: 1, dark: .6 }, s => { STORM.x = s.x; STORM.z = s.z; });
 station(56727, "קג'יקאזאווה על נהר פוג'י", -1985, -260, { up: 4, d: [60, 25], look: [-1990, 18, -250], fov: 55 }, null, s => {
   const rk = new THREE.Mesh(partsGeo([{ g: new THREE.DodecahedronGeometry(10, 0), c: 0x3f5a6e, m: M4(0, 2, 0, 0, 0, 0, 1.6, 1.4, 1) }, { g: new THREE.DodecahedronGeometry(6, 0), c: 0x2f475a, m: M4(8, 8, 0, .3, .4, 0) }]), VC); rk.position.set(s.x - 5, -3, s.z + 10); scene.add(rk);
@@ -985,7 +986,7 @@ station(56216, "מפרץ נובוטו", 1500, 1420, { up: 5, d: [0, -60], look: 
   for (const [dx, dz, sc] of [[-12, 40, 1.6], [20, 90, 1]]) { const t = new THREE.Mesh(KIT.torii(), VC); t.position.set(s.x + dx, -3, s.z + dz); t.scale.setScalar(sc); scene.add(t); }
   for (let k = 0; k < 6; k++) addPerson(k % 2 ? "farmer" : "woman", s.x + rand(-25, 25), s.z + rand(30, 70), { y: -1.4, bend: 1 });
 });
-station(56132, "ביצות אושיבורי", 2350, -620, { up: 10, d: [-40, -30], look: [2380, 0, -560], fov: 55 }, null, s => {
+station(56132, "ביצות אושיבורי", 2350, -620, { up: 16, d: [74, 40], look: [2234, 12, -535], fov: 56 }, null, s => {
   const b = makeBoat(); b.scale.set(1.6, 1.6, 1.4); b.position.set(s.x + 30, 0, s.z + 50); b.rotation.y = .6; scene.add(b); BOATS.push(b);
   const reeds = []; for (let k = 0; k < 500; k++) { const a = rand(0, 6.28), r = rand(20, 140); const x = s.x + Math.cos(a) * r + 30, z = s.z + Math.sin(a) * r + 50; reeds.push([x, Math.max(-1, landH(x, z)), z, rand(0, 6), rand(.8, 1.4)]); }
   instances(KIT.reed(), reeds);
@@ -1001,10 +1002,14 @@ station(56786, "מעבר מישימה", -1700, 1050, { up: 3, d: [0, 40], look: 
   for (let k = 0; k < 3; k++) { const a = k * 2.1; addPerson("traveler", tx + Math.cos(a) * 3.6, tz + Math.sin(a) * 3.6, { ry: a + Math.PI / 2 }); }
   CUMULUS.push([-1550, 750, 170, 8]);
 });
-station(56240, "אגם סווה", -1880, -1760, { up: 16, d: [0, 0], look: [-2200, 20, -2050], fov: 58 }, null, s => {
+station(56240, "אגם סווה", -2350, -2180, { up: 22, d: [0, 0], look: [-1712, 40, -1592], fov: 60 }, null, s => {
   const sh = new THREE.Mesh(KIT.shrine(), VC); sh.position.set(-2150, landH(-2150, -2000) + 4, -2000); scene.add(sh);
   const isl = new THREE.Mesh(new THREE.CylinderGeometry(22, 26, 10, 16), toon(0x6d7f6a)); isl.position.set(-2150, -3, -2000); scene.add(isl);
-  PINEGROVES.push([s.x + 10, s.z + 10, 25, 6]);
+  // the two tall twisted pines on the knoll in front of the lake (Suwa print)
+  const kx = s.x + .735 * 40, kz = s.z + .677 * 40, ky = Math.max(landH(kx, kz), 0);
+  const knoll = new THREE.Mesh(partsGeo([{ g: new THREE.DodecahedronGeometry(14, 1), c: 0x6f7a5a, m: M4(0, -4, 0, 0, 0, 0, 1.3, .55, 1) }, { g: new THREE.DodecahedronGeometry(6, 0), c: 0x56636e, m: M4(9, 0, 6, .4, .3, 0) }]), VC); knoll.position.set(kx, ky, kz); scene.add(knoll);
+  const pg = KIT.pine(); for (const [o, sc, ry] of [[-5, 2.3, .4], [6, 1.9, 2.2]]) { const x = kx - .677 * o, z = kz + .735 * o; const t = new THREE.Mesh(pg, VC); t.position.set(x, ky + 2, z); t.scale.set(sc, sc * 1.25, sc); t.rotation.y = ry; scene.add(t); }
+  s.view.d = [-.735 * 6, -.677 * 6]; s.view.y = ky + 30; s.view.look = [kx + .735 * 600, ky + 26, kz + .677 * 600]; s.view.fov = 62;
 });
 station(55741, "האי צוקודה", 2150, 1450, { up: 5, d: [0, 0], look: [2300, 10, 1650], fov: 55 }, null, s => {
   for (let k = 0; k < 7; k++) { const b = makeBoat(); b.scale.setScalar(rand(.5, .8)); b.position.set(2300 + rand(-120, 120), 0, 1600 + rand(-80, 60)); b.rotation.y = rand(0, 6); scene.add(b); BOATS.push(b); }
@@ -1712,7 +1717,7 @@ function updateCompass() {
 /* the print moment: camera glides to where he stood, the land dissolves into the real print */
 function stationView(s) {
   const v = s.view; const d = v.d || [0, 0];
-  const pos = new V3(s.x + d[0], 0, s.z + d[1]); pos.y = (v.sky ? s.pos.y - 40 : Math.max(landH(pos.x, pos.z), 0)) + v.up;
+  const pos = new V3(s.x + d[0], 0, s.z + d[1]); pos.y = (v.sky ? s.pos.y - 40 : Math.max(landH(pos.x, pos.z), 0)) + v.up; if (v.y !== undefined) pos.y = v.y;
   if (v.sky) pos.set(s.pos.x + 60, s.pos.y + 10, s.pos.z + 60);
   return { pos, look: v.sky ? s.pos.clone() : new V3(v.look[0], v.look[1], v.look[2]), fov: v.fov };
 }
