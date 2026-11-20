@@ -679,14 +679,14 @@ function makeFuji(R, H, pal) {
   pts.push(new THREE.Vector2(R * .03, H * .985), new THREE.Vector2(0, H * .985));
   const geo = new THREE.LatheGeometry(pts, 128);
   const m = printMat(`
-    uniform vec3 cLow,cMid,cHigh,cSnow,cF1,cF2,ctr; uniform float H,speckle,forest,darkSide;
+    uniform vec3 cLow,cMid,cHigh,cSnow,cF1,cF2,ctr; uniform float H,speckle,forest,darkSide,thin;
     void main(){
       vec3 q=vP-ctr; float yn=q.y/H; float ang=atan(q.x,q.z);
       float n=fbm(vec2(ang*6.,yn*12.));
       vec3 c=mix(cLow,cMid,smoothstep(.26,.28,yn+n*.06)); c=mix(c,cHigh,smoothstep(.6,.62,yn+n*.03));
       float sp=step(.58,h21(floor(vec2(ang*260.,yn*190.))));
       c=mix(c,c*.62,sp*speckle*smoothstep(.35,.55,yn));
-      float streak=sin(ang*19.+n*5.)*.5+.5; float sl=.8-pow(streak,3.)*.22-n*.04;
+      float streak=sin(ang*19.+n*5.)*.5+.5; float sl=mix(.8-pow(streak,3.)*.22,.91-pow(streak,9.)*.34,thin)-n*.04;
       float sn=smoothstep(sl,sl+.012,yn);
       c=mix(c,cSnow,sn);
       float fb=1.-smoothstep(.05,.13,yn+n*.05);
@@ -695,9 +695,9 @@ function makeFuji(R, H, pal) {
       float l=dot(normalize(vN),sun);
       c*=mix(1.-darkSide,1.,smoothstep(.04,.08,l));
       c*= l>.0?1.:.9;
-      gl_FragColor=vec4(fogIt(c),1.);
+      gl_FragColor=vec4(mix(c,fogCol,smoothstep(fogNear*2.,fogFar*2.8,vDist)*.55),1.); // Hokusai's Fuji stays crisp at any distance
     }`, null, { cLow: { value: new THREE.Color(pal.low) }, cMid: { value: new THREE.Color(pal.mid) }, cHigh: { value: new THREE.Color(pal.high) }, cSnow: { value: new THREE.Color(pal.snow || 0xf2eee4) },
-    cF1: { value: new THREE.Color(pal.f1 || 0x1f3a37) }, cF2: { value: new THREE.Color(pal.f2 || 0x416d63) }, ctr: { value: new V3() }, H: { value: H }, speckle: { value: pal.speckle || 0 }, forest: { value: pal.forest || 0 }, darkSide: { value: pal.darkSide || .25 } });
+    cF1: { value: new THREE.Color(pal.f1 || 0x1f3a37) }, cF2: { value: new THREE.Color(pal.f2 || 0x416d63) }, ctr: { value: new V3() }, H: { value: H }, speckle: { value: pal.speckle || 0 }, forest: { value: pal.forest || 0 }, darkSide: { value: pal.darkSide || .25 }, thin: { value: 0 } });
   const mesh = new THREE.Mesh(geo, m);
   mesh.userData.setCenter = v => m.uniforms.ctr.value.copy(v);
   return mesh;
@@ -1013,7 +1013,7 @@ station(45434, "מול חופי קנגאווה", 760, 2330, { up: 5, look: [180,
   WAVES.push(big, w2, w3);
   for (const [dx, dz, ry] of [[-110, -175, .15], [-20, -110, -.25], [60, -260, .4]]) { const b = makeBoat(); b.position.set(s.x + dx, 0, s.z + dz); b.rotation.y = ry; scene.add(b); BOATS.push(b); }
 });
-station(36490, "גבעת היער שממערב להר", -2350, 420, { up: 14, look: [-260, 300, -860], fov: 36 }, { top: 0x1d4a86, mid: 0x4a7fb2, hor: 0xd4e2dc, fog: 0xa9c3c7, fLow: 0x9a4a35, fMid: 0xb9462d, fHigh: 0x6d2a20 }, s => { MACKEREL.push([s.x, s.z]); });
+station(36490, "גבעת היער שממערב להר", -2350, 420, { up: 14, look: [-260, 300, -860], fov: 36, aimFuji: [12.2, -9.1] }, { top: 0x1d4a86, mid: 0x4a7fb2, hor: 0xd4e2dc, fog: 0xa9c3c7, fLow: 0x9a4a35, fMid: 0xb9462d, fHigh: 0x6d2a20, thinSnow: 1 }, s => { MACKEREL.push([s.x, s.z]); });
 station(36492, "המדרון המזרחי של ההר", 980, 330, { up: 6, look: [0, 520, 0], fov: 60 }, { top: 0x16335f, mid: 0xece2c6, hor: 0x9eb0b4, fog: 0x8d8a7c, fLow: 0x1c1714, fMid: 0x82321f, fHigh: 0xa9482b, speckle: 1, dark: .6 }, s => { STORM.x = s.x; STORM.z = s.z; });
 station(56727, "קג'יקאזאווה על נהר פוג'י", -1985, -260, { up: 4, d: [60, 25], look: [-1990, 18, -250], fov: 55 }, null, s => {
   const rk = new THREE.Mesh(partsGeo([{ g: new THREE.DodecahedronGeometry(10, 0), c: 0x3f5a6e, m: M4(0, 2, 0, 0, 0, 0, 1.6, 1.4, 1) }, { g: new THREE.DodecahedronGeometry(6, 0), c: 0x2f475a, m: M4(8, 8, 0, .3, .4, 0) }]), VC); rk.position.set(s.x - 5, -3, s.z + 10); scene.add(rk);
@@ -1257,11 +1257,15 @@ function buildWorld() {
   // clouds: Hokusai's flat banded clouds over the land; mackerel rows over the Red Fuji station
   // suyari-gasumi: long flat mist bands drifting across the land (one instanced billboard draw)
   const bands = [];
-  for (let k = 0; k < 26; k++) { const w = rand(520, 1000); bands.push([rand(MAP.x0, MAP.x1), rand(220, 560), rand(MAP.z0, MAP.z1), w, w * rand(.07, .1)]); }
+  // (kept away from the stations so no band lies across a print's composition)
+  for (let k = 0, n = 0; k < 400 && n < 24; k++) { const x = rand(MAP.x0, MAP.x1), z = rand(MAP.z0, MAP.z1); if (STATIONS.some(s => Math.hypot(x - s.x, z - s.z) < 750)) continue; const w = rand(260, 520); bands.push([x, rand(220, 560), z, w, w * rand(.07, .1)]); n++; }
   for (let k = 0; k < 14; k++) { const w = rand(200, 360); bands.push([rand(MAP.x0, MAP.x1), rand(780, 1000), rand(MAP.z0, MAP.z1), w, w * .2]); }
   billboards(kasumiTex, bands, true);
   const mk = [];
-  for (const [x, z] of MACKEREL) for (let row = 0; row < 12; row++) { const zz = z - 650 + row * 70, y = 520 + (row % 5) * 25; for (let xx = x - 900; xx < x + 900; xx += rand(55, 120)) { const w = rand(50, 110); mk.push([xx + 600, y + rand(-12, 12), zz, w, w * .25]); } }
+  // mackerel sky: rows of small puffs on a curtain BEHIND Fuji as seen from the station (old units; sizes are final units)
+  for (const [x, z] of MACKEREL) { const hl = Math.hypot(x, z), dx = -x / hl, dz = -z / hl, cx = x + dx * 3100, cz = z + dz * 3100;
+    for (let row = 0; row < 15; row++) { const y = 260 + row * 82 + rand(-15, 15), w0 = 40 + row * 5;
+      for (let s = -2700; s < 2700; s += rand(90, 230)) { if (Math.random() < .25) continue; const w = w0 * rand(.7, 1.5); mk.push([cx - dz * s, y + rand(-10, 10), cz + dx * s, w, w * rand(.18, .26)]); } } }
   if (mk.length) billboards(kasumiTex, mk, true);
   // billowing cumulus around the mountain's waist: one instanced sphere mesh
   const pm = [], cs = new THREE.SphereGeometry(1, 10, 7);
@@ -1432,14 +1436,14 @@ const _c = new THREE.Color();
 function updateMood(dt) {
   // weights: each station with a mood pulls the light toward its print within ~700 m
   const ref = state === "moment" && MOMENT.s ? MOMENT.s.pos : P.pos;
-  let wsum = 0; const acc = {}; for (const k of MOOD_KEYS) acc[k] = new THREE.Color(0, 0, 0); let sp = 0, dk = 0;
+  let wsum = 0; const acc = {}; for (const k of MOOD_KEYS) acc[k] = new THREE.Color(0, 0, 0); let sp = 0, dk = 0, th = 0;
   for (const s of STATIONS) {
     if (!s.mood) continue;
     const d = Math.hypot(ref.x - s.x, ref.z - s.z) + (s.view.sky ? Math.max(0, 500 - (ref.y - FUJI_H)) * 2 : 0);
     const w = sstep(900 * WK, 250 * WK, d); if (w <= 0) continue;
     wsum += w;
     for (const k of MOOD_KEYS) acc[k].add(_c.set(s.mood[k] !== undefined ? s.mood[k] : DEFAULT_MOOD[k]).multiplyScalar(w));
-    sp += (s.mood.speckle || 0) * w; dk += (s.mood.dark || 0) * w;
+    sp += (s.mood.speckle || 0) * w; dk += (s.mood.dark || 0) * w; th += (s.mood.thinSnow || 0) * w;
   }
   const wd = Math.max(0, 1 - wsum); const tot = wsum + wd;
   const k_ = 1 - Math.exp(-dt * 1.5);
@@ -1447,7 +1451,7 @@ function updateMood(dt) {
   MOOD.speckle = lerp(MOOD.speckle, sp / tot, k_); MOOD.dark = lerp(MOOD.dark, dk / tot, k_);
   const su = SKY.material.uniforms; su.cTop.value.copy(MOOD.top); su.cMid.value.copy(MOOD.mid); su.cHor.value.copy(MOOD.hor);
   FOG.col.value.copy(MOOD.fog); scene.fog.color.copy(MOOD.fog);
-  const fu = FUJI.material.uniforms; fu.cLow.value.copy(MOOD.fLow); fu.cMid.value.copy(MOOD.fMid); fu.cHigh.value.copy(MOOD.fHigh); fu.speckle.value = MOOD.speckle;
+  const fu = FUJI.material.uniforms; fu.cLow.value.copy(MOOD.fLow); fu.cMid.value.copy(MOOD.fMid); fu.cHigh.value.copy(MOOD.fHigh); fu.speckle.value = MOOD.speckle; MOOD.thin = lerp(MOOD.thin || 0, th / tot, k_); fu.thin.value = MOOD.thin;
   post.uniforms.flashCol.value.setRGB(1, .95, .85);
 }
 function strikeBolt(b) {
