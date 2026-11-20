@@ -2890,6 +2890,13 @@ function aimFujiFrom(s, C, cy, right, up) {
   const deg = Math.PI / 180, B = [L.x, L.z], bl = Math.hypot(B[0], B[1]), jx = -B[0] / bl, jz = -B[1] / bl, a = -18.8 * deg;
   const fx = Math.cos(a) * jx - Math.sin(a) * jz, fz = Math.cos(a) * jz + Math.sin(a) * jx, C = [B[0] - fx * 40, B[1] - fz * 40];
   s.ushBoat.position.set(B[0], 0, B[1]); s.ushBoat.rotation.y = Math.atan2(fx, fz) + .75;
+  // a thatched cabin on the boat, a boatman, and two white herons rising from the reeds (as in the print)
+  s.ushBoat.add(new THREE.Mesh(partsGeo([{ g: G_.box(1.8, 1.4, 5), c: 0x6b5233, m: M4(0, 1.4, -2) }, { g: prism(2.8, 1.5, 5.6), c: 0xc9a95a, m: M4(0, 2.8, -2) }]), VC));
+  addPerson("fisher", B[0] + fx * 2, B[1] + fz * 2, { y: 1.5, ry: Math.atan2(fx, fz) + 2, bend: 1 });
+  for (const [al, sd, h, rot] of [[30, 12, 16, .4], [34, 18, 20, -.3]]) { const x = B[0] + fx * al - fz * sd, z = B[1] + fz * al + fx * sd;
+    const hr = new THREE.Mesh(partsGeo([{ g: G_.sph(.9, 8, 6), c: 0xf3efe4, m: M4(0, 0, 0, 0, 0, 0, 1, .7, 2.2) }, { g: G_.cyl(.15, .2, 2.2, 5), c: 0xf3efe4, m: M4(0, .6, 2.2, -1.1, 0, 0) }, { g: G_.cone(.15, 1, 4), c: 0xd9a74a, m: M4(0, 1, 3.4, 1.4, 0, 0) },
+      { g: new THREE.PlaneGeometry(6, 2.4), c: 0xf3efe4, m: M4(3, 1.4, 0, -Math.PI / 2, -.5, .5) }, { g: new THREE.PlaneGeometry(6, 2.4), c: 0xf3efe4, m: M4(-3, 1.4, 0, -Math.PI / 2, .5, -.5) }, { g: G_.box(.2, .2, 2.8), c: 0x2a2a2a, m: M4(0, -.2, -2.6) }]), new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+    hr.scale.setScalar(.75); hr.position.set(x, h, z); hr.rotation.y = Math.atan2(fx, fz) + rot; scene.add(hr); }
   aimFujiFrom(s, C, 6, -18.8, 10.9);
   clearWedge(C, [fx, fz], 30, 3, .5);
 })();
