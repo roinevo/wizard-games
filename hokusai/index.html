@@ -1837,6 +1837,8 @@ function updateCompass() {
 function stationView(s) {
   const v = s.view; const d = v.d || [0, 0];
   const pos = new V3(s.x + d[0], 0, s.z + d[1]); pos.y = (v.sky ? s.pos.y - 40 : Math.max(landH(pos.x, pos.z), 0)) + v.up; if (v.y !== undefined) pos.y = v.y;
+  // the sky station: look UP at the mystic bird from just below it, with nothing but sky behind (as in the print)
+  if (v.sky && BIRD) { const bp = BIRD.position, hl = Math.hypot(bp.x, bp.z) || 1; pos.set(bp.x - bp.x / hl * 40, bp.y - 22, bp.z - bp.z / hl * 40); return { pos, look: bp.clone().add(new V3(0, 2, 0)), fov: fitFov(50, s.id) }; }
   if (v.sky) pos.set(s.pos.x + 60, s.pos.y + 10, s.pos.z + 60);
   return { pos, look: v.sky ? s.pos.clone() : new V3(v.look[0], v.look[1], v.look[2]), fov: fitFov(v.fov, s.id) };
 }
