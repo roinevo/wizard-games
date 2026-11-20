@@ -2809,6 +2809,36 @@ function clearWedge(C, f, along, half0, spread) {
   if (/dbg/.test(HASH)) console.log(`[tsukuda] cam=${C.map(Math.round)} land=${landH(C[0], C[1]).toFixed(1)}`);
 })();
 
+/* ---------- Kanaya (55236): from the raised bank, the wide Oi river crossing the view, porters wading across, Fuji at the upper left ---------- */
+(function dressKanaya() {
+  const s = STATIONS.find(q => q.id === 55236); if (!s) return;
+  const deg = Math.PI / 180, wet = (x, z) => landH(x, z) < .3, H = (x, z) => Math.max(landH(x, z), 0);
+  let W0 = null; for (let r = 0; r < 220 && !W0; r += 4) for (let a = 0; a < 6.28; a += .15) { const x = s.x + Math.cos(a) * r, z = s.z + Math.sin(a) * r; if (wet(x, z)) { W0 = [x, z]; break; } }
+  if (!W0) return;
+  let mx = 0, mz = 0, n = 0, sxx = 0, szz = 0, sxz = 0; const pts = [];
+  for (let x = -80; x <= 80; x += 5) for (let z = -80; z <= 80; z += 5) if (x * x + z * z < 6400 && wet(W0[0] + x, W0[1] + z)) { pts.push([x, z]); mx += x; mz += z; n++; }
+  mx /= n; mz /= n; for (const [x, z] of pts) { sxx += (x - mx) ** 2; szz += (z - mz) ** 2; sxz += (x - mx) * (z - mz); }
+  const th = .5 * Math.atan2(2 * sxz, sxx - szz), R = [Math.cos(th), Math.sin(th)], Nn = [-R[1], R[0]], M0 = [W0[0] + mx, W0[1] + mz];
+  const bank = sg => { for (let t = 0; t < 160; t++) { const x = M0[0] + Nn[0] * t * sg, z = M0[1] + Nn[1] * t * sg; if (!wet(x, z)) return [x, z, t]; } return [M0[0] + Nn[0] * 40 * sg, M0[1] + Nn[1] * 40 * sg, 40]; };
+  const Pm = bank(-1), Pp = bank(1);
+  // camera candidates on both banks, upstream/downstream; want Fuji 18 deg left of the view and the river across the view
+  let best = 1e9, C = null, F = null;
+  for (const sg of [-1, 1]) for (let t = -160; t <= 160; t += 10) for (const off of [25, 45]) {
+    const P0 = sg < 0 ? Pm : Pp, cx = P0[0] + Nn[0] * sg * off + R[0] * t, cz = P0[1] + Nn[1] * sg * off + R[1] * t; if (wet(cx, cz)) continue;
+    const jl = Math.hypot(cx, cz), jx = -cx / jl, jz = -cz / jl, a = 18 * deg, fx = Math.cos(a) * jx - Math.sin(a) * jz, fz = Math.cos(a) * jz + Math.sin(a) * jx;
+    const across = Math.abs(fx * R[0] + fz * R[1]), lx = M0[0] - cx, lz = M0[1] - cz, ll = Math.hypot(lx, lz), toward = (fx * lx + fz * lz) / ll;
+    const cost = across * 40 + (1 - toward) * 60 + Math.abs(t) * .05;
+    if (cost < best) { best = cost; C = [cx, cz]; F = [fx, fz]; } }
+  if (!C) return;
+  const cy = H(C[0], C[1]) + 32, hl = Math.hypot(C[0], C[1]), el = Math.atan2(FUJI_H * .95 - cy, hl) - 21 * deg;
+  s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0; s.view.look = [C[0] + F[0] * 100, cy + Math.tan(el) * 100, C[1] + F[1] * 100];
+  // porters wading across in front of the camera, carrying travellers and palanquins
+  const toC = ((C[0] - M0[0]) * R[0] + (C[1] - M0[1]) * R[1]);
+  for (let k = 0; k < 16; k++) { const t = toC + 40 + (k % 4) * 14 + rand(-4, 4), a = [Pm[0] + R[0] * t, Pm[1] + R[1] * t], b = [Pp[0] + R[0] * (t + 10), Pp[1] + R[1] * (t + 10)];
+    const p = addPerson(k % 3 ? "porter" : "traveler", a[0], a[1], { path: k & 1 ? [b, a] : [a, b], speed: rand(.7, 1.2), wade: true }); p.u = k / 16; }
+  if (/dbg/.test(HASH)) console.log(`[kanaya] cam=${C.map(Math.round)},${cy.toFixed(0)} cost=${best.toFixed(1)} width=${Pm[2] + Pp[2]}`);
+})();
+
 /* ---------- Kajikazawa (56727): the fisherman's rock in the rushing Fuji river, Fuji behind to the right ---------- */
 (function dressKaji() {
   const s = STATIONS.find(q => q.id === 56727); if (!s || !s.kaji) return;
