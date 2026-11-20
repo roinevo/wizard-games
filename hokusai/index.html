@@ -2796,6 +2796,45 @@ function aimFujiFrom(s, C, cy, right, up) {
   clearWedge(C, [fx, fz], 30, 3, .5);
 })();
 
+/* ---------- the eight Ryukyu views: each island its own light, camera and signature ---------- */
+(function dressRyukyu() {
+  const ids = [49934, 49935, 49936, 49937, 49938, 49939, 49940, 49941], deg = Math.PI / 180;
+  // [camera azimuth offset (deg), distance, height, fov, mood {top, mid, hor, fog}]
+  const V = [
+    [-35, 70, 10, 52, { top: 0x1d3a63, mid: 0xc9cdc0, hor: 0xe8e0c4, fog: 0xbfc6bd }],   // moon at Izumizaki: dusk blue
+    [25, 95, 42, 55, { top: 0x2f6a8a, mid: 0xe6dccc, hor: 0xefc7b5, fog: 0xe0cfc0 }],    // Nakashima: pink hills
+    [-15, 80, 22, 55, null],                                                               // bamboo fence
+    [40, 60, 14, 58, { top: 0x2f6a8a, mid: 0xe3ead8, hor: 0xe9ecd8, fog: 0xd8e2d2 }],    // sacred spring
+    [0, 110, 48, 55, null],                                                                // lake / causeway
+    [-25, 75, 12, 55, { top: 0x3a4f78, mid: 0xead6b8, hor: 0xefb98d, fog: 0xe0c9a8 }],   // evening glow at Jungai
+    [30, 90, 8, 50, { top: 0x2f6a8a, mid: 0xe8e3d0, hor: 0xece3c8, fog: 0xdcd8c6 }],     // autumn sky, long causeway
+    [-45, 120, 55, 55, null]                                                               // pines and waves, sandbars
+  ];
+  ids.forEach((id, k) => {
+    const s = STATIONS.find(q => q.id === id); if (!s) return;
+    // island centre: the highest land near the station
+    let I = [s.x, s.z], hb = -1; for (let x = -90; x <= 90; x += 6) for (let z = -90; z <= 90; z += 6) { const h = landH(s.x + x, s.z + z); if (h > hb) { hb = h; I = [s.x + x, s.z + z]; } }
+    const [az, dist, hh, fov, mood] = V[k], base = Math.atan2(s.x + (s.view.d || [0, 0])[0] - I[0], s.z + (s.view.d || [0, 0])[1] - I[1]) + az * deg;
+    let C = [I[0] + Math.sin(base) * dist, I[1] + Math.cos(base) * dist]; for (let q = 0; q < 80 && landH(C[0], C[1]) > -1; q++) { C[0] += Math.sin(base) * 6; C[1] += Math.cos(base) * 6; } C[0] += Math.sin(base) * 25; C[1] += Math.cos(base) * 25;
+    s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = hh; s.view.up = 0; s.view.fov = fov; s.view.look = [I[0], Math.max(hb * .5, 2), I[1]];
+    if (mood) Object.assign(s.mood || (s.mood = {}), mood);
+    const fx = I[0] - C[0], fz = I[1] - C[1], fl = Math.hypot(fx, fz), rx = -fz / fl, rz = fx / fl;
+    if (k === 0) { // a full moon low over the island, left of centre
+      const m = new THREE.Mesh(new THREE.CircleGeometry(13, 40), new THREE.MeshBasicMaterial({ color: 0xf4ecd2, fog: false }));
+      m.position.set(I[0] + fx / fl * 220 - rx * 150, 120, I[1] + fz / fl * 220 - rz * 150); m.lookAt(C[0], hh, C[1]); scene.add(m); }
+    if (k === 5) { // Jungai: a tall rocky island with a shrine on top, glowing in the evening light
+      const rock = new THREE.Mesh(partsGeo([{ g: new THREE.DodecahedronGeometry(9, 0), c: 0x6f7f66, m: M4(0, 6, 0, 0, 0, 0, 1, 1.5, 1) }, { g: new THREE.DodecahedronGeometry(7, 0), c: 0x5d6d58, m: M4(3, 17, 1, .4, .3, 0, 1, 1.3, 1) }, { g: new THREE.DodecahedronGeometry(5, 0), c: 0x7d8c6e, m: M4(-1, 26, 0, .2, .7, 0) }]), VC);
+      const rp = [I[0] + rx * 26 + fx / fl * 10, I[1] + rz * 26 + fz / fl * 10]; rock.position.set(rp[0], -2, rp[1]); scene.add(rock);
+      const sh = new THREE.Mesh(KIT.shrine(), VC); sh.position.set(rp[0], 29, rp[1]); sh.scale.setScalar(.7); scene.add(sh); }
+    if (k === 4 || k === 6) { // a long low causeway running out from the island across the shallows
+      const bp = [], L = k === 6 ? 150 : 100; for (let q = 0; q <= 40; q++) { const u = q / 40, x = I[0] - rx * (12 + u * L) + fx / fl * Math.sin(u * 3) * 14, z = I[1] - rz * (12 + u * L) + fz / fl * Math.sin(u * 3) * 14; bp.push([x, Math.max(landH(x, z), 0) + .3, z, Math.atan2(rx, rz), 1]); }
+      instances(partsGeo([{ g: G_.box(5, 1.2, 4.2), c: 0xd8c48e }]), bp); }
+    if (k === 7) { // sandbars with pines
+      const pl = []; for (let q = 0; q < 26; q++) { const u = rand(0, 1), x = I[0] - fx / fl * 40 + rx * (u - .5) * 120, z = I[1] - fz / fl * 40 + rz * (u - .5) * 120; pl.push([x, Math.max(landH(x, z), 0) - .2, z, rand(0, 6), rand(.6, 1)]); }
+      instances(KIT.pine(), pl); }
+  });
+})();
+
 /* ---------- Hakone (36498): from the hills above the lake, Fuji small at the left beyond the water ---------- */
 (function dressHakone() {
   const s = STATIONS.find(q => q.id === 36498), L = LAKES.find(q => q.name === "hakone"); if (!s || !L) return;
