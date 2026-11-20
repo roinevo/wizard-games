@@ -1808,7 +1808,13 @@ function stationView(s) {
   const v = s.view; const d = v.d || [0, 0];
   const pos = new V3(s.x + d[0], 0, s.z + d[1]); pos.y = (v.sky ? s.pos.y - 40 : Math.max(landH(pos.x, pos.z), 0)) + v.up; if (v.y !== undefined) pos.y = v.y;
   if (v.sky) pos.set(s.pos.x + 60, s.pos.y + 10, s.pos.z + 60);
-  return { pos, look: v.sky ? s.pos.clone() : new V3(v.look[0], v.look[1], v.look[2]), fov: v.fov };
+  return { pos, look: v.sky ? s.pos.clone() : new V3(v.look[0], v.look[1], v.look[2]), fov: fitFov(v.fov, s.id) };
+}
+// on screens narrower than the print (phones in portrait) the post pass fits the print to the WIDTH, so widen the camera
+// until the 3D view and the print still register: tan(v/2) = tan(f/2) * printAspect / screenAspect
+function fitFov(fov, id) {
+  const t = getPrintTex(id), pa = t.image && t.image.width ? t.image.width / t.image.height : 1.49, sa = innerWidth / innerHeight;
+  return sa >= pa ? fov : Math.min(150, 2 * Math.atan(Math.tan(fov * Math.PI / 360) * pa / sa) * 180 / Math.PI);
 }
 function startMoment(s) {
   state = "moment"; MOMENT.s = s; s.marker.visible = false; MOMENT.t = 0; MOMENT.from = { pos: camera.position.clone(), q: camera.quaternion.clone(), fov: camera.fov }; MOMENT.view = stationView(s);
