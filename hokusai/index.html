@@ -1490,7 +1490,7 @@ function strikeBolt(b) {
   const mk = (a, c, w) => { const d = c.clone().sub(a); const len = d.length(); const m = new THREE.Mesh(new THREE.BoxGeometry(w, len, w * .4), b.mat); m.position.copy(a).add(c).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new V3(0, 1, 0), d.normalize()); b.g.add(m); b.segs.push([a.clone(), c.clone()]); };
   for (let s = 0; s < 6; s++) { const n = p.clone().add(new V3(Math.cos(dir) * rand(14, 26), rand(14, 26), Math.sin(dir) * rand(14, 26))); mk(p, n, 3); if (Math.random() < .5) mk(n, n.clone().add(new V3(rand(-18, 18), rand(-14, -5), rand(-18, 18))), 2); p = n; dir += rand(-1.6, 1.6); }
 }
-let _pillT = 0, _pillOn = new Set(), WORLD_LIM = null;
+let _pillT = 0, _pillOn = new Set(), _pillSnap = true, WORLD_LIM = null;
 function updateWorld(dt, t) {
   for (const b of BOATS) { const y = waterH(b.position.x, b.position.z, t); b.position.y = y + .2; b.rotation.x = Math.sin(t * 1.2 + b.position.x) * .1; b.rotation.z = Math.sin(t * .9 + b.position.z) * .06; }
   for (const wv of WAVES) {
@@ -1517,7 +1517,8 @@ function updateWorld(dt, t) {
   for (const s of STATIONS) if (!s.got) { s.seal.position.y = 7 + Math.sin(t * 2 + s.x) * .6; s.ring.rotation.z = t * .6; }
   // only the three nearest uncollected prints raise a pillar of light; the rest wait quietly (the compass and map still show them)
   if ((_pillT -= 1) <= 0) { _pillT = 20; const open = STATIONS.filter(s => !s.got && !s.view.sky).sort((a, b) => Math.hypot(a.x - P.pos.x, a.z - P.pos.z) - Math.hypot(b.x - P.pos.x, b.z - P.pos.z)); _pillOn = new Set(open.slice(0, 3)); }
-  for (const s of STATIONS) if (!s.got) { const want = _pillOn.has(s) || s.view.sky ? .13 : 0; s.pillar.material.opacity += (want - s.pillar.material.opacity) * .05; s.pillar.visible = s.pillar.material.opacity > .004; }
+  { const k = _pillSnap ? 1 : 1 - Math.exp(-dt * 2.5); _pillSnap = false; // time-based (and snapped on the first frame): slow devices don't show 31 pillars for seconds
+    for (const s of STATIONS) if (!s.got) { const want = _pillOn.has(s) || s.view.sky ? .13 : 0; s.pillar.material.opacity += (want - s.pillar.material.opacity) * k; s.pillar.visible = s.pillar.material.opacity > .004; } }
   SKY.position.copy(camera.position);
   updateMood(dt);
 }
@@ -3515,7 +3516,7 @@ if (/reachgo(\d+)/.test(HASH)) setTimeout(() => { const id = +HASH.match(/reachg
 
 if (/pick=([-\d.]+),([-\d.]+)/.test(HASH)) setTimeout(() => { const m = HASH.match(/pick=([-\d.]+),([-\d.]+)/), rc = new THREE.Raycaster(); rc.layers.enableAll(); rc.params.Points = { threshold: 5 };
   rc.setFromCamera(new THREE.Vector2(+m[1], +m[2]), camera); const hits = rc.intersectObjects(scene.children, true).slice(0, 8);
-  console.log(`[pick] sky=${SKY.position.toArray().map(Math.round)} skyScale=${SKY.scale.x} cam=${camera.position.toArray().map(Math.round)} far=${camera.far} hitIsSky=${hits[0] && hits[0].object === SKY}`); console.log("[pick] " + hits.map(h => `${h.object.type}${h.object.isInstancedMesh ? "(inst" + h.object.count + ")" : ""} d=${h.distance.toFixed(0)} geo=${h.object.geometry && h.object.geometry.type} mat=${h.object.material && h.object.material.type} blend=${h.object.material && h.object.material.blending} layer=${h.object.layers.mask} pos=${h.point.toArray().map(Math.round)}`).join(" | ")); }, 4000);
+  console.log(`[pick] pillars visible=${STATIONS.filter(s => s.pillar.visible).length} on=${_pillOn.size} lanterns=${typeof LANTERNS}`); console.log(`[pick] sky=${SKY.position.toArray().map(Math.round)} skyScale=${SKY.scale.x} cam=${camera.position.toArray().map(Math.round)} far=${camera.far} hitIsSky=${hits[0] && hits[0].object === SKY}`); console.log("[pick] " + hits.map(h => `${h.object.type}${h.object.isInstancedMesh ? "(inst" + h.object.count + ")" : ""} d=${h.distance.toFixed(0)} geo=${h.object.geometry && h.object.geometry.type} mat=${h.object.material && h.object.material.type} blend=${h.object.material && h.object.material.blending} layer=${h.object.layers.mask} pos=${h.point.toArray().map(Math.round)}`).join(" | ")); }, 4000);
 
 if (/momentshot/.test(HASH)) setTimeout(() => { const s = STATIONS.find(q => q.id === 56216); enterWorld(); introT = 9.6; step(.05); state = "play";
   P.pos.set(s.pos.x - 6, s.pos.y + 2, s.pos.z - 6); setMode("fly"); for (let i = 0; i < 160; i++) { P.pos.lerp(s.pos, .05); step(1 / 30); if (state === "moment" && MOMENT.t > 5.2) break; }
