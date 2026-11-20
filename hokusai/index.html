@@ -2540,7 +2540,7 @@ const TOWN_PT = { x: 1400, z: roadZ(1400) };
 /* ---------- the first-minute guide: one small step at a time ---------- */
 const GUIDE = window.GUIDE = (() => {
   const st = document.createElement("style");
-  st.textContent = `#guide{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:12;background:rgba(246,238,219,.96);border:1.5px solid #3b3a3a;box-shadow:2px 3px 0 rgba(0,0,0,.2);padding:8px 34px 8px 14px;font-size:17px;line-height:1.45;max-width:min(560px,86vw);text-align:center;pointer-events:auto;transition:opacity .4s}
+  st.textContent = `#guide{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:12;background:rgba(246,238,219,.96);border:1.5px solid #3b3a3a;box-shadow:2px 3px 0 rgba(0,0,0,.2);padding:8px 14px 8px 36px;font-size:17px;line-height:1.45;max-width:min(560px,86vw);text-align:center;pointer-events:auto;transition:opacity .4s}
   #guide[hidden]{display:none}#guide b{color:#b3362b}#guide small{display:block;color:#8a7b62;font-size:12.5px;margin-top:2px}#guideX{position:absolute;top:4px;left:6px;background:none;border:0;font-size:16px;color:#6d5f49;padding:2px 6px}`;
   document.head.appendChild(st);
   const d = document.createElement("div"); d.id = "guide"; d.hidden = true; if (isTouch) { d.style.bottom = "auto"; d.style.top = "122px"; } d.innerHTML = `<button id="guideX" title="סגירה">✕</button><div id="guideT"></div>`; document.body.appendChild(d);
@@ -2764,6 +2764,7 @@ rescaleWorld(WORLD_K);
   f1.mesh.position.set(W[0] + rx * 1.5 - f[0] * 1, 8.7, W[1] + rz * 1.5 - f[1] * 1); f1.mesh.rotation.y = Math.atan2(rx, rz); f1.fixedY = true;
   f2.mesh.position.set(W[0] - rx * 4.5 - f[0] * 2, 5.6, W[1] - rz * 4.5 - f[1] * 2); f2.fixedY = true;
   fo[0] = W[0]; fo[1] = W[1]; fo[2] = 1;
+  for (let k = 0; k < 6; k++) { const a = k / 6 * 6.28; FOAMSPOTS.push([W[0] + Math.cos(a) * 9, W[1] + Math.sin(a) * 9, .5]); }
   // Hokusai's mist hides the middle ground: a cream bank beyond the rock, only Fuji's upper cone above it
   const mist = []; for (const [dd, yy] of [[16, 5], [26, 14], [38, 24], [52, 34], [70, 44], [95, 54]]) for (let k = -3; k <= 3; k++) { const w = 120 + dd * 2; mist.push([W[0] + f[0] * dd + rx * k * w * .38, yy, W[1] + f[1] * dd + rz * k * w * .38, w, 24]); }
   for (const [dd, yy, sd] of [[6, 6, 22], [8, 16, 30], [10, 27, 40], [12, 38, 52], [5, 4, 50], [9, 22, 70]]) mist.push([W[0] + f[0] * dd + rx * sd, yy, W[1] + f[1] * dd + rz * sd, 70, 14]);
