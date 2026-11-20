@@ -1018,7 +1018,7 @@ function station(id, place, x, z, view, mood, dress) {
 const FUJI_TOP = new V3(0, FUJI_H * .95, 0);
 const toward = (x, z, tx, tz, d) => { const L = Math.hypot(tx - x, tz - z); return [x + (tx - x) / L * d, z + (tz - z) / L * d]; };
 
-station(45434, "מול חופי קנגאווה", 760, 2330, { up: 5, look: [180, 260, 1500], fov: 58, aimFuji: [12, 7.6] }, { top: 0xe6d9bb, mid: 0xe2d4b4, hor: 0x77756f, fog: 0xcfc4a8 }, s => {
+station(45434, "מול חופי קנגאווה", 760, 2330, { up: 5, look: [180, 260, 1500], fov: 58, aimFuji: [8.5, 6.6] }, { top: 0xe6d9bb, mid: 0xe2d4b4, hor: 0x77756f, fog: 0xcfc4a8 }, s => {
   const big = makeWave(1, 95, 1); big.grp.position.set(s.x - 140, -4, s.z - 150); big.grp.scale.set(1.2, 1.75, 1.2); scene.add(big.grp);
   const w2 = makeWave(.5, 70, 4); w2.grp.position.set(s.x + 70, -2, s.z - 300); scene.add(w2.grp);
   const w3 = makeWave(.35, 50, 7); w3.grp.position.set(s.x - 40, -1, s.z - 40); scene.add(w3.grp);
@@ -2746,7 +2746,7 @@ const TOWN_NEW = { x: 0, z: 0 };
 function rescaleWorld(K) {
   const AR = { 55237: 430, 45434: 300, 56142: 140, 36484: 140, 56216: 160, 54868: 30 };
   // the Great Wave keeps more open sea between it and Fuji, so Fuji stays small in the trough as in the print
-  const KA = { 45434: .8 }; // (sea station: fine beyond the terrain mesh; land stations must stay within |x|,|z| <= 1500)
+  const KA = { 45434: 1.05 }; // (sea station: fine beyond the terrain mesh; land stations must stay within |x|,|z| <= 1500)
   const Z = STATIONS.filter(q => !q.view.sky).map(q => ({ id: q.id, x: q.x, z: q.z, r: AR[q.id] || 60, nx: q.x * (KA[q.id] || K), nz: q.z * (KA[q.id] || K) }));
   const TZ = { x: 1385, z: roadZ(1385), r: 220 }; TZ.nx = TZ.x * K; TZ.nz = TZ.z * K; Z.push(TZ);
   const zoneOf = (x, z) => { let b = null, bd = 1e9; for (const q of Z) { const d = Math.hypot(x - q.x, z - q.z); if (d < q.r && d < bd) { bd = d; b = q; } } return b; };
@@ -3492,6 +3492,8 @@ if (/pick=([-\d.]+),([-\d.]+)/.test(HASH)) setTimeout(() => { const m = HASH.mat
 if (/momentshot/.test(HASH)) setTimeout(() => { const s = STATIONS.find(q => q.id === 56216); enterWorld(); introT = 9.6; step(.05); state = "play";
   P.pos.set(s.pos.x - 6, s.pos.y + 2, s.pos.z - 6); setMode("fly"); for (let i = 0; i < 160; i++) { P.pos.lerp(s.pos, .05); step(1 / 30); if (state === "moment" && MOMENT.t > 5.2) break; }
   console.log(`[momentshot] state=${state} t=${MOMENT.t && MOMENT.t.toFixed(1)} compass=${$("compass").style.visibility} hudOp=${$("hud").style.opacity}`); MOMENT.t = 5.2; setInterval(() => { if (state === "moment") MOMENT.t = Math.min(MOMENT.t, 5.3); }, 10); }, 1500);
+
+if (/introat(\d+)/.test(HASH)) setTimeout(() => { const n = +HASH.match(/introat(\d+)/)[1]; $("startBtn").click(); setTimeout(() => { for (let i = 0; i < n * 3; i++) step(1 / 30); const fr = () => { if (state === "intro") introT = n / 10; requestAnimationFrame(fr); }; fr(); console.log(`[intro] t=${introT.toFixed(1)} pMix=${post.uniforms.pMix.value.toFixed(2)}`); }, 300); }, 500);
 })();
 </script>
 </body>
