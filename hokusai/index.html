@@ -2976,6 +2976,15 @@ function aimFujiFrom(s, C, cy, right, up) {
   if (/dbg/.test(HASH)) console.log(`[kaji] rock=${W.map(Math.round)} cam=${C.map(Math.round)},${cy.toFixed(0)} fujiAng=${s._kang.toFixed(0)} cost=${best.toFixed(0)}`);
 })();
 
+/* ---------- road crests that the rescale dropped into water go to the nearest dry ground ---------- */
+(function dryCrests() {
+  const gp = CRESTS.glow.geometry.attributes.position; let n = 0;
+  for (const c of CRESTS.list) { if (c.kind !== "road" || landH(c.x, c.z) >= 0 || c.y > 4) continue;
+    let best = null; for (let r = 4; r < 90 && !best; r += 4) for (let a = 0; a < 6.28; a += .2) { const x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r; if (landH(x, z) > .8) { best = [x, z]; break; } }
+    if (!best) continue; c.x = best[0]; c.z = best[1]; c.y = landH(c.x, c.z) + 2.2; gp.setXYZ(c.id, c.x, c.y, c.z); n++; }
+  gp.needsUpdate = true; if (/crestcheck/.test(HASH)) console.log("[crestcheck] moved " + n);
+})();
+
 /* ---------- Sano in the snow (53787), composed in final coordinates ----------
    Surveyed from above after the rescale: the river runs N-S here. The camera stands on the west bank, raised;
    the boat bridge enters bottom-left and curves across to the far bank on the right; the snowy farmhouse and
@@ -3331,6 +3340,8 @@ PLAY_HOOKS.push(dt => {
   b.style.left = clamp((v.x * .5 + .5) * innerWidth, hw + 10, innerWidth - hw - 10) + "px"; b.style.top = clamp((-v.y * .5 + .5) * innerHeight - 10, b.offsetHeight + 60, innerHeight - 40) + "px";
 });
 if (/chattest/.test(HASH)) setTimeout(() => { enterWorld(); introT = 9.6; step(.05); state = "play"; CHAT.t = 0; for (let i = 0; i < 20; i++) step(1 / 30); console.log("[chat] near=" + CHAT.n + " pair=" + !!CHAT.pair + " text=" + B2.textContent + " hidden=" + B2.hidden); }, 1200);
+
+if (/crestcheck/.test(HASH)) setTimeout(() => { const by = {}; for (const c of CRESTS.list) { const h = landH(c.x, c.z); if (h < 0 && c.y < 4) { by[c.kind] = (by[c.kind] || 0) + 1; } } console.log("[crestcheck] wet-low by kind " + JSON.stringify(by) + " total=" + CRESTS.list.length); }, 1500);
 })();
 </script>
 </body>
