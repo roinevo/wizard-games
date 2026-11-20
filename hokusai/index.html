@@ -1001,8 +1001,8 @@ function station(id, place, x, z, view, mood, dress) {
 const FUJI_TOP = new V3(0, FUJI_H * .95, 0);
 const toward = (x, z, tx, tz, d) => { const L = Math.hypot(tx - x, tz - z); return [x + (tx - x) / L * d, z + (tz - z) / L * d]; };
 
-station(45434, "מול חופי קנגאווה", 760, 2330, { up: 7, look: [180, 60, 1500], fov: 58 }, { top: 0xe6d9bb, mid: 0xe2d4b4, hor: 0x77756f, fog: 0xcfc4a8 }, s => {
-  const big = makeWave(1, 95, 1); big.grp.position.set(s.x - 140, -4, s.z - 150); scene.add(big.grp);
+station(45434, "מול חופי קנגאווה", 760, 2330, { up: 5, look: [180, 260, 1500], fov: 58, aimFuji: [12, 7.6] }, { top: 0xe6d9bb, mid: 0xe2d4b4, hor: 0x77756f, fog: 0xcfc4a8 }, s => {
+  const big = makeWave(1, 95, 1); big.grp.position.set(s.x - 140, -4, s.z - 150); big.grp.scale.set(1.2, 1.75, 1.2); scene.add(big.grp);
   const w2 = makeWave(.5, 70, 4); w2.grp.position.set(s.x + 70, -2, s.z - 300); scene.add(w2.grp);
   const w3 = makeWave(.35, 50, 7); w3.grp.position.set(s.x - 40, -1, s.z - 40); scene.add(w3.grp);
   WAVES.push(big, w2, w3);
@@ -1879,18 +1879,21 @@ function enterWorld() {
   state = "intro"; introT = 0; renderHUD(); music.setWorld(0);
 }
 let introT = 0;
+// any key or tap skips the opening straight to the end of the glide
+function skipIntro() { if (state === "intro" && introT > .3 && introT < 9.6) introT = 9.6; }
+addEventListener("keydown", skipIntro, true); addEventListener("pointerdown", skipIntro, true);
+let _hudIntro = false;
 function updateIntro(dt) {
-  introT += dt; post.uniforms.pMix.value = clamp(1 - (introT - .8) / 2.4, 0, 1);
+  introT += dt; post.uniforms.pMix.value = clamp(1 - (introT - 1.2) / 5, 0, 1);
   const v = stationView(STATIONS[0]);
-  if (introT > 3.4) {
-    const u = smooth(clamp((introT - 3.4) / 3, 0, 1));
+  if (introT > 6.6) {
+    const u = smooth(clamp((introT - 6.6) / 3, 0, 1));
     tmp2.set(Math.sin(P.yaw), 0, Math.cos(P.yaw)); tmp3.copy(P.pos).addScaledVector(tmp2, -10); tmp3.y += 5;
     camera.position.lerpVectors(v.pos, tmp3, u);
     camera.lookAt(tmp.copy(v.look).lerp(tmp2.copy(P.pos).addScaledVector(P.fwd, 8).add(tmp3.set(0, 3.4, 0)), u)); camera.fov = lerp(v.fov, 62, u); camera.updateProjectionMatrix();
   } else { camera.position.copy(v.pos); camera.lookAt(v.look); }
   if (G.mode === "fly") { player.position.copy(P.pos); player.rotation.set(0, P.yaw, 0); }
-  if (introT > 1.4 && introT - dt <= 1.4) toast("עולמו של הוקוסאי\n31 הדפסים מחכים במקומות שבהם צוירו", 3.4);
-  if (introT > 6.4) { state = "play"; if (window.GUIDE) GUIDE.start(); }
+  if (introT > 9.7) { state = "play"; if (window.GUIDE) GUIDE.start(); }
 }
 
 /* ---------- loop ---------- */
@@ -1900,7 +1903,8 @@ function step(dt) {
   else if (state === "moment") updateMoment(dt);
   else if (state === "intro") updateIntro(dt);
   else if (state === "scene" && SCENE_HOOK) SCENE_HOOK(dt);
-  else if (state === "menu") { const a = T * .03; camera.position.set(Math.sin(a) * 2300 * WK, 420 * WK, Math.cos(a) * 2300 * WK); camera.lookAt(0, 300 * WK, 0); }
+  else if (state === "menu") { const v = stationView(STATIONS[0]); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix(); post.uniforms.tP.value = getPrintTex(45434); post.uniforms.pAsp.value = 1.49; post.uniforms.pMix.value = 1; }
+  { const hi = state === "intro"; if (hi !== _hudIntro) { _hudIntro = hi; $("hud").style.visibility = hi ? "hidden" : ""; $("touch").style.visibility = hi ? "hidden" : ""; } }
   updateWorld(dt, T);
   const fl = Math.sin(T * (G.boosting ? 11 : 6.5)); wingL.rotation.z = fl * .55 + .1; wingR.rotation.z = -fl * .55 - .1;
   if (G.anim && G.anim.type === "craneIn" && G.anim.t > 1.4) { const f2 = Math.sin(T * 14); wingL.rotation.z = f2 * .8; wingR.rotation.z = -f2 * .8; }
@@ -1952,7 +1956,7 @@ if (mC) { const v = mC[1].split(",").map(Number); setTimeout(() => { enterWorld(
 // #play (fly) · #walk · #horse · #crane (mid call) · #gallop · all walk forward for a moment
 const mP = HASH.match(/^#(play|walk|horse|crane|gallop|land)/);
 if (mP) setTimeout(() => {
-  enterWorld(); introT = 6.3; step(.05); state = "play"; const m = mP[1];
+  enterWorld(); introT = 9.6; step(.05); state = "play"; const m = mP[1];
   if (m === "play") { P.pos.y = landH(P.pos.x, P.pos.z) + 30; setMode("fly"); }
   if (m === "horse" || m === "gallop") { setMode("horse"); HORSE.here = false; }
   if (m === "crane") callCrane();
@@ -1965,7 +1969,7 @@ if (mP) setTimeout(() => {
   if (/side/.test(HASH)) { state = "viewtest"; const sd = new V3(Math.cos(P.yaw), 0, -Math.sin(P.yaw)); camera.position.copy(P.pos).addScaledVector(sd, m === "walk" ? 7 : 12).add(new V3(0, 3, 0)); camera.lookAt(P.pos.x, P.pos.y + 2.6, P.pos.z); }
 }, 600);
 if (BOT) {
-  setTimeout(() => { enterWorld(); introT = 6.3; P.pos.y = landH(P.pos.x, P.pos.z) + 30; setMode("fly"); }, 600);
+  setTimeout(() => { enterWorld(); introT = 9.6; P.pos.y = landH(P.pos.x, P.pos.z) + 30; setMode("fly"); }, 600);
   let order = null;
   setInterval(() => {
     for (let i = 0; i < 15; i++) {
@@ -2622,7 +2626,9 @@ const TOWN_GATE = { x: 1478, z: roadZ(1478), yaw: -1.64 };
 const TOWN_NEW = { x: 0, z: 0 };
 function rescaleWorld(K) {
   const AR = { 55237: 430, 45434: 300, 56142: 140, 36484: 140, 56216: 160, 54868: 30 };
-  const Z = STATIONS.filter(q => !q.view.sky).map(q => ({ x: q.x, z: q.z, r: AR[q.id] || 60, nx: q.x * K, nz: q.z * K }));
+  // the Great Wave keeps more open sea between it and Fuji, so Fuji stays small in the trough as in the print
+  const KA = { 45434: .8 };
+  const Z = STATIONS.filter(q => !q.view.sky).map(q => ({ id: q.id, x: q.x, z: q.z, r: AR[q.id] || 60, nx: q.x * (KA[q.id] || K), nz: q.z * (KA[q.id] || K) }));
   const TZ = { x: 1385, z: roadZ(1385), r: 220 }; TZ.nx = TZ.x * K; TZ.nz = TZ.z * K; Z.push(TZ);
   const zoneOf = (x, z) => { let b = null, bd = 1e9; for (const q of Z) { const d = Math.hypot(x - q.x, z - q.z); if (d < q.r && d < bd) { bd = d; b = q; } } return b; };
   const gOld = (x, z) => Math.max(landH0(x, z), 0), gNew = (x, z) => Math.max(K * landH0(x / K, z / K), 0);
@@ -2656,7 +2662,15 @@ function rescaleWorld(K) {
     const v = st.view, d = v.d || [0, 0], cx = st.x + d[0], cz = st.z + d[1], [ncx, ncz] = m2(cx, cz);
     if (v.y !== undefined) { if (v.yRef) { const [rx, rz] = m2(v.yRef[0], v.yRef[1]); v.y = gNew(rx, rz) + (v.y - gOld(v.yRef[0], v.yRef[1])); } else v.y = gNew(ncx, ncz) + (v.y - gOld(cx, cz)); }
     const L = v.look; v.look = zoneOf(L[0], L[2]) ? m3(L[0], L[1], L[2]).slice(0, 3) : [L[0] * K, L[1] * K, L[2] * K];
-    st.x *= K; st.z *= K; v.d = [ncx - st.x, ncz - st.z];
+    const zq = zoneOf(st.x, st.z), sk = zq && zq.id === st.id ? KA[st.id] || K : K;
+    st.x *= sk; st.z *= sk; v.d = [ncx - st.x, ncz - st.z];
+    if (v.aimFuji) { // aim so the Fuji peak sits at a given place in the frame: [right deg, down deg]
+      const cx2 = st.x + v.d[0], cz2 = st.z + v.d[1], cy = (v.y !== undefined ? v.y : Math.max(gNew(cx2, cz2), 0) + v.up), hl = Math.hypot(cx2, cz2);
+      const hx = -cx2 / hl, hz = -cz2 / hl, a = v.aimFuji[0] * Math.PI / 180, rx = -hz, rz = hx;
+      const fx = Math.cos(a) * hx - Math.sin(a) * rx, fz = Math.cos(a) * hz - Math.sin(a) * rz;
+      const el = Math.atan2(FUJI_H0 * K * .95 - cy, hl) + v.aimFuji[1] * Math.PI / 180;
+      v.look = [cx2 + fx * 500, cy + Math.tan(el) * 500, cz2 + fz * 500];
+    }
     st.pos.copy(st.marker.position);
   }
   for (const p of PEOPLE) if (p.path) p.path = p.path.map(q => m2(q[0], q[1]).slice(0, 2));
@@ -2877,7 +2891,7 @@ CRESTS.list.forEach(c => { let b = 0, bd = 1e9; REGIONS.forEach((r, i) => { cons
 /* ---------- test hooks ---------- */
 // #allcrests: everything but one crest is collected, then the last one is picked (milestones + golden crane)
 if (/allcrests/.test(HASH)) setTimeout(() => {
-  enterWorld(); introT = 6.3; step(.05); state = "play";
+  enterWorld(); introT = 9.6; step(.05); state = "play";
   SAVE.crests = CRESTS.list.slice(0, -1).map(c => c.id); SAVE.gifts = ["mino", "lantern", "goldtrail", "kite"]; applyCrestSave(); applyGifts();
   pickCrest(CRESTS.list[CRESTS.list.length - 1]); P.pos.y = landH(P.pos.x, P.pos.z) + 12; setMode("fly"); P.pitch = .1;
   for (let i = 0; i < 40; i++) step(1 / 30);
@@ -2886,31 +2900,32 @@ if (/allcrests/.test(HASH)) setTimeout(() => {
 }, 1200);
 // #allprints[_tNN]: every print collected, standing at Hokusai's studio; with _act the ending plays (NN = seconds to skip)
 if (/allprints/.test(HASH)) setTimeout(() => {
-  enterWorld(); introT = 6.3; step(.05); state = "play";
+  enterWorld(); introT = 9.6; step(.05); state = "play";
   STATIONS.forEach(s => s.got = true); SAVE.have = STATIONS.map(s => s.id); SAVE.ended = undefined;
   P.pos.set(HUT_TARGET.x, HUT.y, HUT_TARGET.z); P.yaw = HUT.ry + Math.PI; for (let i = 0; i < 20; i++) step(1 / 30);
   console.log(`[allprints] near=${placeNear && placeNear.label} hut=${hutGrp.visible}`);
   const mt = HASH.match(/_t(\d+)/); if (/act/.test(HASH)) { doAct(); const n = mt ? +mt[1] * 30 : 60; for (let i = 0; i < n; i++) step(1 / 30); console.log(`[allprints] state=${state} pMix=${post.uniforms.pMix.value.toFixed(2)}`); }
 }, 1200);
-if (/talktest/.test(HASH)) setTimeout(() => { enterWorld(); introT = 6.3; step(.05); state = "play";
+if (/talktest/.test(HASH)) setTimeout(() => { enterWorld(); introT = 9.6; step(.05); state = "play";
   const p = PEOPLE.filter(q => q.type === "samurai" || q.type === "pilgrim").sort((a, b) => a.mesh.position.distanceTo(P.pos) - b.mesh.position.distanceTo(P.pos))[0];
   p.path = null; P.pos.set(p.mesh.position.x + 5, landH(p.mesh.position.x + 5, p.mesh.position.z), p.mesh.position.z); P.yaw = -Math.PI / 2; for (let i = 0; i < 10; i++) step(1 / 30);
   const out = []; for (let k = 0; k < 6; k++) out.push(npcLine(p)); console.log("[talk] " + p.type + " | " + out.join(" | "));
   doAct(); for (let i = 0; i < 10; i++) step(1 / 30); console.log("[talk] act=" + (placeNear && placeNear.label) + " bubble=" + $("bubble").textContent); }, 1200);
 const mF = HASH.match(/farm(\d+)/);
-if (mF) setTimeout(() => { enterWorld(); introT = 6.3; step(.05); state = "play"; const f = FARMS.slice().sort((a, b) => Math.hypot(a[0] - TOWN_GATE.x, a[1] - TOWN_GATE.z) - Math.hypot(b[0] - TOWN_GATE.x, b[1] - TOWN_GATE.z))[+mF[1]];
+if (mF) setTimeout(() => { enterWorld(); introT = 9.6; step(.05); state = "play"; const f = FARMS.slice().sort((a, b) => Math.hypot(a[0] - TOWN_GATE.x, a[1] - TOWN_GATE.z) - Math.hypot(b[0] - TOWN_GATE.x, b[1] - TOWN_GATE.z))[+mF[1]];
   P.pos.set(f[0] + 45, landH(f[0] + 45, f[1] + 20), f[1] + 20); P.yaw = Math.atan2(f[0] - P.pos.x, f[1] - P.pos.z); for (let i = 0; i < 40; i++) step(1 / 30); }, 1200);
-if (/fresh/.test(HASH)) setTimeout(() => { $("startBtn").click(); setTimeout(() => { for (let i = 0; i < 230; i++) step(1 / 30); }, 300); }, 500);
+if (/fresh/.test(HASH)) setTimeout(() => { $("startBtn").click(); setTimeout(() => { for (let i = 0; i < 300; i++) step(1 / 30); }, 300); }, 500);
+const mIA = HASH.match(/introat=([d.]+)/); if (mIA) setTimeout(() => { $("startBtn").click(); setTimeout(() => { for (let i = 0; i < +mIA[1] * 30; i++) step(1 / 30); }, 300); }, 500);
 if (/iw/.test(HASH)) setTimeout(() => console.log(`[iw] ${innerWidth}x${innerHeight} dpr=${devicePixelRatio}`), 500);
 const mG = HASH.match(/goto=(-?\d+),(-?\d+)(?:,(-?[\d.]+))?/);
 if (mG) setTimeout(() => {
-  enterWorld(); introT = 6.3; step(.05); state = "play";
+  enterWorld(); introT = 9.6; step(.05); state = "play";
   const x = +mG[1], z = +mG[2]; P.pos.set(x, landH(x, z), z); P.yaw = mG[3] !== undefined ? +mG[3] : Math.atan2(-x, -z);
   if (/gofly/.test(HASH)) { P.pos.y += 25; setMode("fly"); }
   for (let i = 0; i < 40; i++) step(1 / 30);
 }, 1200);
 if (/fasttravel|mapshow/.test(HASH)) setTimeout(() => {
-  enterWorld(); introT = 6.3; step(.05); state = "play";
+  enterWorld(); introT = 9.6; step(.05); state = "play";
   const s = STATIONS.find(q => q.id === 55237); s.got = true; toggleMap();
   const cv = $("mapCv"), r = cv.getBoundingClientRect(), [x, y] = toMap(s.x, s.z, cv.width, cv.height);
   cv.dispatchEvent(new MouseEvent("click", { clientX: r.left + x / cv.width * r.width, clientY: r.top + y / cv.height * r.height, bubbles: true }));
@@ -2925,7 +2940,7 @@ if (/dist/.test(HASH)) setTimeout(() => {
 }, 1000);
 const mT = HASH.match(/town([a-z]*)/);
 if (mT) setTimeout(() => {
-  if (state !== "play") { enterWorld(); introT = 6.3; step(.05); state = "play"; }
+  if (state !== "play") { enterWorld(); introT = 9.6; step(.05); state = "play"; }
   SAVE.crests = SAVE.crests || []; if (/rich/.test(HASH)) { SAVE.spent = -40; renderHUD(); }
   const w = mT[1];
   const PL = { tea: [CHAYA.x - 1, CHAYA.z + 9], bell: [BELL.x + 5, BELL.z + 4], dye: STALL_POS.dye, sento: [SENTO.x - 2, SENTO.z - 9], kabuki: [KAB.x, KAB.z - 15], kite: [KITE.x + 22, KITE.z - 6], sumo: [SUMO.x + 4, SUMO.z + 10] };
