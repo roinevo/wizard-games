@@ -1161,12 +1161,12 @@ function buildWorld() {
       float nearF=1.-smoothstep(70.,170.,vDist);
       { float across=dot(roff,vec2(-rdir.y,rdir.x)), along=dot(vP.xz,rdir);
         float rut=step(.86,fract(across*.75+vn(vec2(along*.05,across))*.35))*step(.4,vn(vec2(along*.3,across*2.)));
-        float peb=step(.94,h21(floor(vP.xz*2.3)));
+        float peb=step(.95,h21(floor(vP.xz*4.)))*(1.-smoothstep(30.,70.,vDist));
         c=mix(c,c*.8,max(rut*.8,peb*.6)*roadM*nearF); }
       { vec2 q=vP.xz*vec2(1.5,.5)+vec2(n*3.,n2); vec2 qf=fract(q); float hr=h21(floor(q));
         float tuft=step(.6,hr)*step(abs(qf.x-.5),.1+.05*hr)*step(abs(qf.y-.5),.3);
         c=mix(c,c*.78,tuft*nearF*.75*smoothstep(40.,46.,h+n*14.)*(1.-roadM)); }
-      { float dots=step(.9,h21(floor(vP.xz*1.7+n2))); c=mix(c,c*.84,dots*nearF*(1.-smoothstep(1.5,4.,h))*step(.2,h)*(1.-roadM)); }
+      { float dots=step(.93,h21(floor(vP.xz*6.+n2)))*(1.-smoothstep(25.,60.,vDist)); c=mix(c,c*.84,dots*nearF*(1.-smoothstep(1.5,4.,h))*step(.2,h)*(1.-roadM)); }
       float band=abs(fract(h*.035+n*.8)-.5); c=mix(c,c*.86,smoothstep(.05,.0,band)*smoothstep(60.,90.,h)*.6);
       c=mix(c,vec3(.95,.95,.93),vSnow*smoothstep(-1.,2.,h));
       float l=dot(normalize(vN),sun); c*= mix(.8,1.,smoothstep(.18,.22,l));
