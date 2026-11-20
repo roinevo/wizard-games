@@ -3077,6 +3077,11 @@ function aimFujiFrom(s, C, cy, right, up) {
   const mist = []; for (const [dd, yy] of [[16, 5], [26, 10], [38, 14], [52, 18], [70, 22], [95, 26]]) for (let k = -2; k <= 2; k++) { const w = 110 + dd * 1.6; mist.push([W[0] + f[0] * dd + rx * k * w * .3, yy, W[1] + f[1] * dd + rz * k * w * .38, w, 24]); }
   for (const [dd, yy, sd] of [[6, 5, 22], [8, 10, 30], [10, 14, 40], [12, 18, 52], [5, 4, 50], [9, 14, 70]]) mist.push([W[0] + f[0] * dd + rx * sd, yy, W[1] + f[1] * dd + rz * sd, 70, 14]);
   // (a mist bank of soft billboards was tried here: the quads cut hard lines into the hillside, so it is left out)
+  // the rushing river breaks white around the rock: Hokusai's foam claws, curling away downstream on both sides (one instanced draw)
+  { const im = new THREE.InstancedMesh(CLAW_GEO, CLAW_MAT, 10), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();
+    for (let k = 0; k < 10; k++) { const sd = k % 2 ? 1 : -1, a = Math.atan2(rx * sd, rz * sd) + rand(-.5, .5), r = 8.5 + rand(0, 3), x = W[0] + Math.sin(a) * r, z = W[1] + Math.cos(a) * r;
+      e.set(0, a - Math.PI / 2, 0); q.setFromEuler(e); m4.compose(new V3(x, 1.6 + rand(0, .8), z), q, new V3(1, 1, 1).multiplyScalar(rand(.55, .85))); im.setMatrixAt(k, m4); }
+    scene.add(im); }
   const cy = Math.max(landH(C[0], C[1]), 0) + 9;
   s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0; s.view.look = [W[0], 9, W[1]];
   if (/dbg/.test(HASH)) console.log(`[kaji] rock=${W.map(Math.round)} cam=${C.map(Math.round)},${cy.toFixed(0)} fujiAng=${s._kang.toFixed(0)} cost=${best.toFixed(0)}`);
