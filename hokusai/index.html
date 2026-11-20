@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>עולמו של הוקוסאי</title>
+<title>עולמו של הוקוסאי</title><link rel="icon" href="data:,">
 <style>
 :root{--paper:#efe4c9;--paper2:#e4d5b3;--ink:#1c2944;--indigo:#1f3d6d;--red:#b3362b;--muted:#6d5f49}
 html,body{margin:0;height:100%;overflow:hidden;background:#d8c8a6;color:var(--ink);font-family:"Frank Ruhl Libre","Noto Serif Hebrew","David",Georgia,serif;-webkit-user-select:none;user-select:none;touch-action:none}
@@ -46,7 +46,7 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 .lives{position:absolute;bottom:14px;right:14px;font-size:22px;letter-spacing:2px;background:rgba(239,227,198,.85);border:1px solid #a8916a;padding:2px 10px}
 .boost{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);width:160px;height:8px;background:rgba(239,227,198,.8);border:1px solid #7d6b4c}
 .boost i{display:block;height:100%;background:var(--indigo);width:100%}
-#toast{position:absolute;top:22%;left:50%;transform:translateX(-50%);font-size:clamp(18px,3.2vw,26px);color:var(--ink);background:rgba(243,233,208,.95);border:1.5px solid #3b3a3a;box-shadow:2px 3px 0 rgba(0,0,0,.18);padding:6px 18px;text-align:center;transition:opacity .4s;opacity:0;white-space:pre-line;width:max-content;max-width:86vw;line-height:1.4;pointer-events:none}
+#toast{position:absolute;top:15%;left:50%;transform:translateX(-50%);font-size:clamp(18px,3.2vw,26px);color:var(--ink);background:rgba(243,233,208,.95);border:1.5px solid #3b3a3a;box-shadow:2px 3px 0 rgba(0,0,0,.18);padding:6px 18px;text-align:center;transition:opacity .4s;opacity:0;white-space:pre-line;width:max-content;max-width:86vw;line-height:1.4;pointer-events:none}
 .tbtns{position:absolute;top:12px;left:12px;display:flex;gap:6px;pointer-events:auto}
 .tbtns button{width:40px;height:40px;background:rgba(239,227,198,.9);border:1px solid #a8916a;font-size:18px;padding:0}
 #touch{position:fixed;inset:0;pointer-events:none;z-index:11}
@@ -61,7 +61,10 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 #sCrests small{color:#8a7b62;font-size:12px}
 #sCrests.pop{animation:pop .45s}
 @keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.28);background:#fff3c8}100%{transform:scale(1)}}
-#bubble{position:fixed;transform:translate(-50%,-100%);background:#f6eedb;border:1.5px solid #3b3a3a;padding:6px 12px;font-size:16px;max-width:min(260px,70vw);text-align:center;z-index:12;pointer-events:none;box-shadow:2px 3px 0 rgba(0,0,0,.2)}
+#bubble{position:fixed;transform:translate(-50%,-100%);background:#f6eedb;border:1.5px solid #3b3a3a;padding:5px 12px 7px;font-size:16px;line-height:1.35;width:max-content;max-width:min(280px,72vw);text-align:center;z-index:12;pointer-events:none;box-shadow:2px 3px 0 rgba(0,0,0,.2);border-radius:3px}
+#bubble b{display:block;font-size:12px;color:#b3362b;font-weight:normal;letter-spacing:.5px}
+#bubble::after{content:'';position:absolute;top:100%;left:var(--tx,50%);margin-left:-8px;border:8px solid transparent;border-top:10px solid #3b3a3a}
+#bubble::before{content:'';position:absolute;top:100%;left:var(--tx,50%);margin-left:-6px;border:6px solid transparent;border-top:8px solid #f6eedb;z-index:1}
 #bubble[hidden]{display:none}
 #cap{position:fixed;bottom:7%;left:50%;transform:translateX(-50%);background:rgba(239,227,198,.94);border:1px solid #8a7550;padding:8px 18px;font-size:18px;text-align:center;opacity:0;transition:opacity .8s;z-index:12;pointer-events:none}
 #cap.on{opacity:1}
@@ -270,6 +273,7 @@ const gradMap = (() => { const t = new THREE.DataTexture(new Uint8Array([105, 10
 const FOG = { col: { value: new THREE.Color(0xd8ccb0) }, near: { value: 200 }, far: { value: 1800 } };
 const SUN = { value: new V3(-.5, .7, .4).normalize() };
 const TIME = { value: 0 };
+const NEARCUT = { value: 0 }; // scenery closer than this to the camera is cut away (play only), so trees and parasols never fill the frame
 // "printed" surface: flat colour; the shadow side is a slightly darker block crossed by carved hatching
 // (no smooth tonal shading). Works for plain meshes, vertex colours and InstancedMesh (+instanceColor).
 const PRINT_VS = `varying vec3 vP; varying vec3 vN; varying float vDist; varying vec3 vC;
@@ -286,7 +290,8 @@ const PRINT_VS = `varying vec3 vP; varying vec3 vN; varying float vDist; varying
     #endif
     vec4 w=modelMatrix*lp; vP=w.xyz; vN=normalize(mat3(modelMatrix)*nn); vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`;
 const PRINT_FS = `uniform vec3 uCol; varying vec3 vC;
-  void main(){ vec3 n=normalize(vN); if(!gl_FrontFacing) n=-n; float l=dot(n,sun); vec3 c=vC*uCol;
+  void main(){ if(vDist<nearCut){ vec2 q=mod(floor(gl_FragCoord.xy),4.); float th=fract((q.x*4.+q.y)*.4375+q.y*.0625); if(vDist<nearCut*.6||th>(vDist-nearCut*.6)/(nearCut*.4)) discard; }
+    vec3 n=normalize(vN); if(!gl_FrontFacing) n=-n; float l=dot(n,sun); vec3 c=vC*uCol;
     float lit=smoothstep(.06,.12,l);
     float near=1.-smoothstep(50.,140.,vDist);
     float hat=step(.6,fract(dot(vP,vec3(.8,1.3,.55))*.85+vn(vP.xz*.3)*.4));
@@ -420,10 +425,10 @@ function makeSky(o) {
 /* ---------------- custom lit shader helper ---------------- */
 function printMat(frag, vert, extraU, opts) {
   return new THREE.ShaderMaterial(Object.assign({
-    uniforms: Object.assign({ fogCol: FOG.col, fogNear: FOG.near, fogFar: FOG.far, sun: SUN, time: TIME }, extraU || {}),
+    uniforms: Object.assign({ fogCol: FOG.col, fogNear: FOG.near, fogFar: FOG.far, sun: SUN, time: TIME, nearCut: NEARCUT }, extraU || {}),
     vertexShader: vert || `varying vec3 vP; varying vec3 vN; varying float vDist;
       void main(){ vec4 w=modelMatrix*vec4(position,1.); vP=w.xyz; vN=normalize(mat3(modelMatrix)*normal); vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`,
-    fragmentShader: `uniform vec3 fogCol,sun; uniform float fogNear,fogFar,time; varying vec3 vP; varying vec3 vN; varying float vDist;
+    fragmentShader: `uniform vec3 fogCol,sun; uniform float fogNear,fogFar,time,nearCut; varying vec3 vP; varying vec3 vN; varying float vDist;
       ${NOISE_GLSL}
       vec3 fogIt(vec3 c){ return mix(c,fogCol,smoothstep(fogNear,fogFar,vDist)); }
       ${frag}`
@@ -1723,8 +1728,8 @@ function updatePlay(dt) {
   // people talk
   let near = null, nd = 9;
   for (const p of PEOPLE) { const d = p.mesh.position.distanceTo(P.pos); if (d < nd) { nd = d; near = p; } }
-  if (near && near !== talkP) { talkP = near; talkT = 4; const tgt = nearestStation(near.mesh.position); $("bubble").textContent = npcLine(near); sfx.talk(); }
-  if (talkP) { talkT -= dt; const v = tmp.copy(talkP.mesh.position); v.y += 5; v.project(camera); const b = $("bubble"); if (talkT > 0 && v.z < 1) { b.hidden = false; const hw = Math.min(135, innerWidth * .36); b.style.left = clamp((v.x * .5 + .5) * innerWidth, hw + 6, innerWidth - hw - 6) + "px"; b.style.top = clamp((-v.y * .5 + .5) * innerHeight, 70, innerHeight - 20) + "px"; } else { b.hidden = true; if (talkT <= 0 && nd > 12) talkP = null; } }
+  if (near && near !== talkP) { talkP = near; talkT = 4; const tgt = nearestStation(near.mesh.position); sayBubble(near, npcLine(near)); sfx.talk(); }
+  if (talkP) { talkT -= dt; const v = tmp.copy(talkP.mesh.position); v.y += 5; v.project(camera); const b = $("bubble"); if (talkT > 0 && v.z < 1) { b.hidden = false; const hw = b.offsetWidth / 2 || 120, px = (v.x * .5 + .5) * innerWidth, cx = clamp(px, hw + 12, innerWidth - hw - 12); b.style.left = cx + "px"; b.style.top = clamp((-v.y * .5 + .5) * innerHeight - 12, b.offsetHeight + 60, innerHeight - 40) + "px"; b.style.setProperty("--tx", clamp(px - cx + hw, 14, hw * 2 - 14) + "px"); } else { b.hidden = true; if (talkT <= 0 && nd > 12) talkP = null; } }
   updateCompass();
   for (const f of PLAY_HOOKS) f(dt);
 }
@@ -1751,7 +1756,7 @@ function updateMounts(dt) {
       G.anim = null; G.mode = "fly"; walker.visible = false; horse.visible = HORSE.here; player.userData.rider.visible = true;
       P.pos.y += 3; P.pitch = .5; P.roll = 0; P.speed = FLY * .8;
       for (let k = 0; k < 30; k++) sparks.spawn(P.pos.x, P.pos.y, P.pos.z, { vx: rand(-8, 8), vy: rand(-2, 8), vz: rand(-8, 8), life: rand(.6, 1.1), s0: 1.4, s1: 0, r: 1, gg: .92, b: .75 });
-      sfx.flap(); toast("לעוף! · F קרוב לקרקע כדי לנחות", 2.2); setModeHUD();
+      sfx.flap(); toast("לעוף! 🕊️", 1.4); setModeHUD();
     }
   } else if (A.type === "craneOut") {
     const t = A.t; player.visible = t < 3.2;
@@ -1905,6 +1910,7 @@ function step(dt) {
   else if (state === "scene" && SCENE_HOOK) SCENE_HOOK(dt);
   else if (state === "menu") { const v = stationView(STATIONS[0]); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix(); post.uniforms.tP.value = getPrintTex(45434); post.uniforms.pAsp.value = 1.49; post.uniforms.pMix.value = 1; }
   { const hi = state === "intro"; if (hi !== _hudIntro) { _hudIntro = hi; $("hud").style.visibility = hi ? "hidden" : ""; $("touch").style.visibility = hi ? "hidden" : ""; } }
+  NEARCUT.value = state === "play" ? 6.5 : 0;
   updateWorld(dt, T);
   const fl = Math.sin(T * (G.boosting ? 11 : 6.5)); wingL.rotation.z = fl * .55 + .1; wingR.rotation.z = -fl * .55 - .1;
   if (G.anim && G.anim.type === "craneIn" && G.anim.t > 1.4) { const f2 = Math.sin(T * 14); wingL.rotation.z = f2 * .8; wingR.rotation.z = -f2 * .8; }
@@ -2103,7 +2109,8 @@ applyItems();
   #shop .it .sw{width:22px;height:22px;border:2px solid #3b3a3a;flex:none}#shop .it b{flex:1;font-weight:normal}#shop .it i{font-style:normal;color:#8a5a20;white-space:nowrap}
   #shop .it[disabled]{opacity:.55}#shop .purse{margin-top:10px;color:var(--muted)}
   #actBtn{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);z-index:13;background:var(--red);color:#f6ead2;border:2px solid #f3e5c8;box-shadow:0 3px 0 #6e1d16;padding:9px 18px;font-size:18px;font-family:inherit;pointer-events:auto}
-  #actBtn[hidden]{display:none}`;
+  #actBtn[hidden]{display:none}
+  #actBtn.chip{bottom:auto;transform:translate(-50%,-100%);padding:2px 9px;font-size:14px;background:#f6eedb;color:#2b2b2b;border:1.5px solid #3b3a3a;box-shadow:1px 2px 0 rgba(0,0,0,.2);border-radius:10px}`;
   document.head.appendChild(st);
   const d = document.createElement("div"); d.className = "scr"; d.id = "shop"; d.hidden = true;
   d.innerHTML = `<div class="card"><h2 id="shopT"></h2><p class="who" id="shopW"></p><div id="shopL"></div><div class="purse" id="shopP"></div><div class="row"><button class="btn" id="shopX">להמשיך בדרך</button></div></div>`;
@@ -2187,7 +2194,9 @@ PLAY_HOOKS.push(dt => {
   let best = null, bd = 1e9;
   if (G.mode !== "fly") for (const pl of PLACES) { if (pl.hidden && pl.hidden()) continue; const d = Math.hypot(pl.x - P.pos.x, pl.z - P.pos.z); if (d < (pl.r || 6.5) && d < bd) { bd = d; best = pl; } }
   if (!best && G.mode !== "fly") { let np = null, nd = 7; for (const p of PEOPLE) { if (!p.mesh.visible) continue; const d = Math.hypot(p.mesh.position.x - P.pos.x, p.mesh.position.z - P.pos.z); if (d < nd) { nd = d; np = p; } } if (np) { TALK_PLACE.p = np; best = TALK_PLACE; } }
-  if (best !== placeNear) { placeNear = best; const b = $("actBtn"); b.hidden = !best; if (best) { b.textContent = (isTouch ? "👆 " : "E · ") + best.label; sfx.talk(); } }
+  if (best !== placeNear) { placeNear = best; const b = $("actBtn"); b.hidden = !best; if (best) { b.textContent = (isTouch ? "👆 " : "E · ") + best.label; sfx.talk(); } b.classList.toggle("chip", best === TALK_PLACE); }
+  if (placeNear === TALK_PLACE && TALK_PLACE.p) { const b = $("actBtn"), v = tmp.copy(TALK_PLACE.p.mesh.position); v.y += 6.5; v.project(camera); if (talkP === TALK_PLACE.p && !$("bubble").hidden) b.style.visibility = "hidden"; else { b.style.visibility = ""; b.style.left = clamp((v.x * .5 + .5) * innerWidth, 40, innerWidth - 40) + "px"; b.style.top = clamp((-v.y * .5 + .5) * innerHeight, 80, innerHeight - 60) + "px"; } }
+  else { const b = $("actBtn"); b.style.visibility = ""; b.style.left = ""; b.style.top = ""; }
 });
 const TALK_PLACE = { label: "לדבר 💬", act: () => talkTo(TALK_PLACE.p) };
 function doAct() { if (placeNear && state === "play") placeNear.act(); }
@@ -2584,7 +2593,7 @@ const MOMENTS = {
 };
 const lastSaid = new Set(); let lastLine = "";
 function npcLine(p) {
-  const hr = new Date().getHours(), got = STATIONS.filter(s => s.got).length, x = p.mesh.position.x, z = p.mesh.position.z;
+  const hr = Math.hypot(p.mesh.position.x - EDO.x, p.mesh.position.z - EDO.z) < 260 ? 18 : T < 150 ? 8 : 13, got = STATIONS.filter(s => s.got).length, x = p.mesh.position.x, z = p.mesh.position.z;
   const ctx = [...MOMENTS[hr < 5 ? "night" : hr < 11 ? "morning" : hr < 17 ? "day" : hr < 21 ? "evening" : "night"]];
   if (Math.hypot(x - STORM.x, z - STORM.z) < 320) ctx.push(...MOMENTS.storm, ...MOMENTS.storm);
   for (const id of [53787, 44981]) { const s = STATIONS.find(q => q.id === id); if (Math.hypot(x - s.x, z - s.z) < 180) ctx.push(...MOMENTS.snow, ...MOMENTS.snow); }
@@ -2607,7 +2616,9 @@ function npcLine(p) {
   return line;
 }
 // pressing E (or the button) next to someone: they say something new
-function talkTo(p) { talkP = p; talkT = 5; $("bubble").textContent = npcLine(p); sfx.talk(); }
+function talkTo(p) { talkP = p; talkT = 5; sayBubble(p, npcLine(p)); sfx.talk(); }
+const KIND_NAME = { farmer: "איכר", fisher: "דייג", porter: "סבל", traveler: "מטייל בדרך", woman: "בת הכפר", monk: "נזיר", samurai: "סמוראי", pilgrim: "עולה רגל", parasol: "בעלת השמשייה", child: "ילד מהכפר" };
+function sayBubble(p, txt) { const b = $("bubble"); b.innerHTML = `<b>${p.name || KIND_NAME[p.kind || p.type] || "עובר אורח"}</b>${txt}`; talkT = Math.max(talkT, 3 + txt.length * .06); }
 
 /* ---------- the town gate: new travellers arrive here ---------- */
 const TOWN_GATE = { x: 1478, z: roadZ(1478), yaw: -1.64 };
