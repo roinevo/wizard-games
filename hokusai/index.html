@@ -1041,7 +1041,7 @@ station(56132, "ביצות אושיבורי", 2350, -620, { up: 16, d: [74, 40],
 });
 station(36498, "אגם האקונה", -1250, 900, { up: 0, y: 120, d: [40, -300], look: [-1450, 0, 650], fov: 62 }, null, s => { VILLAGES.push([-1300, 420, 10]); });
 station(36496, "חוף שיצ'יריגהאמה", -1000, 1650, { up: 18, d: [0, 0], look: [-300, 120, 600], fov: 58 }, null, s => { PINEGROVES.push([s.x + 80, s.z - 60, 60, 25]); });
-station(54868, "השתקפות באגם מיסאקה", -150, -1760, { up: 12, d: [0, 60], look: [-130, 70, -800], fov: 60 }, null, s => { MIRROR_FUJI.on = true; VILLAGES.push([-380, -1650, 8]); });
+station(54868, "השתקפות באגם מיסאקה", -150, -1760, { up: 12, d: [0, 60], look: [-130, 70, -800], fov: 60, aimFuji: [5, -18.4] }, null, s => { MIRROR_FUJI.on = true; VILLAGES.push([-380, -1650, 8]); });
 station(56786, "מעבר מישימה", -1700, 1050, { up: 3, d: [0, 40], look: [-1500, 180, 600], fov: 58 }, null, s => {
   const [tx, tz] = [s.x, s.z]; const ty = landH(tx, tz);
   { const L = Math.hypot(tx, tz), ux = -tx / L, uz = -tz / L, qx = -uz, qz = ux; const cx = tx - ux * 46 + qx * 13, cz = tz - uz * 46 + qz * 13; s.view.d = [cx - tx, cz - tz]; s.view.up = 9; s.view.look = [cx + ux * 46 - qx * 7, landH(cx, cz) + 17, cz + uz * 46 - qz * 7]; s.view.fov = 64; }
@@ -2731,7 +2731,7 @@ function rescaleWorld(K) {
     const zq = zoneOf(st.x, st.z), sk = zq && zq.id === st.id ? KA[st.id] || K : K;
     st.x *= sk; st.z *= sk; v.d = [ncx - st.x, ncz - st.z];
     if (v.dNew) v.d = v.dNew.slice(); // camera offset given directly in final units
-    if (v.aimFuji) { // aim so the Fuji peak sits at a given place in the frame: [right deg, down deg]
+    if (v.aimFuji) { // aim so the Fuji peak sits at [deg right of centre, deg BELOW centre as a negative number] (NB: opposite to aimFujiFrom)
       const cx2 = st.x + v.d[0], cz2 = st.z + v.d[1], cy = (v.y !== undefined ? v.y : Math.max(gNew(cx2, cz2), 0) + v.up), hl = Math.hypot(cx2, cz2);
       const hx = -cx2 / hl, hz = -cz2 / hl, a = v.aimFuji[0] * Math.PI / 180, rx = -hz, rz = hx;
       const fx = Math.cos(a) * hx - Math.sin(a) * rx, fz = Math.cos(a) * hz - Math.sin(a) * rz;
