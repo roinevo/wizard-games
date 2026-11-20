@@ -68,8 +68,8 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 #bubble[hidden]{display:none}
 #cap{position:fixed;bottom:7%;left:50%;transform:translateX(-50%);background:rgba(239,227,198,.94);border:1px solid #8a7550;padding:8px 18px;font-size:18px;text-align:center;opacity:0;transition:opacity .8s;z-index:12;pointer-events:none}
 #cap.on{opacity:1}
-#mapScr .card{max-width:min(92vw,86vh)}
-#mapCv{width:100%;aspect-ratio:600/640;display:block;border:1px solid #8a7550;cursor:crosshair}
+#mapScr .card{max-width:min(92vw,74vh);padding:14px 18px}
+#mapCv{position:static;width:100%;height:auto;aspect-ratio:600/640;display:block;border:1px solid #8a7550;cursor:crosshair}
 .modeTxt{position:absolute;bottom:14px;left:14px;background:rgba(239,227,198,.85);border:1px solid #a8916a;padding:3px 10px;font-size:16px}
 #tCrane,#tHorse,#tMap{position:absolute;bottom:156px;left:30px;width:66px;height:66px;border-radius:50%;background:rgba(239,227,198,.88);border:2px solid #8a7550;font-size:28px;pointer-events:auto;padding:0}
 #tHorse{left:104px;bottom:104px}#tMap{bottom:232px;width:54px;height:54px;font-size:22px;left:36px}
@@ -1856,12 +1856,19 @@ function toggleMap() {
   if (state !== "play") return;
   state = "map"; $("mapScr").hidden = false; renderMap();
 }
+const MAP_THUMB = {};
 function renderMap() {
   if (!mapImg) drawMapBase();
   const cv = $("mapCv"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
   g.drawImage(mapImg, 0, 0, W, H);
   g.strokeStyle = "rgba(120,80,40,.6)"; g.setLineDash([6, 5]); g.lineWidth = 2; g.beginPath(); ROAD.pts.forEach((p, i) => { const [x, y] = toMap(p[0], p[1], W, H); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.setLineDash([]);
-  for (const s of STATIONS) { const [x, y] = toMap(s.x, s.z, W, H); g.fillStyle = s.got ? "#8a7a5a" : "#b3362b"; g.strokeStyle = "#f3e5c8"; g.lineWidth = 2; g.fillRect(x - 6, y - 6, 12, 12); g.strokeRect(x - 6, y - 6, 12, 12); if (s === target) { g.strokeStyle = "#1f3d6d"; g.lineWidth = 3; g.strokeRect(x - 10, y - 10, 20, 20); } }
+  // uncollected prints: a small red seal with 富; collected: a thumbnail of the print itself
+  for (const s of STATIONS) { const [x, y] = toMap(s.x, s.z, W, H);
+    if (s.got) { const im = MAP_THUMB[s.id] || (MAP_THUMB[s.id] = Object.assign(new Image(), { src: imgURL(s.id), onload: () => { if (state === "map") renderMap(); } }));
+      g.fillStyle = "#f3e5c8"; g.fillRect(x - 13, y - 10, 26, 20); if (im.complete && im.naturalWidth) g.drawImage(im, x - 12, y - 9, 24, 18); g.strokeStyle = "#3b3a3a"; g.lineWidth = 1; g.strokeRect(x - 13, y - 10, 26, 20); }
+    else { g.fillStyle = "#b3362b"; g.strokeStyle = "#f3e5c8"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x - 7, y - 8); g.lineTo(x + 8, y - 7); g.lineTo(x + 7, y + 8); g.lineTo(x - 8, y + 7); g.closePath(); g.fill(); g.strokeRect(x - 5, y - 5, 10, 10);
+      g.fillStyle = "#f3e5c8"; g.font = "bold 9px serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("富", x, y + .5); g.textBaseline = "alphabetic"; }
+    if (s === target) { g.strokeStyle = "#1f3d6d"; g.lineWidth = 3; g.strokeRect(x - 15, y - 12, 30, 24); } }
   const [px, py] = toMap(P.pos.x, P.pos.z, W, H);
   g.save(); g.translate(px, py); g.rotate(-P.yaw + Math.PI); g.fillStyle = "#1f3d6d"; g.beginPath(); g.moveTo(0, -11); g.lineTo(7, 8); g.lineTo(0, 4); g.lineTo(-7, 8); g.closePath(); g.fill(); g.restore();
 }
@@ -2571,7 +2578,7 @@ const GUIDE = window.GUIDE = (() => {
 /* ---------- what people say: a voice per kind, the day, the weather, and what they notice ---------- */
 const VOICES = {
   farmer: ["השנה האורז גבוה עד הברך. אם הגשם יבוא בזמן, יהיה קציר טוב", "אני שותל אורז מאז שהייתי בגובה של שתיל", "הגב כואב, אבל כשהשדה מוצף והשמיים משתקפים בו, שוכחים", "הדחליל שלי מפחיד רק את העורבים העצלנים", "אחרי הקציר נייבש את האורז על המתלים, ואז נחגוג", "כשפוג'י חובש כובע של ענן, מחר יירד גשם. ככה אמר סבא שלי", "צפרדעים שרות בשדה בלילה. זה השיר הכי ישן ביפן", "ראיתי פעם את הצייר הזקן מצייר את השדה שלי. הוא צייר אותי קטן כמו נמלה", "בוץ עד הקרסוליים ושמש על הראש. ככה זה באמצע הקיץ", "השכן שלי טוען שהדחליל שלו מצא חותם זהב. הדחליל!", "המים זורמים מההר לשדות. ההר הזה מאכיל את כולנו", "עדיף לשתול שורה ישרה אחת מאשר לחלום על עשר", "בחורף אני קולע סנדלי קש. זוג אחד מחזיק עונה שלמה", "הרוח מהים מביאה מלח. האורז ליד החוף קצת מלוח", "המס על האורז כבד, אבל השוק בעיירה קונה כל מה שנשאר"],
-  fisher: ["הים היום רגוע. אתמול הגלים היו כמו ציפורניים לבנות", "בבוקר תפסתי בוניטו גדול כמו ילד. הוא כבר בדרך לשוק של אדו", "מהסירה, פוג'י נראה כאילו הוא צף על המים", "אומרים שהגל הגדול כמעט בלע שלוש סירות. אנחנו חזרנו כולנו", "דייג טוב מקשיב לשחפים, לא לסוחרים", "הרשת קרועה שוב. כנראה דג שלא אהב את השכונה", "בלילה הדגים עולים לראות את הירח", "הסירה שלי ישנה יותר ממני, והיא שוחה טוב יותר", "בגאות שותקים, בשפל מספרים סיפורים", "אשתי אומרת שאני מריח כמו ים. אני חושב שזו מחמאה", "צדפים בחוף נובוטו, תמנונים בצוקודה. לכל חוף האוצר שלו", "כשהגל עולה, מצמידים את המשוטים ומתפללים", "הים לא שואל מי אתה. הוא רק בודק אם אתה יודע לחתור", "מי שמסתכל רק על הגלים, מפספס את הדגים", "מהמים רואים את כל ההר, מהשורש עד השלג"],
+  fisher: ["הים היום רגוע. אתמול הגלים היו כמו ציפורניים לבנות", "בבוקר תפסתי בוניטו גדול כמו ילד. הוא כבר בדרך לשוק של אדו", "מהסירה, פוג'י נראה כאילו הוא צף על המים", "אומרים שהגל הגדול כמעט בלע שלוש סירות. אנחנו חזרנו כולנו", "דייג טוב מקשיב לשחפים, לא לסוחרים", "הרשת קרועה שוב. כנראה דג שלא אהב את השכונה", "בלילה הדגים עולים לראות את הירח", "הסירה שלי ישנה יותר ממני, והיא שוחה טוב יותר", "בגאות שותקים, בשפל מספרים סיפורים", "אשתי אומרת שאני מריח כמו ים. אני חושב שזו מחמאה", "צדפים בחוף נובוטו, תמנונים בצוקודה. לכל חוף האוצר שלו", "כשהגל עולה, מצמידים את המשוטים ומתפללים", "הים לא שואל מאיפה באים. הוא רק בודק מי יודע לחתור", "מי שמסתכל רק על הגלים, מפספס את הדגים", "מהמים רואים את כל ההר, מהשורש עד השלג"],
   porter: ["שני סלים, מוט אחד, וגב שזוכר כל עלייה", "עוד ריו אחד ואני בתחנה הבאה. ריו זה בערך ארבעה קילומטר", "אני סוחב סאקה לאדו. אסור לי לטעום. זה הכי קשה בעבודה", "במעבר נהר אוי סוחבים את הנוסעים על הכתפיים. סלים לפחות לא מתלוננים", "בטוקאידו יש חמישים ושלוש תחנות. ספרתי את כולן בכאב גב", "אם המשא שלי היה נוצות, הייתי עף כמו העגור הזה", "הדנגו בבית התה הוא השכר האמיתי שלי", "המוט מתכופף, אבל לא נשבר. גם אני", "פעם סחבתי ארון מאדו לקיוטו. הבעלים ישב בתוכו", "הרגליים יודעות את הדרך. הראש רק מצטרף", "גשם? מכסים את הסלים בקש, ואת עצמי בתקווה", "השכר טוב, אבל הסנדלים נגמרים מהר יותר מהכסף", "כל אבן בדרך הזאת מכירה אותי בשם", "מי שסוחב את העולם על הכתפיים, לפחות רואה אותו מקרוב", "שמעתי שיש עגור שנושא נוסעים. סוף סוף מתחרה"],
   traveler: ["יצאתי מאדו לפני שבוע. עוד שלושה שבועות לקיוטו, אם הרגליים ירצו", "בכל תחנה אני קונה הדפס קטן למזכרת. התיק כבר כבד מתמונות", "הדרך הכי יפה היא זו שלא ממהרים בה", "בהודוגאיה ישנתי בפונדק עם אוכל טוב ופשפשים מצוינים", "צריך מכתב מעבר כדי לעבור במחסום הקונה. השומרים שם לא מחייכים", "כשפוג'י מימין, הולכים לקיוטו. כשהוא משמאל, חוזרים הביתה", "קניתי סנדלי קש חדשים. הישנים ממשיכים ללכת בלעדיי", "מטיילים נפגשים, מחליפים סיפורים ונפרדים. כמו עננים", "הכי טעים באוכל של הדרך זה הרעב", "אני כותב יומן מסע. בינתיים יש בו בעיקר מזג אוויר", "אמא שלי אמרה: מי שהולך לאט, הולך רחוק", "פגשתי צייר זקן ומשונה שצייר את פוג'י מתוך חבית", "בלילה בפונדק כולם מספרים על רוחות. אף אחד לא ישן", "הדרך לא נגמרת. רק המטיילים מתחלפים", "יש אומרים שהטוקאידו היא הדרך החשובה בעולם. הם כנראה לא היו בסין"],
   woman: ["אני מביאה אוכל לבעלי בשדה. הוא תמיד אומר שאיחרתי, ותמיד אוכל הכל", "הקימונו הזה היה של סבתא שלי. הכחול לא דהה", "בעיירה יש צובעת שמכירה כל גוון של כחול", "קמתי לפני השמש לשאוב מים. ההר היה ורוד", "שמעתי שבתיאטרון מציגים היום את הסיפור על הגל והדייגים", "הבת שלי רוצה לשחק בקאבוקי. אמרתי לה שרק גברים משחקים שם. היא צחקה", "כשהדובדבן פורח ביושינו, כל הכפר נוסע לראות", "אני אורגת בערבים. כל בד מספר מה חשבתי באותו שבוע", "המשפחה שלי גרה למרגלות ההר כבר עשרה דורות", "בבית התה סיפרו שראו עגור לבן עם רוכב. אמרתי שזה שטויות. ואז ראיתי", "העיקר בחיים: מרק חם, גג שלא דולף ושכנים שלא מרכלים. שניים מתוך שלושה זה טוב", "צריך להוריד את הכביסה. פוג'י כבר חובש כובע של ענן", "בחג הפנסים כל הנהר מתמלא אורות קטנים", "הבן שלי אסף שלושה חותמי־יהלום ולא מוכן לספר איפה", "יש לי מתכון לדנגו שאפילו בית התה מקנא בו"],
@@ -2964,6 +2971,7 @@ if (/fasttravel|mapshow/.test(HASH)) setTimeout(() => {
   const cv = $("mapCv"), r = cv.getBoundingClientRect(), [x, y] = toMap(s.x, s.z, cv.width, cv.height);
   cv.dispatchEvent(new MouseEvent("click", { clientX: r.left + x / cv.width * r.width, clientY: r.top + y / cv.height * r.height, bubbles: true }));
   console.log(`[travel] dest-btn hidden=${$("travelBtn").hidden} info=${$("mapInfo").textContent}`);
+  { const rr = (id) => { const b = $(id).getBoundingClientRect(); return `${id}:${b.left|0},${b.top|0} ${b.width|0}x${b.height|0}`; }; console.log(`[mapbox] ${rr("mapCv")} ${rr("mapScr")} win=${innerWidth}x${innerHeight}`); }
   if (/fasttravel/.test(HASH)) { $("travelBtn").click(); for (let i = 0; i < 30; i++) step(1 / 30); console.log(`[travel] state=${state} mode=${G.mode} pos=${P.pos.x.toFixed(0)},${P.pos.z.toFixed(0)}`); }
 }, 1200);
 if (/dist/.test(HASH)) setTimeout(() => {
