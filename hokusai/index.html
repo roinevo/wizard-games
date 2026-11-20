@@ -2706,7 +2706,7 @@ function rescaleWorld(K) {
   // nothing instanced (pines, houses, props) may stand right in front of a station camera's lens
   const LENS = STATIONS.filter(s => !s.view.sky).map(s => { const v = s.view, d = v.d || [0, 0], cx = s.x + d[0], cz = s.z + d[1], cy = v.y !== undefined ? v.y : gNew(cx, cz) + v.up, dx = v.look[0] - cx, dz = v.look[2] - cz, l = Math.hypot(dx, dz) || 1; return [cx, cz, cx + dx / l * 45, cz + dz / l * 45, cy]; });
   let nLens = 0;
-  for (const c of scene.children) { if (!c.isInstancedMesh || PRE_WORLD.has(c) || skip.has(c)) continue; const a = c.instanceMatrix.array, P0 = c.position; let ch = false;
+  for (const c of scene.children) { if (!c.isInstancedMesh || PRE_WORLD.has(c) || skip.has(c) || c === CRESTS.mesh) continue; const a = c.instanceMatrix.array, P0 = c.position; let ch = false;
     for (let i = 0; i < c.count; i++) { const o = i * 16; if (a[o] === 0 && a[o + 5] === 0) continue; const x = a[o + 12] + P0.x, z = a[o + 14] + P0.z;
       const top = a[o + 13] + P0.y + 6 * Math.hypot(a[o + 4], a[o + 5], a[o + 6]);
       for (const q of LENS) if (top > q[4] - 1.5 && segDist(x, z, q[0], q[1], q[2], q[3]) < 7) { for (let k = 0; k < 12; k++) a[o + k] = 0; ch = true; nLens++; break; } }
@@ -2742,6 +2742,37 @@ function rescaleWorld(K) {
   if (/dist|stats/.test(HASH)) console.log(`[rescale] K=${K} objects=${nObj} instances=${nInst} hidden=${nHid}`);
 }
 rescaleWorld(WORLD_K);
+
+/* ---------- clear instanced clutter (houses, trees, props) from a wedge in front of a station camera ---------- */
+function clearWedge(C, f, along, half0, spread) {
+  let n = 0;
+  for (const c of scene.children) { if (!c.isInstancedMesh || PRE_WORLD.has(c) || c === CRESTS.mesh) continue; const a = c.instanceMatrix.array, P0 = c.position; let ch = false;
+    for (let i = 0; i < c.count; i++) { const o = i * 16; if (a[o] === 0 && a[o + 5] === 0) continue; const dx = a[o + 12] + P0.x - C[0], dz = a[o + 14] + P0.z - C[1];
+      const al = dx * f[0] + dz * f[1], sd = Math.abs(-dx * f[1] + dz * f[0]); if (al > -4 && al < along && sd < half0 + al * spread) { for (let k = 0; k < 12; k++) a[o + k] = 0; ch = true; n++; } }
+    if (ch) c.instanceMatrix.needsUpdate = true; }
+  return n;
+}
+
+/* ---------- Hodogaya (55458): a row of tall pines across the view, Fuji low between the trunks, travellers and a horse ---------- */
+(function dressHodo() {
+  const s = STATIONS.find(q => q.id === 55458); if (!s) return;
+  const v = stationView(s), C = [v.pos.x, v.pos.z], hl = Math.hypot(C[0], C[1]), f = [-C[0] / hl, -C[1] / hl], r = [-f[1], f[0]];
+  const H = (x, z) => Math.max(landH(x, z), 0), cy = H(C[0], C[1]) + 3;
+  const nCl = clearWedge(C, f, 70, 6, .9);
+  const pines = []; for (let k = -4; k <= 4; k++) { const al = 50 + Math.sin(k * 1.7) * 4, sd = k * 9.5 + 5 + Math.sin(k * 2.3) * 2.5, x = C[0] + f[0] * al + r[0] * sd, z = C[1] + f[1] * al + r[1] * sd; pines.push([x, H(x, z) - .5, z, k * 1.3, 1.25 + (k & 1) * .15]); }
+  const pm = instances(KIT.pine(), pines); // scaled tall below
+  scene.children.slice(-12).forEach(c => { if (c.isInstancedMesh && c.geometry && c.count === pines.length) { const a = c.instanceMatrix.array; for (let i = 0; i < c.count; i++) { const o = i * 16; a[o + 4] *= 1.6; a[o + 5] *= 1.6; a[o + 6] *= 1.6; } c.instanceMatrix.needsUpdate = true; } });
+  // a packhorse with its groom on the road in front, travellers passing
+  const hz = makeHorse(), hx = C[0] + f[0] * 16 - r[0] * 5, hzz = C[1] + f[1] * 16 - r[1] * 5; hz.position.set(hx, H(hx, hzz), hzz); hz.rotation.y = Math.atan2(r[0], r[1]); hz.scale.setScalar(1.1); scene.add(hz);
+  addPerson("porter", hx + r[0] * 3.5, hzz + r[1] * 3.5, { ry: Math.atan2(r[0], r[1]) });
+  const p0 = [C[0] + f[0] * 14 - r[0] * 60, C[1] + f[1] * 14 - r[1] * 60], p1 = [C[0] + f[0] * 14 + r[0] * 60, C[1] + f[1] * 14 + r[1] * 60];
+  for (let k = 0; k < 4; k++) { const p = addPerson(["traveler", "monk", "pilgrim", "porter"][k], p0[0], p0[1], { path: k & 1 ? [p1, p0] : [p0, p1], speed: rand(1, 1.6) }); p.u = k / 4; }
+  s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0;
+  const el = Math.atan2(FUJI_H * .95 - cy, hl) - 6 * Math.PI / 180, a = 7 * Math.PI / 180;
+  const fx = Math.cos(a) * f[0] + Math.sin(a) * r[0], fz = Math.cos(a) * f[1] + Math.sin(a) * r[1];
+  s.view.look = [C[0] + fx * 100, cy + Math.tan(el) * 100, C[1] + fz * 100];
+  if (/dbg/.test(HASH)) console.log(`[hodo] cleared=${nCl}`);
+})();
 
 /* ---------- Kajikazawa (56727): the fisherman's rock in the rushing Fuji river, Fuji behind to the right ---------- */
 (function dressKaji() {
@@ -3069,6 +3100,26 @@ if (mT) setTimeout(() => {
   if (/buy/.test(HASH)) { const b = document.querySelector("#shopL .it"); if (b) b.click(); for (let i = 0; i < 30; i++) step(1 / 30); }
   console.log(`[town] near=${placeNear && placeNear.label} state=${state} purse=${purse()} items=${(SAVE.items || []).join(",")}`);
 }, 1400);
+
+/* ---------- test hook: #sheet / #sheetst renders every station view into one contact sheet (one headless run) ---------- */
+if (/^#sheet/.test(HASH)) setTimeout(() => {
+  const st = /sheetst/.test(HASH); enterWorld(); state = "viewtest"; $("hud").hidden = true;
+  STATIONS.forEach(s => getPrintTex(s.id));
+  setTimeout(() => {
+    const cols = 6, W = Math.floor(innerWidth / cols), Hh = Math.floor(W / 1.6), rows = Math.ceil(STATIONS.length / cols);
+    const cv = document.createElement("canvas"); cv.width = W * cols; cv.height = Hh * rows; const g = cv.getContext("2d"); g.fillStyle = "#222"; g.fillRect(0, 0, cv.width, cv.height);
+    STATIONS.forEach((s, i) => {
+      P.pos.copy(s.pos); for (let k = 0; k < 4; k++) updateMood(10); s.marker.visible = false;
+      const v = stationView(s); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix();
+      const tx = getPrintTex(s.id); post.uniforms.tP.value = tx; post.uniforms.pAsp.value = tx.image && tx.image.width ? tx.image.width / tx.image.height : 1.49; post.uniforms.pMix.value = st ? .5 : 0;
+      updateWorld(.016, T); render(); g.drawImage(renderer.domElement, (i % cols) * W, Math.floor(i / cols) * Hh, W, Hh);
+      g.fillStyle = "rgba(0,0,0,.6)"; g.fillRect((i % cols) * W, Math.floor(i / cols) * Hh, 64, 16); g.fillStyle = "#fff"; g.font = "12px sans-serif"; g.fillText(s.id, (i % cols) * W + 4, Math.floor(i / cols) * Hh + 12);
+      s.marker.visible = true;
+    });
+    state = "pause"; cv.style.cssText = "position:fixed;left:0;top:0;width:" + cv.width + "px;height:" + cv.height + "px;z-index:999"; document.body.appendChild(cv);
+    console.log("[sheet] done " + STATIONS.length);
+  }, 2500);
+}, 600);
 })();
 </script>
 </body>
