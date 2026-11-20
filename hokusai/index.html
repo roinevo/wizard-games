@@ -141,7 +141,7 @@ function writeSave(s) { try { localStorage.setItem(SAVEKEY, JSON.stringify(s)); 
 let SAVE = loadSave();
 
 /* ---------------- renderer + post ---------------- */
-const PR = Math.min(window.devicePixelRatio || 1, 1.5);
+let PR = Math.min(window.devicePixelRatio || 1, 1.5); // lowered at run time by the adaptive-quality hook on slow devices
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 renderer.setPixelRatio(PR);
 document.body.prepend(renderer.domElement);
@@ -3547,6 +3547,16 @@ if (/introat(\d+)/.test(HASH)) setTimeout(() => { const n = +HASH.match(/introat
       const g = AC.createGain(); g.gain.value = 0; const l = AC.createOscillator(); l.frequency.value = 3.1; const lg = AC.createGain(); lg.gain.value = .012; l.connect(lg); lg.connect(g.gain);
       n.connect(bp); bp.connect(g); out(g, .3); n.start(); l.start(); mur = g; }
     mur.gain.setTargetAtTime(clamp(town, 0, 1) * .022, t, 1);
+  }); })();
+
+/* ---------- adaptive quality: on a slow device, step down the render resolution and the draw distance ---------- */
+(() => { let n = 0, acc = 0, stage = 0, last = 0; const on = !/^#./.test(HASH) || /quality/.test(HASH);
+  PLAY_HOOKS.push(() => { if (!on || stage >= 2) return; const now = performance.now(); if (last && now - last < (/qforce/.test(HASH) ? 1e5 : 500)) { acc += now - last; n++; } last = now; if (/qforce/.test(HASH) && n % 30 === 1) console.log(`[quality] n=${n} state=${state}`);
+    if (n < (/qforce/.test(HASH) ? 20 : 90)) return; const ms = acc / n; acc = 0; n = 0;
+    if (ms > (/qforce/.test(HASH) ? 0 : 36)) { stage++; PR = Math.max(.6, PR * .72); renderer.setPixelRatio(PR); resize();
+      for (const im of CHUNKS) im.userData.maxD = Math.min(im.userData.maxD || 1e9, stage === 1 ? 900 : 600);
+      console.log(`[quality] step ${stage}: ${ms.toFixed(0)} ms/frame -> pixel ratio ${PR.toFixed(2)}, draw distance ${stage === 1 ? 900 : 600}`); }
+    else stage = 2; // fast enough: stop measuring
   }); })();
 })();
 </script>
