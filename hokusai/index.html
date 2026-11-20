@@ -1033,7 +1033,7 @@ station(56216, "מפרץ נובוטו", 1500, 1420, { up: 5, d: [0, -60], look: 
   for (let k = 0; k < 6; k++) addPerson(k % 2 ? "farmer" : "woman", s.x + rand(-25, 25), s.z + rand(30, 70), { y: -.3, bend: 1 });
 });
 station(56132, "ביצות אושיבורי", 2350, -620, { up: 16, d: [74, 40], look: [2234, 12, -535], fov: 56 }, null, s => {
-  const b = makeBoat(); b.scale.set(1.6, 1.6, 1.4); b.position.set(s.x + 30, 0, s.z + 50); b.rotation.y = .6; scene.add(b); BOATS.push(b);
+  const b = makeBoat(); b.scale.set(1.6, 1.6, 1.4); b.position.set(s.x + 30, 0, s.z + 50); b.rotation.y = .6; scene.add(b); BOATS.push(b); s.ushBoat = b;
   const reeds = []; for (let k = 0; k < 500; k++) { const a = rand(0, 6.28), r = rand(20, 140); const x = s.x + Math.cos(a) * r + 30, z = s.z + Math.sin(a) * r + 50; reeds.push([x, Math.max(-1, landH(x, z)), z, rand(0, 6), rand(.8, 1.4)]); }
   instances(KIT.reed(), reeds);
 });
@@ -2773,6 +2773,24 @@ function clearWedge(C, f, along, half0, spread) {
   const fx = Math.cos(a) * f[0] + Math.sin(a) * r[0], fz = Math.cos(a) * f[1] + Math.sin(a) * r[1];
   s.view.look = [C[0] + fx * 100, cy + Math.tan(el) * 100, C[1] + fz * 100];
   if (/dbg/.test(HASH)) console.log(`[hodo] cleared=${nCl}`);
+})();
+
+/* aim a station camera at C (final units): turn `right` degrees right of the line to Fuji (so Fuji appears LEFT for positive values), peak `up` degrees above centre */
+function aimFujiFrom(s, C, cy, right, up) {
+  const deg = Math.PI / 180, hl = Math.hypot(C[0], C[1]), jx = -C[0] / hl, jz = -C[1] / hl, a = right * deg;
+  const fx = Math.cos(a) * jx - Math.sin(a) * jz, fz = Math.cos(a) * jz + Math.sin(a) * jx, el = Math.atan2(FUJI_H * .95 - cy, hl) - up * deg;
+  s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0; s.view.look = [C[0] + fx * 100, cy + Math.tan(el) * 100, C[1] + fz * 100];
+  return [fx, fz];
+}
+
+/* ---------- Ushibori (56132): the big boat among the reeds of the marsh, Fuji at the upper right ---------- */
+(function dressUshibori() {
+  const s = STATIONS.find(q => q.id === 56132), L = LAKES.find(q => q.name === "ushibori"); if (!s || !L || !s.ushBoat) return;
+  const deg = Math.PI / 180, B = [L.x, L.z], bl = Math.hypot(B[0], B[1]), jx = -B[0] / bl, jz = -B[1] / bl, a = -18.8 * deg;
+  const fx = Math.cos(a) * jx - Math.sin(a) * jz, fz = Math.cos(a) * jz + Math.sin(a) * jx, C = [B[0] - fx * 40, B[1] - fz * 40];
+  s.ushBoat.position.set(B[0], 0, B[1]); s.ushBoat.rotation.y = Math.atan2(fx, fz) + .75;
+  aimFujiFrom(s, C, 6, -18.8, 10.9);
+  clearWedge(C, [fx, fz], 30, 3, .5);
 })();
 
 /* ---------- Hakone (36498): from the hills above the lake, Fuji small at the left beyond the water ---------- */
