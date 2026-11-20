@@ -1942,7 +1942,7 @@ function enterWorld() {
   audioInit();
   $("startScr").hidden = true; $("hud").hidden = false; $("touch").hidden = !isTouch;
   // new travellers arrive at the east gate of the post town, looking down the street toward Fuji
-  P.pos.set(TOWN_GATE.x - 16, 0, TOWN_GATE.z - 1); P.yaw = TOWN_GATE.yaw; P.pitch = 0; P.speed = FLY;
+  { const sx = TOWN_GATE.x - 16; P.pos.set(sx, 0, roadZ(sx)); P.yaw = TOWN_GATE.yaw; } P.pitch = 0; P.speed = FLY; // on the road centre line, looking down the street toward Fuji
   P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
   applyCrestSave(); setMode("walk"); poseTraveler(walker, 0, 0, false); walker.position.copy(P.pos); walker.rotation.set(0, P.yaw, 0);
   // open on the real Great Wave print, dissolve into the land
