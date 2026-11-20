@@ -299,7 +299,8 @@ const PRINT_VS = `varying vec3 vP; varying vec3 vN; varying float vDist; varying
     #endif
     vec4 w=modelMatrix*lp; vP=w.xyz; vN=normalize(mat3(modelMatrix)*nn); vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`;
 const PRINT_FS = `uniform vec3 uCol; varying vec3 vC;
-  void main(){ if(vDist<nearCut){ vec2 q=mod(floor(gl_FragCoord.xy),4.); float th=fract((q.x*4.+q.y)*.4375+q.y*.0625); if(vDist<nearCut*.6||th>(vDist-nearCut*.6)/(nearCut*.4)) discard; }
+  void main(){ vec2 q=mod(floor(gl_FragCoord.xy),4.); float th=fract((q.x*4.+q.y)*.4375+q.y*.0625);
+    if(vDist<nearCut){ if(vDist<nearCut*.6||th>(vDist-nearCut*.6)/(nearCut*.4)) discard; }
     vec3 n=normalize(vN); if(!gl_FrontFacing) n=-n; float l=dot(n,sun); vec3 c=vC*uCol;
     float lit=smoothstep(.06,.12,l);
     float near=1.-smoothstep(50.,140.,vDist);
@@ -1733,6 +1734,8 @@ function updatePlay(dt) {
     P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
     const nx = P.pos.x + P.fwd.x * sp * dt, nz = P.pos.z + P.fwd.z * sp * dt;
     if (landH(nx, nz) > -.6) { P.pos.x = nx; P.pos.z = nz; } else G.spd *= .5;
+    // houses are solid: push out of any building circle (slides along the wall)
+    if (window.SOLIDS) { const pr = onHorse ? 2.2 : 1; for (const c of SOLIDS(P.pos.x, P.pos.z)) { const dx = P.pos.x - c[0], dz = P.pos.z - c[1], d = Math.hypot(dx, dz), r = c[2] + pr; if (d < r && d > 1e-3) { P.pos.x = c[0] + dx / d * r; P.pos.z = c[1] + dz / d * r; } } }
     P.pos.y = Math.max(landH(P.pos.x, P.pos.z), -.6);
     const a = Math.abs(sp);
     if (onHorse) {
@@ -3094,6 +3097,24 @@ function aimFujiFrom(s, C, cy, right, up) {
     let best = null; for (let r = 4; r < 90 && !best; r += 4) for (let a = 0; a < 6.28; a += .2) { const x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r; if (landH(x, z) > .8) { best = [x, z]; break; } }
     if (!best) continue; c.x = best[0]; c.z = best[1]; c.y = landH(c.x, c.z) + 2.2; gp.setXYZ(c.id, c.x, c.y, c.z); n++; }
   gp.needsUpdate = true; if (/crestcheck/.test(HASH)) console.log("[crestcheck] moved " + n);
+})();
+
+/* ---------- solid buildings: circles from the final instance matrices (houses, kura, shop-houses), in a hash grid ---------- */
+(function buildSolids() {
+  const C = 24, grid = new Map(), key = (i, j) => i * 100003 + j; let n = 0;
+  for (const c of scene.children) {
+    if (!c.isInstancedMesh || c === CRESTS.mesh || PRE_WORLD.has(c)) continue;
+    const g = c.geometry; if (!g.boundingBox) g.computeBoundingBox(); const bb = g.boundingBox, sx = bb.max.x - bb.min.x, sz = bb.max.z - bb.min.z, sy = bb.max.y - bb.min.y;
+    if (sx < 6 || sz < 6 || sy < 4 || sy > 30) continue; // buildings only (trees are narrow at the trunk but their canopies are wide: they fail sy<=30 or the footprint test below)
+    if (Math.min(sx, sz) / Math.max(sx, sz) < .35) continue;
+    const a = c.instanceMatrix.array, r0 = Math.min(sx, sz) * .42;
+    for (let i = 0; i < c.count; i++) { const o = i * 16; const s = Math.hypot(a[o], a[o + 1], a[o + 2]); if (s === 0) continue;
+      const x = a[o + 12] + c.position.x, z = a[o + 14] + c.position.z, cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2;
+      const wx = x + a[o] * cx + a[o + 8] * cz, wz = z + a[o + 2] * cx + a[o + 10] * cz, r = r0 * s;
+      for (let ii = Math.floor((wx - r) / C); ii <= Math.floor((wx + r) / C); ii++) for (let jj = Math.floor((wz - r) / C); jj <= Math.floor((wz + r) / C); jj++) { const k = key(ii, jj); if (!grid.has(k)) grid.set(k, []); grid.get(k).push([wx, wz, r]); }
+      n++; } }
+  const EMPTY = []; window.SOLIDS = (x, z) => grid.get(key(Math.floor(x / C), Math.floor(z / C))) || EMPTY;
+  if (/stats|dbg/.test(HASH)) console.log(`[solids] ${n} buildings`);
 })();
 
 /* ---------- Sano in the snow (53787), composed in final coordinates ----------
