@@ -555,7 +555,7 @@ const CLAW_GEO = (() => {
   const m = new THREE.BufferGeometry(); m.setAttribute("position", new THREE.BufferAttribute(pos, 3)); m.setAttribute("normal", new THREE.BufferAttribute(nor, 3)); m.setIndex(idx);
   return m;
 })();
-const CLAW_MAT = new THREE.MeshToonMaterial({ color: 0xf3eee0, gradientMap: gradMap });
+const CLAW_MAT = new THREE.MeshBasicMaterial({ color: 0xf3eee0 }); // flat foam, no shading: Hokusai's claws are pure paper white
 const _cm = new THREE.Matrix4(), _cq = new THREE.Quaternion(), _ce = new THREE.Euler(), _cs = new V3(), _cp = new V3();
 function animateClaws(wv, t) {
   const L = wv.claws.userData.list;
