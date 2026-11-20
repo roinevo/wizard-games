@@ -3262,7 +3262,7 @@ PLAY_HOOKS.push(dt => {
   if (!allPrints()) return;
   hutGrp.visible = true; hokusai.rotation.y = Math.sin(T * .7) * .2;
   if (!SAVE.ended) { HUT_TARGET.got = false; if (target !== HUT_TARGET) target = HUT_TARGET; }
-  if (!hutAnnounced && !SAVE.ended) { hutAnnounced = true; setTimeout(() => toast("כל 31 ההדפסים באלבום!\nהצייר הזקן מחכה בסטודיו שלו באדו 🖌️", 5), 2500); }
+  if (!hutAnnounced && !SAVE.ended) { hutAnnounced = true; setTimeout(() => state === "play" && toast("כל 31 ההדפסים באלבום!\nהצייר הזקן מחכה בסטודיו שלו באדו 🖌️", 5), 2500); }
 });
 const ENDING_LINES = [
   "אז אתם אלה שעברו בכל המקומות שלי. שלושים ואחד, אחד אחד",
@@ -3286,12 +3286,14 @@ function startEnding() {
     },
     end: () => { state = "ending"; showEndCard(); } };
   state = "scene"; walker.rotation.y = HUT.ry + Math.PI;
+  // a clean cinematic: no HUD, no pillars of light
+  $("hud").style.visibility = "hidden"; $("touch").style.visibility = "hidden"; for (const s of STATIONS) s.pillar.visible = false; $("toast").style.opacity = 0;
 }
 (function () {
   const d = document.createElement("div"); d.className = "scr"; d.id = "endScr"; d.hidden = true; d.style.background = "rgba(40,25,10,.25)";
   d.innerHTML = `<div class="card" style="max-width:460px;text-align:center"><h1 style="font-size:30px">סוף המסע</h1><p class="sub" id="endTxt"></p><p style="margin:8px 0 4px">השם שלך לקולופון של האלבום:</p><input id="endName" maxlength="24" style="font:inherit;font-size:18px;padding:6px 10px;width:80%;text-align:center;border:1px solid #8a7550;background:#f6eedb"><div class="row" style="justify-content:center"><button class="btn red" id="endSign">לחתום ולהמשיך לטייל</button></div></div>`;
   document.body.appendChild(d);
-  $("endSign").onclick = () => { SAVE.name = ($("endName").value || "").trim().slice(0, 24) || "יד אלמונית"; SAVE.ended = new Date().toLocaleDateString("he-IL"); writeSave(SAVE); $("endScr").hidden = true; post.uniforms.pMix.value = 0; state = "play"; target = null; toast(`האלבום נחתם: ${SAVE.name} ✒️`, 3); };
+  $("endSign").onclick = () => { $("hud").style.visibility = ""; $("touch").style.visibility = ""; SAVE.name = ($("endName").value || "").trim().slice(0, 24) || "יד אלמונית"; SAVE.ended = new Date().toLocaleDateString("he-IL"); writeSave(SAVE); $("endScr").hidden = true; post.uniforms.pMix.value = 0; state = "play"; target = null; toast(`האלבום נחתם: ${SAVE.name} ✒️`, 3); };
 })();
 function showEndCard() {
   $("endTxt").textContent = `שלושים ואחד הדפסים, ${(SAVE.crests || []).length} חותמים, ודרך ארוכה סביב ההר. הוקוסאי הוסיף את החותמת שלו לאלבום.`;
