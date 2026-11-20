@@ -900,7 +900,8 @@ const KIT = {
     }
     return partsGeo(p);
   },
-  cedar: () => partsGeo([{ g: G_.cyl(.4, .5, 3, 5), c: 0x3d3026, m: M4(0, 1.5, 0) }, { g: G_.cone(3.2, 12, 7), c: 0x3f6b55, m: M4(0, 8.5, 0) }, { g: G_.cone(2.4, 7, 7), c: 0x5f8a50, m: M4(0, 12.5, 0) }]),
+  // Hokusai's cedar: a tall trunk carrying stacked, drooping tiers of foliage (as at Hakone and Mishima), not one smooth cone
+  cedar: () => partsGeo([{ g: G_.cyl(.35, .55, 15, 4), c: 0x4a3a2a, m: M4(0, 7.5, 0) }, { g: G_.cone(3.4, 3.2, 5), c: 0x2f5a46, m: M4(0, 6.5, 0) }, { g: G_.cone(2.9, 3, 5), c: 0x3f6b55, m: M4(0, 9.2, 0) }, { g: G_.cone(2.3, 2.8, 5), c: 0x2f5a46, m: M4(0, 11.7, 0) }, { g: G_.cone(1.6, 3.2, 5), c: 0x416d63, m: M4(0, 14.3, 0) }]),
   cherry: () => { const p = [{ g: G_.cyl(.5, .8, 6, 6), c: 0x4a3a33, m: M4(0, 3, 0, 0, 0, .1) }]; for (let k = 0; k < 6; k++) p.push({ g: G_.sph(2.6, 8, 6), c: k % 2 ? 0xf2c8cf : 0xe9b0bb, m: M4(rand(-3, 3), rand(6, 9), rand(-3, 3), 0, 0, 0, 1.2, .8, 1.2) }); return partsGeo(p); },
   reed: () => { const p = []; for (let k = 0; k < 7; k++) p.push({ g: G_.cone(.09, rand(2, 3.6), 3), c: k % 2 ? 0xd9c98a : 0xb8b47a, m: M4(rand(-.8, .8), 2, rand(-.8, .8), rand(-.2, .2), 0, rand(-.25, .25)) }); return partsGeo(p); },
   bamboo: () => { const p = []; for (let k = 0; k < 5; k++) { const x = rand(-1.5, 1.5), z = rand(-1.5, 1.5); p.push({ g: G_.cyl(.18, .2, 14, 5), c: 0x6f9a52, m: M4(x, 7, z) }); p.push({ g: G_.sph(1.4, 6, 4), c: 0x4f7a45, m: M4(x, 13.5, z, 0, 0, 0, 1.2, 2, 1.2) }); } return partsGeo(p); },
@@ -1250,7 +1251,7 @@ function buildWorld() {
   for (let k = 0; k < 90; k++) { const x = EDO.x + rand(-60, 380), z = EDO.z + rand(60, 260) * (k % 2 ? 1 : -1); const y = landH(x, z); if (y > 1.5) (k % 3 ? houses : kuras).push([x, y - .3, z, Math.PI / 2, rand(.9, 1.1)]); }
   BRIDGES.push([EDO.x - 4, EDO.z - 2, 56, Math.atan2(.92, .39)]);
   const snowTint = (o, c) => { const s = snowAt(o[0], o[2]); return c.setRGB(1, 1, 1).lerp(new THREE.Color(0xffffff), 0).multiplyScalar(1).lerp(new THREE.Color(1.25, 1.25, 1.3), s); };
-  instances(KIT.cedar(), ced); instances(KIT.pine(), pines); instances(KIT.minka(), houses, null, snowTint); instances(KIT.kura(), kuras); HOUSE_LIST = houses; KURA_LIST = kuras;
+  instances(KIT.cedar(), ced, null, (o, c) => c.setRGB(1, 1, 1).multiplyScalar(.82 + (Math.sin(o[0] * 12.9898 + o[2] * 78.233) * 43758.5453 % 1 + 1) % 1 * .3)); instances(KIT.pine(), pines); instances(KIT.minka(), houses, null, snowTint); instances(KIT.kura(), kuras); HOUSE_LIST = houses; KURA_LIST = kuras;
   // bridges
   for (const [x, z, L, ry] of BRIDGES) {
     const parts = []; const n = Math.round(L / 4);
