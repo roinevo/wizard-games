@@ -1240,12 +1240,15 @@ function buildWorld() {
   for (const [x, z, h] of FALLS) {
     const base = landH(x, z + 30);
     // a cliff of stacked, tilted rocks with moss and shrubs (instead of boxes)
-    const cp = [{ g: G_.box(60, h, 24), c: 0x3f4e48, m: M4(0, h / 2, -16) }];
-    const rc = [0x5d6c63, 0x6f7c86, 0x7a5a3a, 0x56636e, 0x8a6a42];
+    const cp = [{ g: G_.box(60, h, 24), c: 0x2f4a3c, m: M4(0, h / 2, -16) }];
+    const rc = [0xb0644a, 0x6f7c86, 0xc98a5a, 0x8a5a3a, 0x9a4a35]; // warm ochre and red rock, as in the Roben / Yoshitsune prints
+    // forested shoulders falling away on both sides, so the fall sits in a wooded gorge instead of standing alone in the fields
+    for (const sd of [-1, 1]) for (let k = 0; k < 5; k++) { const w = 26 + k * 6, hh = h * (1 - k * .17); cp.push({ g: G_.sph(1, 9, 6), c: k % 2 ? 0x416d63 : 0x5f8a4e, m: M4(sd * (34 + k * 16), hh * .35, -8 + k * 4, 0, 0, 0, w * .6, hh * .55, 20) });
+      for (let j = 0; j < 7; j++) { const a = rand(-1.2, 1.2), b = rand(.15, 1.1); cp.push({ g: G_.sph(rand(2.6, 4.2), 6, 4), c: [0x24443a, 0x416d63, 0x6f9a52][j % 3], m: M4(sd * (34 + k * 16) + Math.sin(a) * w * .55, hh * .35 + Math.cos(a) * hh * .5 * b, -8 + k * 4 + 16, 0, 0, 0, 1.2, .7, .8) }); } }
     for (const sd of [-1, 1]) for (let k = 0; k < 9; k++) {
       const yy = (k + .5) / 9 * h, r = rand(9, 15) * (1 - k / 14), xx = sd * (12 + r * .7 + rand(0, 8));
       cp.push({ g: new THREE.DodecahedronGeometry(r, 0), c: rc[(k + (sd > 0 ? 2 : 0)) % 5], m: M4(xx, yy, rand(-6, 2), rand(0, 3), rand(0, 3), 0, 1, rand(1, 1.5), .8) });
-      if (k % 2 === 0) cp.push({ g: G_.sph(r * .6, 7, 4), c: k % 4 ? 0x416d63 : 0x6f9a52, m: M4(xx + rand(-3, 3), yy + r * .75, rand(-2, 4), 0, 0, 0, 1.3, .45, 1) });
+      cp.push({ g: G_.sph(r * .62, 7, 4), c: k % 3 ? 0x416d63 : 0x6f9a52, m: M4(xx + rand(-3, 3), yy + r * .75, rand(-2, 4), 0, 0, 0, 1.4, .5, 1.1) });
     }
     for (let k = 0; k < 6; k++) cp.push({ g: G_.sph(rand(6, 10), 7, 4), c: k % 2 ? 0x24443a : 0x3f6b55, m: M4(rand(-35, 35), h + rand(-2, 4), rand(-14, 0), 0, 0, 0, 1.4, .5, 1) });
     const cliff = new THREE.Mesh(partsGeo(cp), VC);
