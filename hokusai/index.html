@@ -2890,6 +2890,16 @@ function aimFujiFrom(s, C, cy, right, up) {
   clearWedge(C, f, 30, 4, .4);
 })();
 
+/* ---------- Yoshitsune's falls (56142): his horse washed by two grooms at the foot of the fall ---------- */
+(function dressYoshitsune() {
+  const s = STATIONS.find(q => q.id === 56142); if (!s) return;
+  const v = stationView(s), fx = v.look.x, fz = v.look.z, dx = v.pos.x - fx, dz = v.pos.z - fz, dl = Math.hypot(dx, dz), ux = dx / dl, uz = dz / dl;
+  let hx = fx + ux * 30 - uz * 4, hz = fz + uz * 30 + ux * 4; const hy = Math.max(landH(hx, hz), 0);
+  const hs = bakeStatic(makeHorse()); hs.position.set(hx, hy, hz); hs.rotation.y = Math.atan2(-uz, ux) + .3; hs.scale.setScalar(1.5); scene.add(hs);
+  addPerson("farmer", hx + uz * 3, hz - ux * 3, { y: hy, ry: Math.atan2(-ux, -uz) + 1.2, bend: 1 }); addPerson("porter", hx - uz * 3 + ux * 2, hz + ux * 3 + uz * 2, { y: hy, ry: Math.atan2(-ux, -uz) - 1.2 });
+  FOAMSPOTS.push([hx, hz, hy + .5]);
+})();
+
 /* ---------- Hakone (36498): from the hills above the lake, Fuji small at the left beyond the water ---------- */
 (function dressHakone() {
   const s = STATIONS.find(q => q.id === 36498), L = LAKES.find(q => q.name === "hakone"); if (!s || !L) return;
