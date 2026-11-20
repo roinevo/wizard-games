@@ -851,7 +851,7 @@ function landH0(x, z) {
 const seaness = (x, z) => { x /= WK; z /= WK; return sstep(coastZ(x) - 150, coastZ(x) + 350, z); };
 function waterH(x, z, t) { return (2.6 * Math.sin(x * .034 + z * .012 + t * .9) + 1.7 * Math.sin(-x * .019 + z * .04 + t * 1.1 + 1) + .9 * Math.sin(x * .07 - z * .05 + t * 1.7 + 2)) * lerp(.06, 1, seaness(x, z)); }
 function floorAt(x, z) { return Math.max(landH(x, z), waterH(x, z, TIME.value)); }
-function snowAt(x, z) { return Math.max(sstep(450, 180, Math.hypot(x - 1450, z + 1650)), sstep(300, 120, Math.hypot(x - 2060, z + 250))); }
+function snowAt(x, z) { return Math.max(sstep(450, 180, Math.hypot(x - 1450, z + 1650)), sstep(440, 220, Math.hypot(x - 2060, z + 250))); }
 
 /* ---------- mood: each print lends its light to the land around it ---------- */
 const MOOD_KEYS = ["top", "mid", "hor", "fog", "fLow", "fMid", "fHigh"];
@@ -2918,6 +2918,23 @@ function aimFujiFrom(s, C, cy, right, up) {
   const hs = bakeStatic(makeHorse()); hs.position.set(hx, hy, hz); hs.rotation.y = Math.atan2(-uz, ux) + .3; hs.scale.setScalar(1.5); scene.add(hs);
   addPerson("farmer", hx + uz * 3, hz - ux * 3, { y: hy, ry: Math.atan2(-ux, -uz) + 1.2, bend: 1 }); addPerson("porter", hx - uz * 3 + ux * 2, hz + ux * 3 + uz * 2, { y: hy, ry: Math.atan2(-ux, -uz) - 1.2 });
   FOAMSPOTS.push([hx, hz, hy + .5]);
+})();
+
+/* ---------- Sumida in snow (44981): a roofed boat mid-river, a snowy pavilion on the near bank at the right ---------- */
+(function dressSumidaSnow() {
+  const s = STATIONS.find(q => q.id === 44981); if (!s) return;
+  const v = stationView(s), C = [v.pos.x, v.pos.z], dx = v.look.x - C[0], dz = v.look.z - C[1], dl = Math.hypot(dx, dz), f = [dx / dl, dz / dl], r = [-f[1], f[0]];
+  let bx = C[0] + f[0] * 40 - r[0] * 4, bz = C[1] + f[1] * 40 - r[1] * 4;
+  for (let k = 0; k < 20 && landH(bx, bz) > -.5; k++) { bx += f[0] * 4; bz += f[1] * 4; }
+  const boat = makeBoat(); boat.scale.setScalar(.9); boat.position.set(bx, 0, bz); boat.rotation.y = Math.atan2(r[0], r[1]) + .5; scene.add(boat); BOATS.push(boat);
+  boat.add(new THREE.Mesh(partsGeo([{ g: prism(3.2, 1.6, 7), c: 0xf2eee4, m: M4(0, 2.6, 0, 0, 0, 0) }, { g: G_.box(2.6, 1.4, 6.4), c: 0x6b5233, m: M4(0, 1.5, 0) }]), VC));
+  let px = null; for (let sd = 10; sd < 40 && !px; sd += 2) { const x = C[0] + f[0] * 24 + r[0] * sd, z = C[1] + f[1] * 24 + r[1] * sd; if (landH(x, z) > .8) px = [x, z]; }
+  if (px) { const py = landH(px[0], px[1]);
+    const pav = new THREE.Mesh(partsGeo([...[[-2, -2], [2, -2], [-2, 2], [2, 2]].map(([a, b]) => ({ g: G_.box(.35, 4, .35), c: 0x6b5233, m: M4(a, 2, b) })), { g: G_.box(5, .4, 5), c: 0x8a6a42, m: M4(0, .3, 0) },
+      { g: prism(6.8, 2.4, 6.6), c: 0xf2eee4, m: M4(0, 5.1, 0) }, { g: G_.box(5.6, .5, 1), c: 0x6b5233, m: M4(0, 1.2, 2.6) }]), VC);
+    pav.position.set(px[0], py, px[1]); pav.rotation.y = Math.atan2(f[0], f[1]); scene.add(pav);
+    const pn = new THREE.Mesh(KIT.pine(), VC); pn.position.set(px[0] + f[0] * 8 + r[0] * 4, py - .5, px[1] + f[1] * 8 + r[1] * 4); pn.scale.set(1.1, 1.3, 1.1); scene.add(pn);
+    addPerson("traveler", px[0] + f[0] * 14 - r[0] * 2, px[1] + f[1] * 14 - r[1] * 2, { ry: Math.atan2(-r[0], -r[1]) }); addPerson("parasol", px[0] + f[0] * 15, px[1] + f[1] * 15, { ry: Math.atan2(-r[0], -r[1]) }); }
 })();
 
 /* ---------- Hakone (36498): from the hills above the lake, Fuji small at the left beyond the water ---------- */
