@@ -2794,6 +2794,20 @@ function clearWedge(C, f, along, half0, spread) {
   if (/dbg/.test(HASH)) console.log(`[hakone] cam=${C.map(Math.round)},${cy.toFixed(0)} cost=${best.toFixed(1)}`);
 })();
 
+/* ---------- Tsukuda (55741): from a boat on the bay, fishing boats in front, the island village, Fuji far beyond ---------- */
+(function dressTsukuda() {
+  const s = STATIONS.find(q => q.id === 55741); if (!s) return;
+  const deg = Math.PI / 180, I = [2300 * WORLD_K, 1650 * WORLD_K], ul = Math.hypot(I[0], I[1]), u = [I[0] / ul, I[1] / ul];
+  let C = [I[0] + u[0] * 130, I[1] + u[1] * 130]; for (let k = 0; k < 30 && landH(C[0], C[1]) > -.5; k++) { C[0] += u[0] * 8; C[1] += u[1] * 8; }
+  const cy = 6, hl = Math.hypot(C[0], C[1]), jx = -C[0] / hl, jz = -C[1] / hl, yaw = -3 * deg; // Fuji 3 deg right of centre
+  const fx = Math.cos(yaw) * jx - Math.sin(yaw) * jz, fz = Math.cos(yaw) * jz + Math.sin(yaw) * jx, rx = -fz, rz = fx;
+  const el = Math.atan2(FUJI_H * .95 - cy, hl) - 11.5 * deg;
+  s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0; s.view.look = [C[0] + fx * 100, cy + Math.tan(el) * 100, C[1] + fz * 100];
+  for (const [al, sd, sc, ry] of [[26, -9, 1.1, .5], [34, 12, 1, -.4], [48, -22, .9, .9], [55, 20, .85, -1.1], [70, -2, .8, .2]]) {
+    const b = makeBoat(), x = C[0] + fx * al + rx * sd, z = C[1] + fz * al + rz * sd; b.position.set(x, 0, z); b.scale.setScalar(sc); b.rotation.y = Math.atan2(fx, fz) + ry; scene.add(b); BOATS.push(b); }
+  if (/dbg/.test(HASH)) console.log(`[tsukuda] cam=${C.map(Math.round)} land=${landH(C[0], C[1]).toFixed(1)}`);
+})();
+
 /* ---------- Kajikazawa (56727): the fisherman's rock in the rushing Fuji river, Fuji behind to the right ---------- */
 (function dressKaji() {
   const s = STATIONS.find(q => q.id === 56727); if (!s || !s.kaji) return;
