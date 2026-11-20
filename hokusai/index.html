@@ -1878,7 +1878,7 @@ function updateMoment(dt) {
     for (let k = 0; k < 40; k++) sparks.spawn(M_.s.pos.x, M_.s.pos.y + 6, M_.s.pos.z, { vx: rand(-10, 10), vy: rand(-4, 14), vz: rand(-10, 10), life: rand(.8, 1.4), s0: 2, s1: 0, r: 1, gg: .85, b: .5 });
     if (BOT) console.log(`[moment] ${M_.s.id} ${M_.s.place} have=${SAVE.have.length}`);
   }
-  if (M_.t > holdEnd + 1.9) { state = "play"; M_.s.marker.visible = true; post.uniforms.pMix.value = 0; $("cap").classList.remove("on"); if (STATIONS.every(s => s.got)) toast("כל 31 ההדפסים באלבום! 🎉\nעכשיו העולם של הוקוסאי שלך", 5); }
+  if (M_.t > holdEnd + 1.9) { state = "play"; M_.s.marker.visible = true; post.uniforms.pMix.value = 0; $("cap").classList.remove("on"); if (STATIONS.every(s => s.got)) toast("כל 31 ההדפסים באלבום! 🎉\nעכשיו העולם של הוקוסאי שלך", 5); else { const n = STATIONS.filter(s => s.got).length; toast(`📜 נוסף לאלבום · ${n}/31` + (n === 1 ? "\nההדפס תלוי עכשיו גם בחנות ההדפסים 絵 בעיירה" : ""), n === 1 ? 4 : 2.2); } }
 }
 function renderHUD() {
   const n = STATIONS.filter(s => s.got).length;
