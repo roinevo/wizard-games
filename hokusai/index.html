@@ -2233,7 +2233,7 @@ PLAY_HOOKS.push(dt => {
   else { const b = $("actBtn"); b.style.visibility = ""; b.style.left = ""; b.style.top = ""; }
 });
 const TALK_PLACE = { label: "לדבר 💬", act: () => talkTo(TALK_PLACE.p) };
-function doAct() { if (placeNear && state === "play") placeNear.act(); }
+function doAct() { if (placeNear && state === "play") { placeNear.act(); if (state !== "play") { $("actBtn").hidden = true; placeNear = null; } } }
 addEventListener("keydown", e => { if (e.code === "KeyE" && !e.repeat) { if (state === "shop") closeShop(); else doAct(); } else if (e.code === "Escape" && state === "shop") closeShop(); });
 
 /* ---------- sounds for the town ---------- */
@@ -3209,7 +3209,7 @@ if (/allprints/.test(HASH)) setTimeout(() => {
   STATIONS.forEach(s => s.got = true); SAVE.have = STATIONS.map(s => s.id); SAVE.ended = undefined;
   P.pos.set(HUT_TARGET.x, HUT.y, HUT_TARGET.z); P.yaw = HUT.ry + Math.PI; for (let i = 0; i < 20; i++) step(1 / 30);
   console.log(`[allprints] near=${placeNear && placeNear.label} hut=${hutGrp.visible}`);
-  const mt = HASH.match(/_t(\d+)/); if (/act/.test(HASH)) { doAct(); const n = mt ? +mt[1] * 30 : 60; for (let i = 0; i < n; i++) step(1 / 30); console.log(`[allprints] state=${state} pMix=${post.uniforms.pMix.value.toFixed(2)}`); }
+  const mt = HASH.match(/_t(\d+)/); if (/act/.test(HASH)) { doAct(); const n = mt ? +mt[1] * 30 : 60; for (let i = 0; i < n; i++) step(1 / 30); console.log(`[allprints] state=${state} pMix=${post.uniforms.pMix.value.toFixed(2)} scnT=${SCN && SCN.t !== undefined ? SCN.t.toFixed(1) : '-'} toast=${$("toast").textContent}`); }
 }, 1200);
 if (/talktest/.test(HASH)) setTimeout(() => { enterWorld(); introT = 9.6; step(.05); state = "play";
   const p = PEOPLE.filter(q => q.type === "samurai" || q.type === "pilgrim").sort((a, b) => a.mesh.position.distanceTo(P.pos) - b.mesh.position.distanceTo(P.pos))[0];
