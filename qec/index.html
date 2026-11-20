@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>שומרי הקיוביט</title>
+<style>
+:root{--bg:#0f1530;--panel:#1a2348;--ink:#eef2ff;--mute:#a3aedb;--x:#ff8f7a;--z:#73a8ff;--y:#7ee0a1;--gold:#ffd166;--bad:#ff5c7a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 0%,#26326e 0%,#0f1530 60%,#0a0f24 100%);color:var(--ink);font-family:"Segoe UI",Arial,sans-serif;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:9px 15px;background:#2c3a78;color:var(--ink)}
+button:hover{background:#3a4a94}
+button.main{background:linear-gradient(#ffd166,#f4a93b);color:#2b1d00;font-weight:700}
+.screen{position:fixed;inset:0;display:none;flex-direction:column}
+.screen.on{display:flex}
+#menu{overflow-y:auto;overflow-x:hidden;align-items:center;padding:18px 16px 40px}
+h1{margin:8px 0 4px;font-size:clamp(30px,6vw,48px);letter-spacing:1px;text-align:center}
+h1 small{display:block;font-size:15px;color:var(--gold);letter-spacing:0;font-weight:400;margin-top:4px}
+.sub{color:var(--mute);margin:6px 0 10px;text-align:center;max-width:640px;line-height:1.5}
+#chapters{width:100%;display:flex;flex-direction:column;align-items:center}
+.chapter{width:100%;max-width:780px;margin:6px 0}
+.chapter h2{font-size:18px;color:var(--gold);margin:14px 4px 8px}
+.chapter h2 span{color:var(--mute);font-size:13px;font-weight:400;margin-right:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.lv{background:var(--panel);border-radius:16px;padding:12px 14px;text-align:right;display:flex;flex-direction:column;gap:3px;border:1px solid #2e3a72}
+.lv:hover{border-color:var(--gold);background:#212c5a}
+.lv b{font-size:17px}.lv span{color:var(--mute);font-size:13px}.lv .st{color:var(--gold);font-size:15px;letter-spacing:2px;min-height:18px}
+#game header,#lab header{display:flex;align-items:center;gap:10px;padding:9px 14px;background:rgba(10,15,36,.65)}
+#game header .t{flex:1;min-width:0}
+#gTitle{font-weight:700;font-size:17px}#gGoal{color:var(--mute);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hud{font-size:14px;color:var(--gold);white-space:nowrap}
+#cv{flex:1;width:100%;min-height:0;display:block;touch-action:none}
+#game footer{display:flex;gap:8px;justify-content:center;align-items:center;padding:9px;flex-wrap:wrap;background:rgba(10,15,36,.65)}
+.tool{min-width:58px;font-weight:800;font-size:20px;border:2px solid transparent;padding:6px 12px}
+.tool.sel{border-color:var(--gold);box-shadow:0 0 14px #ffd16688;background:#34428a}
+.tool[data-t=X]{color:var(--x)}.tool[data-t=Z]{color:var(--z)}.tool[data-t=Y]{color:var(--y)}
+.sep{width:10px}
+#card{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,8,20,.55);z-index:5;padding:16px}
+#card.on{display:flex}
+#card.low{align-items:flex-end;background:transparent;pointer-events:none;padding-bottom:84px}
+#card.low .box{pointer-events:auto}
+#card .box{background:#1b2550;border:1px solid #3a4a94;border-radius:20px;max-width:540px;width:100%;padding:18px 22px;box-shadow:0 20px 60px #000a}
+#card h3{margin:0 0 6px;font-size:22px}
+#card p,#card li{margin:5px 0;line-height:1.55}
+#card ul{margin:6px 0;padding-right:20px}
+#card small{color:var(--mute)}
+#card .row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);background:#000c;padding:9px 16px;border-radius:12px;display:none;z-index:6;max-width:90vw;text-align:center}
+#rhythm{display:none;gap:5px}
+#rhythm i{font-style:normal;padding:3px 8px;border-radius:8px;background:#ffffff12;font-weight:700;font-size:13px;opacity:.55}
+#rhythm i.on{opacity:1;box-shadow:0 0 10px currentColor}
+#lab .wrap{flex:1;display:flex;flex-direction:column;padding:12px 16px;gap:10px;min-height:0;max-width:980px;width:100%;margin:0 auto}
+#lab p{margin:0;color:var(--mute);line-height:1.5}
+#plot{flex:1;width:100%;min-height:0;background:#0b1129;border-radius:14px}
+.lab-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#labInfo{color:var(--gold);font-size:14px}
+@media (max-width:600px){
+ #game header{flex-wrap:wrap;gap:6px;padding:7px 10px}
+ #gGoal{display:none}#gTitle{font-size:15px}
+ #hud{font-size:12px}#rhythm{order:5;width:100%;justify-content:center}
+ #game footer{gap:6px;padding:7px}
+ #game footer button{padding:7px 10px;font-size:14px}
+ .tool{min-width:44px!important;font-size:18px!important}
+ .sep{display:none}
+ #card.low{padding-bottom:70px}
+ #card .box{padding:14px 16px}
+}
+</style>
+</head>
+<body>
+
+<div id="menu" class="screen on">
+  <h1>שומרי הקיוביט<small>משחק על תיקון שגיאות קוונטי</small></h1>
+  <p class="sub">שגיאות הופכות קיוביטים בסתר. אי אפשר להסתכל על הקיוביטים, כי מדידה הורסת את המידע. רואים רק <b>אזעקות</b>: בדיקות זוגיות שנדלקות. המשימה היא לנחש מהן איפה השגיאה, ולתקן.</p>
+  <div id="chapters"></div>
+</div>
+
+<div id="game" class="screen">
+  <header>
+    <button id="bMenu" title="תפריט">☰</button>
+    <div class="t"><div id="gTitle"></div><div id="gGoal"></div></div>
+    <div id="rhythm"><i data-c="0" style="color:var(--x)">XX</i><i data-c="1" style="color:var(--y)">YY</i><i data-c="2" style="color:var(--z)">ZZ</i></div>
+    <div id="hud"></div>
+  </header>
+  <canvas id="cv"></canvas>
+  <footer>
+    <div id="tools" style="display:flex;gap:8px"></div>
+    <div class="sep"></div>
+    <button id="bHint">💡 רמז</button>
+    <button id="bCheck" class="main" style="display:none">בדיקה</button>
+    <button id="bReset">↺ איפוס</button>
+  </footer>
+</div>
+
+<div id="lab" class="screen">
+  <header><button id="bLabBack">☰</button><div style="flex:1;font-weight:700;font-size:17px">מעבדת הסף</div><div id="labInfo"></div></header>
+  <div class="wrap">
+    <p>הרובוט מתקן אלפי משטחים אקראיים. לכל קיוביט יש הסתברות <b>p</b> לשגיאת X, והמדידות מושלמות. הגרף מראה כמה פעמים התיקון נכשל לוגית, עבור שלושה גדלים של קוד.</p>
+    <p><b>שאלה לפני שמריצים:</b> האם קוד גדול יותר תמיד עדיף?</p>
+    <div class="lab-row"><button id="bRun" class="main">▶ להריץ</button><button id="bStop">⏸ לעצור</button><span id="labVerdict" style="color:var(--mute)"></span></div>
+    <canvas id="plot"></canvas>
+  </div>
+</div>
+
+<div id="card"><div class="box"><h3 id="cardT"></h3><div id="cardB"></div><div class="row" id="cardR"></div></div></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const PC={X:'#ff8f7a',Y:'#7ee0a1',Z:'#73a8ff'};
+const PN=['X','Y','Z'];
+const now=()=>performance.now()/1000;
+const rnd=n=>Math.floor(Math.random()*n);
+let SAVE={};try{SAVE=JSON.parse(localStorage.getItem('qec-progress')||'{}')}catch(e){}
+SAVE.stars=SAVE.stars||{};SAVE.best=SAVE.best||{};
+function save(){try{localStorage.setItem('qec-progress',JSON.stringify(SAVE))}catch(e){}}
+
+/* ---------- sound ---------- */
+let AC=null;
+function beep(f,d,type,v){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(v||.07,AC.currentTime);g.gain.exponentialRampToValueAtTime(1e-4,AC.currentTime+d);o.connect(g).connect(AC.destination);o.start();o.stop(AC.currentTime+d+.02)}catch(e){}}
+const SND={tap:()=>beep(660,.08,'triangle'),ok:()=>{beep(523,.12);setTimeout(()=>beep(659,.12),100);setTimeout(()=>beep(784,.22),200)},
+  bad:()=>{beep(260,.22,'sawtooth',.05);setTimeout(()=>beep(180,.35,'sawtooth',.05),180)},lamp:()=>beep(1046,.06,'square',.025),tick:()=>beep(392,.04,'sine',.025)};
+
+/* ---------- Pauli algebra ---------- */
+// does Pauli P (on one qubit) anticommute with an error with bits (x,z)?
+function anti(P,x,z){return P==='X'?z:P==='Z'?x:(x^z)}
+function parity(v,set){let b=0;for(const q of set)b^=v[q];return b}
+function finishCode(c){
+  c.n=c.qubits.length;
+  c.qstabs=c.qubits.map(()=>[]);
+  c.stabs.forEach((s,k)=>s.qs.forEach(q=>c.qstabs[q].push(k)));
+  c.syn=(ex,ez)=>c.stabs.map(s=>{let b=0;for(const q of s.qs)b^=anti(s.P,ex[q],ez[q]);return b});
+  return c;
+}
+
+/* repetition code: ZZ checks between neighbours, catches X flips */
+function makeRep(n){
+  const qubits=[],stabs=[];
+  for(let i=0;i<n;i++)qubits.push({x:i,y:0});
+  for(let i=0;i<n-1;i++)stabs.push({P:'Z',qs:[i,i+1],x:i+.5,y:0});
+  const c=finishCode({kind:'rep',d:n,qubits,stabs});
+  c.XL=[...Array(n).keys()];c.ZL=[0];
+  return c;
+}
+
+/* rotated surface code of distance d */
+function makeSurface(d){
+  const qubits=[],stabs=[],id=(i,j)=>j*d+i;
+  for(let j=0;j<d;j++)for(let i=0;i<d;i++)qubits.push({x:i,y:j});
+  for(let j=-1;j<d;j++)for(let i=-1;i<d;i++){
+    const P=((i+j)%2+2)%2===0?'X':'Z';
+    const cells=[[i,j],[i+1,j],[i,j+1],[i+1,j+1]].filter(([a,b])=>a>=0&&b>=0&&a<d&&b<d);
+    if(cells.length<2)continue;
+    let side=null;
+    if(cells.length===2){
+      side=j===-1?'top':j===d-1?'bottom':i===-1?'left':'right';
+      if((side==='top'||side==='bottom')&&P!=='X')continue;
+      if((side==='left'||side==='right')&&P!=='Z')continue;
+    }
+    stabs.push({P,qs:cells.map(([a,b])=>id(a,b)),x:i+.5,y:j+.5,side});
+  }
+  const c=finishCode({kind:'surface',d,qubits,stabs});
+  const col=[],row=[];
+  for(let j=0;j<d;j++)col.push(id(0,j));
+  for(let i=0;i<d;i++)row.push(id(i,0));
+  const commutesWith=(set,T)=>stabs.every(s=>s.P!==T||s.qs.filter(q=>set.includes(q)).length%2===0);
+  c.XL=commutesWith(col,'Z')?col:row;   // logical X: an X string that no Z check sees
+  c.ZL=c.XL===col?row:col;
+  return c;
+}
+
+/* honeycomb (Floquet) patch: hexagons coloured red/green/blue = X/Y/Z.
+   An edge joins two hexagons of its own colour; its check is PP with P its colour.
+   A hexagon of colour c is the product of its 6 edges (the other two colours) = P_c on all 6 vertices. */
+function makeHoney(Rad){
+  const S3=Math.sqrt(3),hexes=[],vmap=new Map(),qubits=[];
+  const col=(q,r)=>(((q-r)%3)+3)%3;
+  const vid=(x,y)=>{const k=Math.round(x*1000)+','+Math.round(y*1000);if(!vmap.has(k)){vmap.set(k,qubits.length);qubits.push({x,y})}return vmap.get(k)};
+  for(let q=-Rad;q<=Rad;q++)for(let r=-Rad;r<=Rad;r++){
+    if(Math.abs(q+r)>Rad)continue;
+    const cx=S3*(q+r/2),cy=1.5*r,vs=[];
+    for(let k=0;k<6;k++){const a=Math.PI/180*(60*k-90);vs.push(vid(cx+Math.cos(a),cy+Math.sin(a)))}
+    hexes.push({q,r,x:cx,y:cy,c:col(q,r),vs});
+  }
+  const stabs=hexes.map(h=>({P:PN[h.c],qs:h.vs,x:h.x,y:h.y,color:h.c,vs:h.vs}));
+  const emap=new Map(),edges=[];
+  hexes.forEach(h=>{for(let k=0;k<6;k++){const a=h.vs[k],b=h.vs[(k+1)%6],key=Math.min(a,b)+'-'+Math.max(a,b);
+    if(!emap.has(key)){emap.set(key,edges.length);edges.push({a,b,hs:[]})}edges[emap.get(key)].hs.push(h)}});
+  edges.forEach(e=>{
+    const A=qubits[e.a],B=qubits[e.b],mx=(A.x+B.x)/2,my=(A.y+B.y)/2,h=e.hs[0];
+    let c2;
+    if(e.hs.length>1)c2=e.hs[1].c;
+    else{const nx=2*mx-h.x,ny=2*my-h.y,r=Math.round(ny/1.5),q=Math.round(nx/S3-r/2);c2=col(q,r)}
+    e.c=3-h.c-c2;
+  });
+  const c=finishCode({kind:'honey',d:Rad,qubits,stabs,edges});
+  // basis of the span of all edge checks (plaquettes are products of them)
+  const n=c.n;
+  c.checkVecs=edges.map(e=>{const v=new Uint8Array(2*n);for(const q of [e.a,e.b]){const P=PN[e.c];if(P!=='Z')v[q]=1;if(P!=='X')v[n+q]=1}return v});
+  c.checkBasis=gf2Basis(c.checkVecs);
+  return c;
+}
+function gf2Basis(vecs){
+  const B=[];
+  for(const v0 of vecs){
+    const v=v0.slice();
+    for(const b of B)if(v[b.p])for(let i=0;i<v.length;i++)v[i]^=b.v[i];
+    const p=v.indexOf(1);if(p<0)continue;
+    for(const b of B)if(b.v[p])for(let i=0;i<v.length;i++)b.v[i]^=v[i];
+    B.push({p,v});
+  }
+  return B;
+}
+function inSpan(B,v0){const v=v0.slice();for(const b of B)if(v[b.p])for(let i=0;i<v.length;i++)v[i]^=b.v[i];return v.indexOf(1)<0}
+
+/* ---------- minimum-weight matching decoder (the robot) ---------- */
+function buildGraph(c,E){
+  const ex=E==='X'?1:0,ez=E==='Z'?1:0,det=[];
+  c.stabs.forEach((s,k)=>{if(anti(s.P,ex,ez))det.push(k)});
+  const idx=new Map(det.map((k,i)=>[k,i])),B=det.length;
+  const adj=Array.from({length:B+1},()=>[]);
+  for(let q=0;q<c.n;q++){
+    const ds=c.qstabs[q].filter(k=>idx.has(k)).map(k=>idx.get(k));
+    if(ds.length===2){adj[ds[0]].push([ds[1],q]);adj[ds[1]].push([ds[0],q])}
+    else if(ds.length===1){adj[ds[0]].push([B,q]);adj[B].push([ds[0],q])}
+  }
+  const dist=[],par=[];
+  for(let s=0;s<=B;s++){
+    const D=new Array(B+1).fill(1e9),Pq=new Array(B+1).fill(null),Q=[s];D[s]=0;
+    for(let h=0;h<Q.length;h++){const u=Q[h];if(u===B&&s!==B)continue;
+      for(const [v,q] of adj[u])if(D[v]>D[u]+1){D[v]=D[u]+1;Pq[v]=[u,q];Q.push(v)}}
+    dist.push(D);par.push(Pq);
+  }
+  return {det,idx,B,dist,par};
+}
+function matchPairs(G,def){
+  const k=def.length;if(!k)return [];
+  if(k>18){ // greedy fallback, never reached in the levels
+    const left=def.map((d,i)=>i),pairs=[];
+    while(left.length){const i=left.shift();let bj=-1,bv=G.dist[def[i]][G.B];
+      left.forEach((j,jj)=>{if(G.dist[def[i]][def[j]]<bv){bv=G.dist[def[i]][def[j]];bj=jj}});
+      if(bj<0)pairs.push([def[i],G.B]);else{const j=left.splice(bj,1)[0];pairs.push([def[i],def[j]])}}
+    return pairs;
+  }
+  const full=(1<<k)-1,cost=new Float64Array(1<<k).fill(-1),choice=new Int32Array(1<<k);
+  const f=mask=>{if(mask===full)return 0;if(cost[mask]>=0)return cost[mask];
+    let i=0;while(mask&(1<<i))i++;
+    let best=G.dist[def[i]][G.B]+f(mask|(1<<i)),bc=-1;
+    for(let j=i+1;j<k;j++)if(!(mask&(1<<j))){const v=G.dist[def[i]][def[j]]+f(mask|(1<<i)|(1<<j));if(v<best){best=v;bc=j}}
+    cost[mask]=best;choice[mask]=bc;return best};
+  f(0);
+  const pairs=[];let mask=0;
+  while(mask!==full){let i=0;while(mask&(1<<i))i++;const j=choice[mask];
+    if(j<0){pairs.push([def[i],G.B]);mask|=1<<i}else{pairs.push([def[i],def[j]]);mask|=(1<<i)|(1<<j)}}
+  return pairs;
+}
+function pathQubits(G,a,b){const out=[];let v=b;while(v!==a){const pr=G.par[a][v];if(!pr)break;out.push(pr[1]);v=pr[0]}return out}
+// returns correction bits (length n) for errors of type E given the syndrome
+function decode(c,G,syn){
+  const def=[];G.det.forEach((k,i)=>{if(syn[k])def.push(i)});
+  const corr=new Uint8Array(c.n);
+  for(const [a,b] of matchPairs(G,def))for(const q of pathQubits(G,a,b))corr[q]^=1;
+  return corr;
+}
+function graphs(c){if(!c._G)c._G={X:buildGraph(c,'X'),Z:buildGraph(c,'Z')};return c._G}
+function robotFix(c,ex,ez){ // correction {cx,cz} that the robot would apply to the frame (ex,ez)
+  if(c.kind==='honey')return honeyFix(c,ex,ez);
+  const s=c.syn(ex,ez),G=graphs(c);
+  return {cx:decode(c,G.X,s),cz:decode(c,G.Z,s)};
+}
+// honeycomb: smallest set of single-qubit Paulis (up to 3) that clears the hexagons
+function honeyFix(c,ex,ez){
+  const target=c.syn(ex,ez).reduce((m,b,i)=>m|(b<<i),0);
+  const cx=new Uint8Array(c.n),cz=new Uint8Array(c.n);
+  if(!target)return {cx,cz};
+  const singles=[];
+  for(let q=0;q<c.n;q++)for(const P of PN){const x=P!=='Z'?1:0,z=P!=='X'?1:0;let m=0;c.qstabs[q].forEach(k=>{if(anti(c.stabs[k].P,x,z))m|=1<<k});singles.push({q,x,z,m})}
+  const byM=new Map();singles.forEach(s=>{if(!byM.has(s.m))byM.set(s.m,[]);byM.get(s.m).push(s)});
+  const apply=list=>{list.forEach(s=>{cx[s.q]^=s.x;cz[s.q]^=s.z});return {cx,cz}};
+  const ok=list=>{const tx=ex.slice(),tz=ez.slice();list.forEach(s=>{tx[s.q]^=s.x;tz[s.q]^=s.z});const v=new Uint8Array(2*c.n);for(let q=0;q<c.n;q++){v[q]=tx[q];v[c.n+q]=tz[q]}return inSpan(c.checkBasis,v)};
+  let fallback=null;
+  const tryList=list=>{if(ok(list))return true;if(!fallback)fallback=list;return false};
+  for(const s of byM.get(target)||[])if(tryList([s]))return apply([s]);
+  for(let i=0;i<singles.length;i++)for(const s of byM.get(target^singles[i].m)||[])if(s.q!==singles[i].q&&tryList([singles[i],s]))return apply([singles[i],s]);
+  if(fallback)return apply(fallback);
+  for(let i=0;i<singles.length;i++)for(let j=i+1;j<singles.length;j++)for(const s of byM.get(target^singles[i].m^singles[j].m)||[])
+    if(tryList([singles[i],singles[j],s]))return apply([singles[i],singles[j],s]);
+  return apply(fallback||[]);
+}
+function logicalFail(c,rx,rz){
+  if(c.kind==='honey'){const v=new Uint8Array(2*c.n);for(let q=0;q<c.n;q++){v[q]=rx[q];v[c.n+q]=rz[q]}return !inSpan(c.checkBasis,v)}
+  return (parity(rx,c.ZL)|parity(rz,c.XL))===1;
+}
+
+/* ---------- levels ---------- */
+const CH=[['פרק 1: קוד החזרה','קוד קלאסי, הכי פשוט'],['פרק 2: קוד המשטח','הקוד המרכזי של המחשבים הקוונטיים'],['פרק 3: קוד חלת הדבש','קוד שחי בזמן: רק מדידות של זוגות']];
+const LEVELS=[
+{ch:0,title:'האזעקה',sub:'שגיאה אחת, 5 קיוביטים',make:()=>makeRep(5),tools:['X'],gen:{t:'chain',maxX:1},N:4,goal:'לכבות את המנורות',
+ intro:['5 קיוביטים בשורה. שגיאה הפכה אחד מהם, אבל לא רואים איזה.','כל מנורה בודקת את שני שכניה: <b>דולקת = הם שונים</b>.','ללחוץ על הקיוביט שהתהפך.']},
+{ch:0,title:'שרשרת',sub:'כמה שגיאות צמודות',make:()=>makeRep(7),tools:['X'],gen:{t:'chain',maxX:3},N:4,goal:'לתקן בכמה שפחות לחיצות',
+ intro:['כמה שגיאות צמודות יוצרות שרשרת. <b>רק הקצוות</b> שלה מדליקים מנורה.','בקצה הקוד אין שכן, ולכן שם נדלקת רק מנורה אחת.','לתקן בכמה שפחות לחיצות. אם "מתקנים" את הצד השני, כל השורה מתהפכת, וזו <b>שגיאה לוגית</b>.']},
+{ch:1,title:'קוד המשטח',sub:'שגיאת X אחת, d=3',make:()=>makeSurface(3),tools:['X'],gen:{t:'chain',maxX:1},N:4,goal:'למצוא את שגיאת ה־X',
+ intro:['הקיוביטים יושבים בצמתים. כל משבצת <span style="color:var(--z)">כחולה (Z)</span> בודקת את הקיוביטים בפינות שלה.','שגיאת X מדליקה את המשבצות הכחולות שנוגעות בה.','ללחוץ על הקיוביט שמשותף למשבצות הדולקות.']},
+{ch:1,title:'שרשראות במשטח',sub:'שרשראות של X, d=5',make:()=>makeSurface(5),tools:['X'],gen:{t:'chain',maxX:2},N:4,goal:'לחבר את הקצוות במסלול קצר',
+ intro:['כמו בשורה, גם כאן שרשרת מדליקה רק את הקצוות שלה.','שרשרת שנוגעת בשפה העליונה או התחתונה מדליקה רק קצה אחד.','לחבר את הקצוות במסלול הקצר ביותר.']},
+{ch:1,title:'שני סוגים: X ו־Z',sub:'שני סוגי שגיאות, d=3',make:()=>makeSurface(3),tools:['X','Z','Y'],gen:{t:'mixed',maxX:1,maxZ:1},N:4,goal:'לתקן X, Z או Y',
+ intro:['שגיאת Z מדליקה את המשבצות ה<span style="color:var(--x)">אדומות (X)</span>.','שגיאת <span style="color:var(--y)">Y</span> היא גם X וגם Z, ולכן מדליקה את שני הצבעים.','לבחור כלי למטה, ואז ללחוץ על קיוביט.']},
+{ch:1,title:'הקיוביט הלוגי',sub:'איך מטעים את הקוד?',special:'logical',tools:['X'],N:2,goal:'להפוך את הלוגי בלי אזעקות, ואז ״בדיקה״',
+ intro:['הפעם אין שגיאה.','המשימה: להפוך את <b>הקיוביט הלוגי</b> בלי שאף מנורה תידלק.','כמה לחיצות צריך לפחות? המספר הזה הוא <b>המרחק d</b> של הקוד.']},
+{ch:1,title:'משמרת d=5',sub:'עד 2 שגיאות מכל סוג',make:()=>makeSurface(5),tools:['X','Z','Y'],gen:{t:'mixed',maxX:2,maxZ:2},N:4,goal:'לתקן הכול',
+ intro:['קוד גדול יותר מתקן יותר שגיאות: כאן עד 2 מכל סוג.','💡 הרמז מראה מה הרובוט היה עושה (התאמה במשקל מינימלי), אבל הוא עולה נקודות.']},
+{ch:1,title:'משמרת לילה',sub:'שגיאות בלי הפסקה',special:'arcade',tools:['X','Z','Y'],goal:'לשרוד כמה שיותר שגיאות',
+ intro:['שגיאות מגיעות כל הזמן, ומהר יותר ויותר.','צריך לכבות את האזעקות לפני שהן נערמות.','המשחק נגמר כשהקיוביט הלוגי מתהפך, או כשדולקות יותר מדי אזעקות.']},
+{ch:2,title:'חלת הדבש',sub:'מודדים רק זוגות',make:()=>makeHoney(1),honey:true,tools:['X','Y','Z'],gen:{t:'honey',max:1},N:4,goal:'לגלות איזו שגיאה ואיפה',
+ intro:['כאן מודדים רק <b>זוגות</b> של קיוביטים, לפי הקצב: צלע <span style="color:var(--x)">אדומה XX</span>, ואז <span style="color:var(--y)">ירוקה YY</span>, ואז <span style="color:var(--z)">כחולה ZZ</span>.','מכפלת 6 הצלעות סביב משושה נותנת את <b>המייצב</b> שלו. משושה מתעדכן רק אחרי ששני צבעי השוליים שלו נמדדו.','איזו שגיאה מדליקה אילו משושים? לגלות, לבחור X, Y או Z, ולתקן.']},
+{ch:2,title:'חלת דבש גדולה',sub:'עד 2 שגיאות',make:()=>makeHoney(2),honey:true,tools:['X','Y','Z'],gen:{t:'honey',max:2},N:4,goal:'לתקן הכול',
+ intro:['עד 2 שגיאות.','כלל אצבע: שגיאה מדליקה את המשושים שסביבה <b>שצבעם שונה מצבעה</b> (X אדום, Y ירוק, Z כחול).']},
+];
+
+/* ---------- state ---------- */
+let mode='menu',LV=null,LVI=-1,CODE=null,P=null,ST=null,tool='X';
+const cardOn=()=>$('card').classList.contains('on')&&!$('card').classList.contains('low');
+
+function show(id){['menu','game','lab'].forEach(s=>$(s).classList.toggle('on',s===id));mode=id;if(id!=='menu')resize()}
+function ul(lines){return '<ul>'+lines.map(l=>'<li>'+l+'</li>').join('')+'</ul>'}
+function showCard(title,body,btns,low){
+  $('cardT').innerHTML=title;$('cardB').innerHTML=body;const r=$('cardR');r.innerHTML='';
+  btns.forEach(b=>{const e=document.createElement('button');e.innerHTML=b.t;if(b.main)e.className='main';e.onclick=()=>{hideCard();b.fn&&b.fn()};r.appendChild(e)});
+  $('card').classList.toggle('low',!!low);$('card').classList.add('on');
+}
+function hideCard(){$('card').classList.remove('on','low')}
+let toastT=0;function toast(t,s){const e=$('toast');e.innerHTML=t;e.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',(s||2.6)*1000)}
+
+function buildMenu(){
+  const root=$('chapters');root.innerHTML='';
+  CH.forEach((ch,ci)=>{
+    const d=document.createElement('div');d.className='chapter';d.innerHTML=`<h2>${ch[0]}<span>${ch[1]}</span></h2>`;
+    const g=document.createElement('div');g.className='grid';
+    LEVELS.forEach((L,i)=>{if(L.ch!==ci)return;
+      const b=document.createElement('button');b.className='lv';
+      const st=SAVE.stars[i]||0,best=SAVE.best[i];
+      b.innerHTML=`<b>${i+1}. ${L.title}</b><span>${L.sub}</span><span class="st">${L.special==='arcade'?(best?'שיא: '+best:''):'★'.repeat(st)+'☆'.repeat(3-st)}</span>`;
+      b.onclick=()=>startLevel(i);g.appendChild(b)});
+    if(ci===2){const b=document.createElement('button');b.className='lv';b.innerHTML='<b>🧪 מעבדת הסף</b><span>מתי קוד גדול יותר עוזר?</span><span class="st"></span>';b.onclick=openLab;g.appendChild(b)}
+    d.appendChild(g);root.appendChild(d);
+  });
+}
+
+function setupTools(){
+  const t=$('tools');t.innerHTML='';tool=LV.tools[0];
+  LV.tools.forEach(T=>{const b=document.createElement('button');b.className='tool';b.dataset.t=T;b.textContent=T;b.onclick=()=>{tool=T;markTools()};t.appendChild(b)});
+  markTools();
+  $('bHint').style.display=(LV.special?'none':'');
+  $('bCheck').style.display=(LV.special==='logical'?'':'none');
+  $('rhythm').style.display=LV.honey?'flex':'none';
+}
+function markTools(){document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('sel',b.dataset.t===tool))}
+
+function startLevel(i,skipIntro){
+  LVI=i;LV=LEVELS[i];show('game');ST={k:0,ok:0,score:0};setupTools();
+  $('gTitle').textContent=(i+1)+'. '+LV.title;$('gGoal').textContent=LV.goal;
+  if(LV.special==='arcade'){
+    startArcade(3);P.state='idle';
+    const best=SAVE.best[i]?`<p><small>השיא שלך: ${SAVE.best[i]} שגיאות</small></p>`:'';
+    showCard(LV.title,ul(LV.intro)+best,[{t:'משטח d=3',main:true,fn:()=>startArcade(3)},{t:'משטח d=5',fn:()=>startArcade(5)}]);
+    return;
+  }
+  newPuzzle();
+  if(!skipIntro)showCard(LV.title,ul(LV.intro),[{t:'יאללה',main:true,fn:()=>{P.t0=now();startBugs()}}]);
+}
+
+function emptyFrame(n){return {ex:new Uint8Array(n),ez:new Uint8Array(n),cx:new Uint8Array(n),cz:new Uint8Array(n)}}
+function newPuzzle(){
+  CODE=LV.special==='logical'?makeSurface(ST.k===0?3:5):LV.make();
+  P=Object.assign(emptyFrame(CODE.n),{state:'play',hint:null,usedHint:false,t0:now(),disp:null,bugs:[]});
+  if(!LV.special)genError();
+  const rf=robotFix(CODE,P.ex,P.ez);P.robotW=weight(rf.cx,rf.cz);
+  if(LV.honey){P.disp=new Array(CODE.stabs.length).fill(0);P.k=2;P.rounds=0;P.lastRound=now();P.flash=0}
+  recompute(true);fit();updateHud();startBugs();
+}
+function weight(cx,cz){let w=0;for(let q=0;q<cx.length;q++)if(cx[q]||cz[q])w++;return w}
+function walkChain(c,T,len){ // random walk of length len along qubits that share a check of the detecting kind
+  const nb=q=>{const out=new Set();c.qstabs[q].forEach(k=>{if(anti(c.stabs[k].P,T==='X'?1:0,T==='Z'?1:0))c.stabs[k].qs.forEach(r=>{if(r!==q)out.add(r)})});return [...out]};
+  let q=rnd(c.n);const seen=[q];
+  while(seen.length<len){const opts=nb(q).filter(r=>!seen.includes(r));if(!opts.length)break;q=opts[rnd(opts.length)];seen.push(q)}
+  return seen;
+}
+function genError(){
+  const g=LV.gen;
+  for(let tries=0;tries<400;tries++){
+    P.ex.fill(0);P.ez.fill(0);
+    if(g.t==='honey'){
+      const k=1+rnd(g.max);
+      for(let i=0;i<k;i++){const q=rnd(CODE.n),Pp=PN[rnd(3)];if(Pp!=='Z')P.ex[q]^=1;if(Pp!=='X')P.ez[q]^=1}
+    }else{
+      let lx=g.maxX?1+rnd(g.maxX):0,lz=g.maxZ?rnd(g.maxZ+1):0;
+      if(g.t==='mixed'){lx=rnd(g.maxX+1);if(!lx&&!lz)(Math.random()<.5?lx=1:lz=1)}
+      if(lx)walkChain(CODE,'X',lx).forEach(q=>P.ex[q]^=1);
+      if(lz)walkChain(CODE,'Z',lz).forEach(q=>P.ez[q]^=1);
+    }
+    const s=CODE.syn(P.ex,P.ez);if(!s.some(b=>b))continue;
+    const rf=robotFix(CODE,P.ex,P.ez);
+    const rx=P.ex.map((v,q)=>v^rf.cx[q]),rz=P.ez.map((v,q)=>v^rf.cz[q]);
+    if(CODE.syn(rx,rz).some(b=>b)||logicalFail(CODE,rx,rz))continue; // keep every puzzle solvable by the best decoder
+    return;
+  }
+}
+function frame(){const n=CODE.n,rx=new Uint8Array(n),rz=new Uint8Array(n);for(let q=0;q<n;q++){rx[q]=P.ex[q]^P.cx[q];rz[q]=P.ez[q]^P.cz[q]}return {rx,rz}}
+function recompute(silent){
+  const {rx,rz}=frame(),s=CODE.syn(rx,rz);
+  if(!LV.honey&&!silent&&P.syn){if(s.filter(b=>b).length>P.syn.filter(b=>b).length)SND.lamp()}
+  P.syn=s;if(!LV.honey)P.disp=s;
+}
+function updateHud(){
+  if(LV.special==='arcade'){$('hud').textContent=P&&P.arc?`שגיאות ששרדתם: ${P.arc.score}`:'';return}
+  $('hud').textContent=`חידה ${Math.min(ST.k+1,LV.N)}/${LV.N} · ${ST.score} נק׳`;
+}
+
+function tap(q){
+  if(!P||P.state!=='play'||cardOn())return;
+  if(tool!=='Z')P.cx[q]^=1;if(tool!=='X')P.cz[q]^=1;
+  SND.tap();P.hint=null;P.touched=true;recompute();
+  if(LV.special==='arcade')return arcadeCheck();
+  if(LV.special==='logical')return;
+  if(!LV.honey&&!P.syn.some(b=>b)){P.state='wait';setTimeout(evaluate,380)}
+}
+
+function evaluate(){
+  if(!P||P.state==='reveal')return;
+  P.state='reveal';P.revealT=now();fit();
+  const {rx,rz}=frame(),fail=logicalFail(CODE,rx,rz),exact=!rx.some(v=>v)&&!rz.some(v=>v);
+  const pw=weight(P.cx,P.cz),rw=P.robotW;let msg;
+  if(!fail){
+    ST.ok++;let pts=100;if(P.usedHint)pts-=30;else if(pw<=rw)pts+=50;ST.score+=pts;SND.ok();
+    msg=exact?'בדיוק השגיאה!':LV.honey?'התיקון שונה מהשגיאה, אבל ההפרש הוא מכפלה של מדידות־זוגות. הקוד ממילא מודד אותן, אז זה שקול.':
+      'התיקון שונה מהשגיאה, אבל יחד הם יוצרים <b>לולאה סגורה</b> (בזהב). זו מכפלה של מייצבים, ולכן המידע שמור.';
+    if(!P.usedHint){if(pw<=rw)msg+=' <b>+50</b> על תיקון קצר כמו של הרובוט.';else msg+=` <small>(הרובוט הסתפק ב־${rw} לחיצות)</small>`}
+  }else{
+    SND.bad();
+    msg=LV.honey?'המשושים כבו, אבל התיקון יחד עם השגיאה <b>אינו</b> מכפלה של מדידות. המידע נפגע.':
+      'המנורות כבו, אבל התיקון והשגיאה יחד יוצרים <b>מחרוזת משפה לשפה</b> (בזהב). זה בדיוק אופרטור לוגי: הקיוביט הלוגי התהפך!';
+  }
+  if(LV.honey&&ST.k===0)msg+='<br><small>הכלל: שגיאה מדליקה את המשושים סביבה <b>שצבעם שונה מצבעה</b> (X אדום, Y ירוק, Z כחול). למה? משושה אדום הוא X על כל 6 הקיוביטים, ולכן שגיאת X לא מפריעה לו.</small>';
+  if(LVI===1&&ST.k===0&&!fail)msg+='<br><small>טיפ: המנורות לא אומרות איזה צד של הקצה. הרובוט תמיד בוחר את ההסבר הקצר: מעט שגיאות סביר יותר מהרבה.</small>';
+  ST.k++;updateHud();
+  const last=ST.k>=LV.N;
+  setTimeout(()=>showCard(fail?'✗ שגיאה לוגית':'✓ הצלחה','<p>'+msg+'</p><p><small>🐞 = איפה הייתה השגיאה באמת.</small></p>',[{t:last?'סיום השלב':'החידה הבאה',main:true,fn:last?endLevel:newPuzzle}],true),650);
+}
+function endLevel(){
+  const N=LV.N,ok=ST.ok,stars=N===2?(ok===2?3:ok===1?1:0):(ok>=4?3:ok===3?2:ok===2?1:0);
+  if(stars>(SAVE.stars[LVI]||0)){SAVE.stars[LVI]=stars;save()}
+  const next=LVI+1<LEVELS.length;
+  showCard(`${'★'.repeat(stars)}${'☆'.repeat(3-stars)} ${LV.title}`,`<p>הצלחתם ב־${ok} מתוך ${N} · ${ST.score} נקודות.</p>`+(LVI===LEVELS.length-1?'<p>סיימתם את כל השלבים! במעבדת הסף אפשר לראות למה מחשבים קוונטיים צריכים קודים גדולים.</p>':''),
+    [next?{t:'לשלב הבא',main:true,fn:()=>startLevel(LVI+1)}:{t:'🧪 למעבדה',main:true,fn:openLab},{t:'שוב',fn:()=>startLevel(LVI)},{t:'תפריט',fn:toMenu}]);
+}
+function toMenu(){hideCard();P=null;buildMenu();show('menu')}
+
+function useHint(){
+  if(!P||P.state!=='play')return;
+  const {rx,rz}=frame(),rf=robotFix(CODE,rx,rz);
+  const h=[];for(let q=0;q<CODE.n;q++)if(rf.cx[q]||rf.cz[q])h.push({q,P:rf.cx[q]&&rf.cz[q]?'Y':rf.cx[q]?'X':'Z'});
+  if(!h.length){toast('אין מה לתקן כרגע');return}
+  P.hint=h;P.usedHint=true;toast('הרובוט מציע: '+h.map(x=>x.P).join(' ')+' במקומות המסומנים');
+}
+function checkLogical(){
+  if(!P||P.state!=='play')return;
+  if(P.syn.some(b=>b)){toast('עדיין דולקות מנורות');SND.bad();return}
+  const w=weight(P.cx,P.cz);if(!w){toast('עוד לא שיניתם כלום');return}
+  if(!parity(P.cx,CODE.ZL)){toast('זו מכפלה של מייצבים: היא לא משנה את המידע. לנסות מחרוזת <b>משפה לשפה</b>.',3.5);SND.bad();return}
+  P.state='reveal';P.revealT=now();fit();ST.ok++;const d=CODE.d,pts=w===d?150:100;ST.score+=pts;SND.ok();ST.k++;updateHud();
+  const last=ST.k>=LV.N;
+  showCard('✓ הקיוביט הלוגי התהפך',`<p>עשיתם את זה ב־${w} לחיצות. ${w===d?'זה המינימום!':'אפשר גם ב־'+d+'.'}</p><p>מחרוזת X <b>משפה לשפה</b> אינה נראית לאף בדיקה, ובכל זאת משנה את המידע. כדי להטעות את הקוד, הטבע צריך לפחות <b>${d}</b> שגיאות בשורה. זה <b>המרחק</b> d=${d}.</p>`,
+    [{t:last?'סיום השלב':'עכשיו d=5',main:true,fn:last?endLevel:newPuzzle}],true);
+}
+function resetCorr(){if(!P||P.state!=='play')return;P.cx.fill(0);P.cz.fill(0);P.hint=null;recompute(true)}
+
+/* ---------- arcade ---------- */
+function startArcade(d){
+  CODE=makeSurface(d);fit();
+  P=Object.assign(emptyFrame(CODE.n),{state:'play',bugs:[],arc:{d,inj:0,score:0,next:now()+1.6,iv:2.8}});
+  recompute(true);updateHud();
+}
+function arcadeTick(t){
+  const A=P.arc;if(t<A.next)return;
+  const q=rnd(CODE.n),T=Math.random()<.5?'X':'Z';if(T==='X')P.ex[q]^=1;else P.ez[q]^=1;
+  A.inj++;A.iv=Math.max(.75,A.iv*.965);A.next=t+A.iv;
+  P.bugs=[{q,t0:t,ghost:true}];
+  recompute();arcadeCheck();
+}
+function arcadeCheck(){
+  const lit=P.syn.filter(b=>b).length;
+  if(lit>2*CODE.d+2)return arcadeOver('יותר מדי אזעקות דולקות בבת אחת.');
+  if(!lit){const {rx,rz}=frame();if(logicalFail(CODE,rx,rz))return arcadeOver('הקיוביט הלוגי התהפך: התיקונים והשגיאות יצרו מחרוזת משפה לשפה (בזהב).');
+    P.arc.score=P.arc.inj;updateHud()}
+}
+function arcadeOver(why){
+  P.state='reveal';P.revealT=now();fit();SND.bad();const s=P.arc.score,best=SAVE.best[LVI]||0;
+  if(s>best){SAVE.best[LVI]=s;save()}
+  showCard('המשמרת נגמרה',`<p>${why}</p><p>שרדתם <b>${s}</b> שגיאות${s>best?' · <b>שיא חדש!</b>':' · השיא: '+best}.</p><p><small>במשטח d=5 שורדים יותר: הוא צריך 3 שגיאות כדי לטעות, ו־d=3 צריך רק 2.</small></p>`,
+    [{t:'d=3',main:true,fn:()=>startArcade(3)},{t:'d=5',fn:()=>startArcade(5)},{t:'תפריט',fn:toMenu}],true);
+}
+
+/* ---------- honeycomb rhythm ---------- */
+function honeyTick(t){
+  if(t-P.lastRound<.95)return;
+  P.lastRound=t;P.k=(P.k+1)%3;P.rounds++;P.flash=t;SND.tick();
+  const c=(P.k+1)%3; // after measuring colours k-1 and k, hexagons of the third colour are known
+  CODE.stabs.forEach((s,i)=>{if(s.color===c){if(P.syn[i]&&!P.disp[i])SND.lamp();P.disp[i]=P.syn[i]}});
+  document.querySelectorAll('#rhythm i').forEach(e=>e.classList.toggle('on',+e.dataset.c===P.k));
+  if(P.state==='play'&&P.rounds>=3&&P.touched&&!P.syn.some(b=>b)&&!P.disp.some(b=>b))evaluate();
+}
+
+/* ---------- drawing ---------- */
+const cv=$('cv'),ctx=cv.getContext('2d');let DPR=1,VIEW={s:60,ox:0,oy:0};
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);for(const c of [cv,$('plot')]){const r=c.getBoundingClientRect();c.width=Math.max(10,r.width*DPR);c.height=Math.max(10,r.height*DPR)}fit()}
+window.addEventListener('resize',resize);
+function fit(){
+  if(!CODE)return;let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+  CODE.qubits.forEach(q=>{x0=Math.min(x0,q.x);x1=Math.max(x1,q.x);y0=Math.min(y0,q.y);y1=Math.max(y1,q.y)});
+  const m=CODE.kind==='honey'?.7:CODE.kind==='rep'?.8:.9;x0-=m;x1+=m;y0-=m;y1+=m;
+  if(CODE.kind==='rep'){y0-=.6;y1+=.6}
+  const W=cv.width,H=cv.height-(P&&P.state==='reveal'&&innerWidth<1500?Math.min(230*DPR,cv.height*.4):0),pad=20*DPR,s=Math.min((W-2*pad)/(x1-x0),(H-2*pad)/(y1-y0),(CODE.kind==='rep'?110:95)*DPR);
+  VIEW={s,ox:W/2-s*(x0+x1)/2,oy:H/2-s*(y0+y1)/2};
+}
+const X=x=>VIEW.ox+x*VIEW.s,Y=y=>VIEW.oy+y*VIEW.s;
+function hexA(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`}
+function lamp(x,y,r,t){ctx.save();ctx.shadowColor='#ffe58a';ctx.shadowBlur=18*DPR;ctx.fillStyle='#fff3b0';ctx.beginPath();ctx.arc(X(x),Y(y),r*VIEW.s*(1+.12*Math.sin(t*6)),0,7);ctx.fill();ctx.restore()}
+
+function stabPath(s){
+  const S=VIEW.s;ctx.beginPath();
+  if(CODE.kind==='honey'){s.vs.forEach((v,i)=>{const q=CODE.qubits[v];i?ctx.lineTo(X(q.x),Y(q.y)):ctx.moveTo(X(q.x),Y(q.y))});ctx.closePath();return}
+  if(!s.side){ctx.rect(X(s.x-.5),Y(s.y-.5),S,S);return}
+  const a=CODE.qubits[s.qs[0]],b=CODE.qubits[s.qs[1]],cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;
+  const ang={top:[Math.PI,2*Math.PI],bottom:[0,Math.PI],left:[Math.PI/2,1.5*Math.PI],right:[-Math.PI/2,Math.PI/2]}[s.side];
+  ctx.arc(X(cx),Y(cy),.5*S,ang[0],ang[1]);ctx.closePath();
+}
+function draw(){
+  requestAnimationFrame(draw);
+  if(mode==='lab'){drawPlot();return}
+  if(mode!=='game'||!CODE||!P)return;
+  const t=now();
+  if(!cardOn()){
+    if(LV&&LV.special==='arcade'&&P.state==='play')arcadeTick(t);
+    if(LV&&LV.honey&&P.state!=='reveal')honeyTick(t);
+  }
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const S=VIEW.s,lw=Math.max(1,S*.03);
+  const reveal=P.state==='reveal';
+  // checks
+  if(CODE.kind==='rep'){
+    ctx.strokeStyle='#ffffff30';ctx.lineWidth=lw*1.5;ctx.beginPath();ctx.moveTo(X(0),Y(0));ctx.lineTo(X(CODE.n-1),Y(0));ctx.stroke();
+    CODE.stabs.forEach((s,i)=>{
+      if(P.disp[i])lamp(s.x,s.y,.13,t);
+      else{ctx.fillStyle='#2a3566';ctx.strokeStyle=hexA(PC.Z,.8);ctx.lineWidth=lw;ctx.beginPath();ctx.arc(X(s.x),Y(s.y),.13*S,0,7);ctx.fill();ctx.stroke()}
+    });
+  }else{
+    CODE.stabs.forEach((s,i)=>{
+      const col=PC[s.P],lit=P.disp[i];
+      stabPath(s);ctx.fillStyle=hexA(col,lit?.78:CODE.kind==='honey'?.2:.24);ctx.fill();
+      if(CODE.kind!=='honey'){ctx.strokeStyle=hexA(col,.5);ctx.lineWidth=lw;ctx.stroke()}
+      if(!lit&&S>40*DPR){ctx.fillStyle=hexA(col,.55);ctx.font=`bold ${Math.round(S*.2)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        const lx=s.side?s.x+(s.side==='left'?.12:s.side==='right'?-.12:0):s.x,ly=s.side?s.y+(s.side==='top'?.12:s.side==='bottom'?-.12:0):s.y;ctx.fillText(s.P,X(lx),Y(ly))}
+      if(lit)lamp(s.x,s.y,CODE.kind==='honey'?.2:.12,t);
+    });
+    if(CODE.kind==='honey'){
+      const fl=Math.max(0,1-(t-(P.flash||0))/.6);
+      CODE.edges.forEach(e=>{const a=CODE.qubits[e.a],b=CODE.qubits[e.b],on=e.c===P.k&&fl>0;
+        ctx.strokeStyle=hexA(PC[PN[e.c]],on?.5+.5*fl:.75);ctx.lineWidth=on?lw*(2.2+3*fl):lw*2.2;ctx.beginPath();ctx.moveTo(X(a.x),Y(a.y));ctx.lineTo(X(b.x),Y(b.y));ctx.stroke()});
+    }else{
+      ctx.strokeStyle='#ffffff26';ctx.lineWidth=lw;const d=CODE.d;ctx.beginPath();
+      for(let i=0;i<d;i++){ctx.moveTo(X(i),Y(0));ctx.lineTo(X(i),Y(d-1));ctx.moveTo(X(0),Y(i));ctx.lineTo(X(d-1),Y(i))}ctx.stroke();
+    }
+  }
+  // residual string in gold during the reveal
+  if(reveal)drawResidual(t);
+  // qubits
+  const qr=(CODE.kind==='rep'?.24:CODE.kind==='honey'?.17:.19)*S;
+  CODE.qubits.forEach((q,i)=>{
+    const c=P.cx[i],z=P.cz[i],L=c&&z?'Y':c?'X':z?'Z':'';
+    ctx.fillStyle=L?hexA(PC[L],.95):'#e9edff';ctx.strokeStyle='#0d1330';ctx.lineWidth=lw*1.2;
+    ctx.beginPath();ctx.arc(X(q.x),Y(q.y),qr,0,7);ctx.fill();ctx.stroke();
+    if(L){ctx.fillStyle='#10163a';ctx.font=`bold ${Math.round(qr*1.15)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(L,X(q.x),Y(q.y)+1)}
+  });
+  if(P.hint)P.hint.forEach(h=>{const q=CODE.qubits[h.q];ctx.save();ctx.setLineDash([5*DPR,4*DPR]);ctx.lineDashOffset=-t*20;ctx.strokeStyle='#ffd166';ctx.lineWidth=lw*2;
+    ctx.beginPath();ctx.arc(X(q.x),Y(q.y),qr*1.6,0,7);ctx.stroke();ctx.restore();
+    ctx.fillStyle='#ffd166';ctx.font=`bold ${Math.round(qr)}px sans-serif`;ctx.textAlign='center';ctx.fillText(h.P,X(q.x)+qr*1.7,Y(q.y)-qr*1.5)});
+  // where the errors really were
+  if(reveal){
+    ctx.font=`${Math.round(qr*1.2)}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    for(let i=0;i<CODE.n;i++)if(P.ex[i]||P.ez[i]){const q=CODE.qubits[i],L=P.ex[i]&&P.ez[i]?'Y':P.ex[i]?'X':'Z';
+      ctx.fillText('🐞',X(q.x)-qr*1.25,Y(q.y)-qr*1.25);ctx.fillStyle=PC[L];ctx.font=`bold ${Math.round(qr*.9)}px sans-serif`;ctx.fillText(L,X(q.x)-qr*1.25,Y(q.y)+qr*.05-qr*.1+qr*.2);ctx.font=`${Math.round(qr*1.2)}px serif`;ctx.fillStyle='#fff'}
+  }
+  // bugs sneaking in
+  P.bugs.forEach(b=>{const k=(t-b.t0)/1.1;if(k<0||k>1)return;ctx.globalAlpha=Math.sin(k*Math.PI);ctx.font=`${Math.round(qr*1.3)}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    if(b.ghost){const q=CODE.qubits[b.q];ctx.fillText('🐞',X(q.x)+Math.sin(k*20)*qr*.6+qr*2.2*(1-k)*Math.cos(b.q),Y(q.y)-qr*2*(1-k))}
+    else ctx.fillText('🐞',X(b.x0+(b.x1-b.x0)*k),Y(b.y0+(b.y1-b.y0)*k));ctx.globalAlpha=1});
+}
+function startBugs(){
+  if(!P||!CODE||LV.special)return;let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;
+  CODE.qubits.forEach(q=>{x0=Math.min(x0,q.x);x1=Math.max(x1,q.x);y0=Math.min(y0,q.y);y1=Math.max(y1,q.y)});
+  P.bugs=[];const t=now();
+  for(let i=0;i<4;i++)P.bugs.push({t0:t+i*.12,x0:x0-1+Math.random()*(x1-x0+2),y0:y0-1.2,x1:x0+Math.random()*(x1-x0),y1:y0+Math.random()*(y1-y0)});
+}
+function drawResidual(t){
+  const {rx,rz}=frame(),S=VIEW.s;ctx.save();ctx.strokeStyle='#ffd166';ctx.shadowColor='#ffd166';ctx.shadowBlur=12*DPR;ctx.lineWidth=S*.07;ctx.lineCap='round';ctx.lineJoin='round';
+  const seg=(a,b)=>{ctx.beginPath();ctx.moveTo(X(a.x),Y(a.y));ctx.lineTo(X(b.x),Y(b.y));ctx.stroke()};
+  if(CODE.kind==='honey'){
+    CODE.edges.forEach(e=>{if((rx[e.a]||rz[e.a])&&(rx[e.b]||rz[e.b]))seg(CODE.qubits[e.a],CODE.qubits[e.b])});
+    CODE.qubits.forEach((q,i)=>{if(rx[i]||rz[i]){ctx.beginPath();ctx.arc(X(q.x),Y(q.y),S*.25,0,7);ctx.stroke()}});
+  }else{
+    for(const [T,r] of [['X',rx],['Z',rz]]){
+      const ex=T==='X'?1:0,ez=T==='Z'?1:0;
+      CODE.stabs.forEach(s=>{if(!anti(s.P,ex,ez))return;const qs=s.qs.filter(q=>r[q]);
+        for(let i=0;i+1<qs.length;i+=2){const a=CODE.qubits[qs[i]],b=CODE.qubits[qs[i+1]],m={x:s.x,y:s.y};if(s.side||CODE.kind==='rep'){seg(a,b)}else{seg(a,m);seg(m,b)}}});
+      for(let q=0;q<CODE.n;q++){if(!r[q])continue;const ds=CODE.qstabs[q].filter(k=>anti(CODE.stabs[k].P,ex,ez));
+        if(ds.length===1){const s=CODE.stabs[ds[0]],a=CODE.qubits[q],dx=a.x-s.x,dy=a.y-s.y,l=Math.hypot(dx,dy)||1;seg(a,{x:a.x+dx/l*.7,y:a.y+dy/l*.7})}}
+    }
+  }
+  ctx.restore();
+}
+
+/* ---------- input ---------- */
+cv.addEventListener('pointerdown',e=>{
+  if(!CODE||!P)return;const r=cv.getBoundingClientRect(),px=(e.clientX-r.left)*DPR,py=(e.clientY-r.top)*DPR;
+  const bx=(px-VIEW.ox)/VIEW.s,by=(py-VIEW.oy)/VIEW.s;let best=-1,bd=.45;
+  CODE.qubits.forEach((q,i)=>{const d=Math.hypot(q.x-bx,q.y-by);if(d<bd){bd=d;best=i}});
+  if(best>=0)tap(best);
+});
+window.addEventListener('keydown',e=>{if(mode!=='game'||!LV)return;const k=e.key.toUpperCase();if(LV.tools.includes(k)){tool=k;markTools()}});
+$('bMenu').onclick=toMenu;$('bHint').onclick=useHint;$('bReset').onclick=resetCorr;$('bCheck').onclick=checkLogical;
+
+/* ---------- threshold lab ---------- */
+const LAB={ps:[.02,.04,.06,.08,.10,.12,.14,.16],ds:[3,5,7],data:null,run:false,codes:null};
+const DCOL={3:'#ffd166',5:'#ff8f7a',7:'#73a8ff'};
+function openLab(){hideCard();show('lab');if(!LAB.data)LAB.data=LAB.ds.map(()=>LAB.ps.map(()=>({n:0,f:0})))}
+function labStep(){
+  if(!LAB.run||mode!=='lab')return;
+  if(!LAB.codes)LAB.codes=LAB.ds.map(d=>{const c=makeSurface(d);return {c,G:graphs(c).X}});
+  const t0=performance.now();let all=true;
+  while(performance.now()-t0<28){
+    all=true;
+    LAB.ds.forEach((d,di)=>LAB.ps.forEach((p,pi)=>{const cell=LAB.data[di][pi];if(cell.n>=3000)return;all=false;
+      const {c,G}=LAB.codes[di],ex=new Uint8Array(c.n),ez=new Uint8Array(c.n);
+      for(let q=0;q<c.n;q++)ex[q]=Math.random()<p?1:0;
+      const corr=decode(c,G,c.syn(ex,ez));for(let q=0;q<c.n;q++)ex[q]^=corr[q];
+      cell.n++;if(parity(ex,c.ZL))cell.f++}));
+    if(all)break;
+  }
+  const tot=LAB.data.flat().reduce((a,c)=>a+c.n,0);$('labInfo').textContent=`${tot.toLocaleString()} משטחים נבדקו`;
+  if(all){LAB.run=false;$('labVerdict').innerHTML='<b style="color:var(--gold)">הקווים נחתכים בערך ב־p≈10%: זה הסף.</b> מתחתיו, קוד גדול יותר נכשל <b>פחות</b>, ומעליו <b>יותר</b>.';return}
+  setTimeout(labStep,0);
+}
+$('bRun').onclick=()=>{if(!LAB.run){LAB.run=true;$('labVerdict').textContent='רץ… לשים לב איפה הקווים נחתכים.';labStep()}};
+$('bStop').onclick=()=>{LAB.run=false};
+$('bLabBack').onclick=()=>{LAB.run=false;toMenu()};
+function drawPlot(){
+  const c=$('plot'),g=c.getContext('2d'),W=c.width,H=c.height,L=60*DPR,R=70*DPR,T=20*DPR,B=46*DPR;
+  g.clearRect(0,0,W,H);
+  const px=p=>L+(p-0)/(.17)*(W-L-R),py=v=>T+(1-(Math.log10(Math.max(v,1e-4))+4)/4)*(H-T-B);
+  g.strokeStyle='#ffffff18';g.lineWidth=1;g.fillStyle='#a3aedb';g.font=`${12*DPR}px sans-serif`;g.textAlign='center';g.textBaseline='top';
+  for(let p=0;p<=.16001;p+=.02){g.beginPath();g.moveTo(px(p),T);g.lineTo(px(p),H-B);g.stroke();g.fillText(Math.round(p*100)+'%',px(p),H-B+6*DPR)}
+  g.textAlign='right';g.textBaseline='middle';
+  [1e-4,1e-3,1e-2,1e-1,1].forEach(v=>{g.beginPath();g.moveTo(L,py(v));g.lineTo(W-R,py(v));g.stroke();g.fillText(v>=.01?(v*100)+'%':(v*100).toFixed(v<1e-3?2:1)+'%',L-6*DPR,py(v))});
+  g.textAlign='center';g.fillText('p: הסתברות שגיאה לקיוביט',(L+W-R)/2,H-18*DPR);
+  g.save();g.translate(14*DPR,(T+H-B)/2);g.rotate(-Math.PI/2);g.fillText('כישלון לוגי',0,0);g.restore();
+  if(!LAB.data)return;
+  LAB.ds.forEach((d,di)=>{
+    const pts=LAB.data[di].map((cell,pi)=>cell.n>=50&&cell.f>0?[px(LAB.ps[pi]),py(cell.f/cell.n)]:null).filter(Boolean);
+    g.strokeStyle=DCOL[d];g.fillStyle=DCOL[d];g.lineWidth=2*DPR;g.beginPath();pts.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.stroke();
+    pts.forEach(([x,y])=>{g.beginPath();g.arc(x,y,4.5*DPR,0,7);g.fill()});
+    if(pts.length){const [x,y]=pts[pts.length-1];g.textAlign='left';g.font=`bold ${13*DPR}px sans-serif`;g.fillText('d='+d,x+8*DPR,y+(di-1)*15*DPR)}
+  });
+}
+
+/* ---------- self test (#test) ---------- */
+function selfTest(){
+  const log=(...a)=>console.log('[test]',...a);let bad=0;const ok=(c,m)=>{if(!c){bad++;console.log('[test] FAIL',m)}};
+  for(const d of [3,5,7]){const c=makeSurface(d);ok(c.stabs.length===d*d-1,'stab count '+d);
+    ok(c.stabs.every(s=>s.P!=='Z'||s.qs.filter(q=>c.XL.includes(q)).length%2===0),'XL commutes '+d);
+    ok(c.stabs.every(s=>s.P!=='X'||s.qs.filter(q=>c.ZL.includes(q)).length%2===0),'ZL commutes '+d);
+    ok(c.XL.filter(q=>c.ZL.includes(q)).length%2===1,'XL ZL anticommute '+d);
+    for(let i=0;i<c.stabs.length;i++)for(let j=i+1;j<c.stabs.length;j++){const a=c.stabs[i],b=c.stabs[j];if(a.P!==b.P)ok(a.qs.filter(q=>b.qs.includes(q)).length%2===0,'stabs commute')}
+    const t=(d-1)/2;let fails=0;
+    for(let k=0;k<400;k++){const ex=new Uint8Array(c.n),ez=new Uint8Array(c.n);const w=1+rnd(t);const qs=new Set();while(qs.size<w)qs.add(rnd(c.n));qs.forEach(q=>ex[q]=1);
+      const w2=rnd(t+1),q2=new Set();while(q2.size<w2)q2.add(rnd(c.n));q2.forEach(q=>ez[q]=1);
+      const f=robotFix(c,ex,ez);const rx=ex.map((v,q)=>v^f.cx[q]),rz=ez.map((v,q)=>v^f.cz[q]);if(c.syn(rx,rz).some(b=>b)||logicalFail(c,rx,rz))fails++}
+    ok(fails===0,'decoder corrects weight<=t, d='+d+' fails='+fails);log('surface d='+d,'ok, decoder fails on weight<=t:',fails);
+  }
+  {const c=makeRep(7);let fails=0;for(let k=0;k<200;k++){const ex=new Uint8Array(7),ez=new Uint8Array(7);walkChainTest(c,ex,1+rnd(3));const f=robotFix(c,ex,ez);const rx=ex.map((v,q)=>v^f.cx[q]);if(c.syn(rx,ez).some(b=>b)||logicalFail(c,rx,ez))fails++}ok(!fails,'rep');log('rep fails',fails)}
+  for(const R of [1,2]){const c=makeHoney(R);
+    ok(c.n===6*(R+1)*(R+1),'honey vertices '+c.n);
+    const byV=c.qubits.map(()=>[]);c.edges.forEach(e=>{byV[e.a].push(e.c);byV[e.b].push(e.c)});ok(byV.every(l=>new Set(l).size===l.length),'edge colours distinct at vertex');
+    c.stabs.forEach(s=>{c.edges.forEach(e=>{if(s.vs.includes(e.a)&&s.vs.includes(e.b))ok(e.c!==s.color,'hex boundary colour')})});
+    // plaquettes commute with every check
+    c.stabs.forEach(s=>c.edges.forEach(e=>{let a=0;for(const q of [e.a,e.b])if(s.qs.includes(q)&&s.P!==PN[e.c])a^=1;ok(a===0,'plaquette commutes with check')}));
+    // every plaquette is in the span of the checks
+    c.stabs.forEach(s=>{const v=new Uint8Array(2*c.n);s.qs.forEach(q=>{if(s.P!=='Z')v[q]=1;if(s.P!=='X')v[c.n+q]=1});ok(inSpan(c.checkBasis,v),'plaquette in check span')});
+    let fails=0;for(let q=0;q<c.n;q++)for(const Pp of PN){const ex=new Uint8Array(c.n),ez=new Uint8Array(c.n);if(Pp!=='Z')ex[q]=1;if(Pp!=='X')ez[q]=1;if(!c.syn(ex,ez).some(b=>b))continue;
+      const f=honeyFix(c,ex,ez),rx=ex.map((v,i)=>v^f.cx[i]),rz=ez.map((v,i)=>v^f.cz[i]);if(c.syn(rx,rz).some(b=>b)||logicalFail(c,rx,rz))fails++}
+    ok(!fails,'honey single errors '+R);log('honey R='+R,'n='+c.n,'hexes='+c.stabs.length,'single-error fails',fails);
+  }
+  // quick threshold numbers
+  for(const d of [3,5,7]){const c=makeSurface(d),G=graphs(c).X;const row=[];for(const p of [.05,.10,.15]){let f=0;const N=1500;for(let k=0;k<N;k++){const ex=new Uint8Array(c.n);for(let q=0;q<c.n;q++)ex[q]=Math.random()<p?1:0;const cr=decode(c,G,c.syn(ex,new Uint8Array(c.n)));for(let q=0;q<c.n;q++)ex[q]^=cr[q];if(parity(ex,c.ZL))f++}row.push(p+':'+(f/N).toFixed(3))}log('threshold d='+d,row.join(' '))}
+  log(bad?'FAILURES '+bad:'ALL OK');
+}
+function walkChainTest(c,ex,len){walkChain(c,'X',len).forEach(q=>ex[q]^=1)}
+
+/* ---------- boot ---------- */
+buildMenu();draw();
+(function(){const h=location.hash.slice(1);
+  if(h==='test')selfTest();
+  let m=h.match(/^L(\d+)(go)?/);if(m){startLevel(+m[1]-1,!!m[2]);if(m[2]){P.t0=now()}}
+  if(h==='lab'){openLab();if(location.hash.includes('lab'))setTimeout(()=>$('bRun').click(),100)}
+  m=h.match(/reveal/);if(m&&P&&!LV.special){const f=robotFix(CODE,P.ex,P.ez);P.cx=f.cx;P.cz=f.cz;recompute(true);if(LV.honey){P.disp=P.syn.slice();P.touched=true;P.rounds=3}else evaluate()}
+})();
+</script>
+</body>
+</html>
