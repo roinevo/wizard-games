@@ -73,6 +73,15 @@ h1 .seal{display:inline-block;vertical-align:middle;margin-inline-start:10px;bac
 .modeTxt{position:absolute;bottom:14px;left:14px;background:rgba(239,227,198,.85);border:1px solid #a8916a;padding:3px 10px;font-size:16px}
 #tCrane,#tHorse,#tMap{position:absolute;bottom:156px;left:30px;width:66px;height:66px;border-radius:50%;background:rgba(239,227,198,.88);border:2px solid #8a7550;font-size:28px;pointer-events:auto;padding:0}
 #tHorse{left:104px;bottom:104px}#tMap{bottom:232px;width:54px;height:54px;font-size:22px;left:36px}
+/* short screens (phones held sideways): keep the middle of the view clear */
+@media (max-height:520px){
+  #toast{top:9%;font-size:15px;padding:3px 12px;line-height:1.3}
+  #guide{top:auto!important;bottom:6px!important;font-size:13.5px!important;padding:3px 10px 4px 28px!important;max-width:min(430px,56vw)!important;line-height:1.3!important}
+  #guide small{font-size:11px!important}
+  #bubble,#bubble2{font-size:13px;max-width:min(210px,40vw);padding:3px 8px 5px}
+  .stats{font-size:14px;gap:3px}.stats div{padding:1px 8px}
+  #cdist{font-size:11px}
+}
 </style>
 </head>
 <body>
