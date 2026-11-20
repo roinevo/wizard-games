@@ -1017,8 +1017,8 @@ station(36490, "גבעת היער שממערב להר", -2350, 420, { up: 14, lo
 station(36492, "המדרון המזרחי של ההר", 980, 330, { up: 6, look: [0, 520, 0], fov: 60 }, { top: 0x16335f, mid: 0xece2c6, hor: 0x9eb0b4, fog: 0x8d8a7c, fLow: 0x1c1714, fMid: 0x82321f, fHigh: 0xa9482b, speckle: 1, dark: .6 }, s => { STORM.x = s.x; STORM.z = s.z; });
 station(56727, "קג'יקאזאווה על נהר פוג'י", -1985, -260, { up: 4, d: [60, 25], look: [-1990, 18, -250], fov: 55 }, null, s => {
   const rk = new THREE.Mesh(partsGeo([{ g: new THREE.DodecahedronGeometry(10, 0), c: 0x3f5a6e, m: M4(0, 2, 0, 0, 0, 0, 1.6, 1.4, 1) }, { g: new THREE.DodecahedronGeometry(6, 0), c: 0x2f475a, m: M4(8, 8, 0, .3, .4, 0) }]), VC); rk.position.set(s.x - 5, -3, s.z + 10); scene.add(rk);
-  addPerson("fisher", s.x + 4, s.z + 10, { y: 14, ry: Math.PI / 2 }); addPerson("farmer", s.x - 3, s.z + 8, { y: 10, s: .9 });
-  FOAMSPOTS.push([s.x, s.z + 10, 14]);
+  const f1 = addPerson("fisher", s.x + 4, s.z + 10, { y: 14, ry: Math.PI / 2 }), f2 = addPerson("farmer", s.x - 3, s.z + 8, { y: 10, s: .9 });
+  const fo = [s.x, s.z + 10, 14]; FOAMSPOTS.push(fo); s.kaji = { rk, f1, f2, fo };
 });
 station(36500, "שדה פוג'ימיגהרה", -2550, -950, { up: 5, d: [-7.5, -2.8], look: [-2529.4, 199, -942.3], fov: 50 }, null, s => {
   const [bx, bz] = toward(s.x, s.z, 0, 0, 22); const ang = Math.atan2(-bx, -bz);
@@ -1330,7 +1330,7 @@ function billboards(tex, list, soft) {
       vec3 w=c+r*position.x*sx+u*position.y*sy; vec4 mv=viewMatrix*modelMatrix*vec4(w,1.); vF=-mv.z; gl_Position=projectionMatrix*mv; }`,
     fragmentShader: `uniform sampler2D map; uniform vec3 fogCol; varying vec2 vUv; varying float vF; void main(){ float a=smoothstep(.3,.62,texture2D(map,vUv).r);
       vec3 c=mix(vec3(.88,.86,.80),vec3(.968,.94,.87),smoothstep(.12,.42,vUv.y));
-      a*=.92*smoothstep(20.,120.,vF); if(a<.01) discard; gl_FragColor=vec4(c,a); }`,
+      a*=.92*smoothstep(8.,40.,vF); if(a<.01) discard; gl_FragColor=vec4(c,a); }`,
     transparent: true, depthWrite: false
   } : {
     uniforms: { map: { value: tex } },
@@ -2742,6 +2742,36 @@ function rescaleWorld(K) {
   if (/dist|stats/.test(HASH)) console.log(`[rescale] K=${K} objects=${nObj} instances=${nInst} hidden=${nHid}`);
 }
 rescaleWorld(WORLD_K);
+
+/* ---------- Kajikazawa (56727): the fisherman's rock in the rushing Fuji river, Fuji behind to the right ---------- */
+(function dressKaji() {
+  const s = STATIONS.find(q => q.id === 56727); if (!s || !s.kaji) return;
+  const wet = (x, z) => landH(x, z) < .3, deep = (x, z) => { for (let a = 0; a < 6.28; a += .8) if (!wet(x + Math.cos(a) * 7, z + Math.sin(a) * 7)) return false; return wet(x, z); };
+  // search rock spots (deep water near the station) x camera spots (water, on a ring round the rock) so that
+  // Fuji stands ~12 degrees right of the fisherman and the camera floats over the river
+  let W = null, C = null, f = null, best = 1e9;
+  for (let gx = -300; gx <= 300; gx += 12) for (let gz = -300; gz <= 300; gz += 12) {
+    const wx = s.x + gx, wz = s.z + gz; if (gx * gx + gz * gz > 90000 || !deep(wx, wz)) continue;
+    for (let a = 0; a < 6.28; a += .1) { const cx = wx + Math.cos(a) * 36, cz = wz + Math.sin(a) * 36; if (!wet(cx, cz)) continue;
+      const fx = (wx - cx) / 36, fz = (wz - cz) / 36, jl = Math.hypot(cx, cz), jx = -cx / jl, jz = -cz / jl;
+      const ang = Math.atan2(-fz * jx + fx * jz, fx * jx + fz * jz) * 180 / Math.PI, cost = Math.abs(ang - 12) + Math.hypot(gx, gz) * .02;
+      if (cost < best) { best = cost; W = [wx, wz]; C = [cx, cz]; f = [fx, fz]; s._kang = ang; } } }
+  if (!W) { console.log("[kaji] no river"); return; }
+  const { rk, f1, f2, fo } = s.kaji, dx0 = W[0] - rk.position.x, dz0 = W[1] - rk.position.z;
+  rk.position.set(W[0], -3, W[1]);
+  rk.scale.set(.75, .85, .75); rk.rotation.y = Math.atan2(f[0], f[1]);
+  const rx = -f[1], rz = f[0]; // camera-right
+  f1.mesh.position.set(W[0] + rx * 1.5 - f[0] * 1, 8.7, W[1] + rz * 1.5 - f[1] * 1); f1.mesh.rotation.y = Math.atan2(rx, rz); f1.fixedY = true;
+  f2.mesh.position.set(W[0] - rx * 4.5 - f[0] * 2, 5.6, W[1] - rz * 4.5 - f[1] * 2); f2.fixedY = true;
+  fo[0] = W[0]; fo[1] = W[1]; fo[2] = 1;
+  // Hokusai's mist hides the middle ground: a cream bank beyond the rock, only Fuji's upper cone above it
+  const mist = []; for (const [dd, yy] of [[16, 5], [26, 14], [38, 24], [52, 34], [70, 44], [95, 54]]) for (let k = -3; k <= 3; k++) { const w = 120 + dd * 2; mist.push([W[0] + f[0] * dd + rx * k * w * .38, yy, W[1] + f[1] * dd + rz * k * w * .38, w, 24]); }
+  for (const [dd, yy, sd] of [[6, 6, 22], [8, 16, 30], [10, 27, 40], [12, 38, 52], [5, 4, 50], [9, 22, 70]]) mist.push([W[0] + f[0] * dd + rx * sd, yy, W[1] + f[1] * dd + rz * sd, 70, 14]);
+  billboards(kasumiTex, mist, true);
+  const cy = Math.max(landH(C[0], C[1]), 0) + 9;
+  s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0; s.view.look = [W[0], 9, W[1]];
+  if (/dbg/.test(HASH)) console.log(`[kaji] rock=${W.map(Math.round)} cam=${C.map(Math.round)},${cy.toFixed(0)} fujiAng=${s._kang.toFixed(0)} cost=${best.toFixed(0)}`);
+})();
 
 /* ---------- Sano in the snow (53787), composed in final coordinates ----------
    Surveyed from above after the rescale: the river runs N-S here. The camera stands on the west bank, raised;
