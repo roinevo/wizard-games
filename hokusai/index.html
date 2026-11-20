@@ -1270,7 +1270,10 @@ function buildWorld() {
   const puff = (x, y, z, n, sz) => { for (let j = 0; j < n; j++) { const r = rand(.6, 1.2) * sz; pm.push(new THREE.Matrix4().compose(new V3(x + rand(-3, 3) * sz, y + rand(0, .8) * sz, z + rand(-2, 2) * sz), new THREE.Quaternion(), new V3(r, r * .72, r))); } };
   for (let k = 0; k < 26; k++) { const a = rand(0, 6.28), r = rand(FUJI_R * .7, FUJI_R * 1.4); puff(Math.cos(a) * r, FUJI_H * rand(.42, .62), Math.sin(a) * r, 10, 11); }
   for (const [x, z, r, n] of CUMULUS) for (let k = 0; k < n; k++) puff(x + rand(-r, r), rand(120, 200), z + rand(-r, r), 9, 8);
-  const pim = new THREE.InstancedMesh(cs, toon(0xf4f1e8), pm.length); pm.forEach((m, i) => pim.setMatrixAt(i, m)); scene.add(pim);
+  // billowing clouds: flat cream with a pale blue lower edge (as in Mishima / the storm print), no carved hatching
+  const pim = new THREE.InstancedMesh(cs, printMat(`varying vec3 vL; void main(){ float l=vL.y; vec3 c=mix(vec3(.80,.85,.86),vec3(.965,.945,.89),smoothstep(-.35,-.15,l)); gl_FragColor=vec4(fogIt(c),1.); }`,
+    `varying vec3 vP; varying vec3 vN; varying float vDist; varying vec3 vL; void main(){ vL=normal; vec4 w=modelMatrix*instanceMatrix*vec4(position,1.); vP=w.xyz; vN=normal; vec4 mv=viewMatrix*w; vDist=-mv.z; gl_Position=projectionMatrix*mv; }`), pm.length);
+  pm.forEach((m, i) => pim.setMatrixAt(i, m)); scene.add(pim);
   // storm bolts
   const boltMat = new THREE.MeshBasicMaterial({ color: 0xc8432c });
   for (let k = 0; k < 3; k++) { const g = new THREE.Group(); g.visible = false; scene.add(g); STORM.bolts.push({ g, t: rand(1, 4), state: 0, mat: boltMat, segs: [] }); }
@@ -1322,15 +1325,15 @@ const kasumiTex = canvasTex(512, 64, (g) => {
 });
 // many camera-facing quads in one draw call (instead of one Sprite each)
 // soft=true: drawn after the post pass (glow layer) as bokashi mist, never quantised or inked
-function billboards(tex, list, soft) {
+function billboards(tex, list, soft, maxD) {
   const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial(soft ? {
-    uniforms: { map: { value: tex }, fogCol: FOG.col },
+    uniforms: { map: { value: tex }, fogCol: FOG.col, maxD: { value: maxD || 1e6 } },
     vertexShader: `varying vec2 vUv; varying float vF; void main(){ vUv=uv; vec3 c=vec3(instanceMatrix[3]); float sx=length(vec3(instanceMatrix[0])), sy=length(vec3(instanceMatrix[1]));
       vec3 r=vec3(viewMatrix[0][0],viewMatrix[1][0],viewMatrix[2][0]); vec3 u=vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1]);
       vec3 w=c+r*position.x*sx+u*position.y*sy; vec4 mv=viewMatrix*modelMatrix*vec4(w,1.); vF=-mv.z; gl_Position=projectionMatrix*mv; }`,
-    fragmentShader: `uniform sampler2D map; uniform vec3 fogCol; varying vec2 vUv; varying float vF; void main(){ float a=smoothstep(.3,.62,texture2D(map,vUv).r);
+    fragmentShader: `uniform sampler2D map; uniform vec3 fogCol; uniform float maxD; varying vec2 vUv; varying float vF; void main(){ float a=smoothstep(.3,.62,texture2D(map,vUv).r);
       vec3 c=mix(vec3(.88,.86,.80),vec3(.968,.94,.87),smoothstep(.12,.42,vUv.y));
-      a*=.92*smoothstep(8.,40.,vF); if(a<.01) discard; gl_FragColor=vec4(c,a); }`,
+      a*=.92*smoothstep(8.,40.,vF)*(1.-smoothstep(maxD*.8,maxD,vF)); if(a<.01) discard; gl_FragColor=vec4(c,a); }`,
     transparent: true, depthWrite: false
   } : {
     uniforms: { map: { value: tex } },
@@ -2880,9 +2883,9 @@ function aimFujiFrom(s, C, cy, right, up) {
   fo[0] = W[0]; fo[1] = W[1]; fo[2] = 1;
   for (let k = 0; k < 6; k++) { const a = k / 6 * 6.28; FOAMSPOTS.push([W[0] + Math.cos(a) * 9, W[1] + Math.sin(a) * 9, .5]); }
   // Hokusai's mist hides the middle ground: a cream bank beyond the rock, only Fuji's upper cone above it
-  const mist = []; for (const [dd, yy] of [[16, 5], [26, 14], [38, 24], [52, 34], [70, 44], [95, 54]]) for (let k = -3; k <= 3; k++) { const w = 120 + dd * 2; mist.push([W[0] + f[0] * dd + rx * k * w * .38, yy, W[1] + f[1] * dd + rz * k * w * .38, w, 24]); }
+  const mist = []; for (const [dd, yy] of [[16, 5], [26, 14], [38, 24], [52, 34], [70, 44], [95, 54]]) for (let k = -2; k <= 2; k++) { const w = 110 + dd * 1.6; mist.push([W[0] + f[0] * dd + rx * k * w * .3, yy, W[1] + f[1] * dd + rz * k * w * .38, w, 24]); }
   for (const [dd, yy, sd] of [[6, 6, 22], [8, 16, 30], [10, 27, 40], [12, 38, 52], [5, 4, 50], [9, 22, 70]]) mist.push([W[0] + f[0] * dd + rx * sd, yy, W[1] + f[1] * dd + rz * sd, 70, 14]);
-  billboards(kasumiTex, mist, true);
+  billboards(kasumiTex, mist, true, 190); // only near the station: invisible from Hakone and the rest of the world
   const cy = Math.max(landH(C[0], C[1]), 0) + 9;
   s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0; s.view.look = [W[0], 9, W[1]];
   if (/dbg/.test(HASH)) console.log(`[kaji] rock=${W.map(Math.round)} cam=${C.map(Math.round)},${cy.toFixed(0)} fujiAng=${s._kang.toFixed(0)} cost=${best.toFixed(0)}`);
