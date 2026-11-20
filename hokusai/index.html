@@ -229,8 +229,13 @@ const post = new THREE.ShaderMaterial({
       vec3 pc=bgP*vec3(1.,.985,.95);
       if(pu.x>0.&&pu.x<1.&&pu.y>0.&&pu.y<1.) pc=texture2D(tP,pu).rgb;
       else { float e=max(max(-pu.x,pu.x-1.),max(-pu.y,pu.y-1.)); pc*=1.-.25*smoothstep(.02,0.,e); }
+      // printed plate by plate: the dark keyblock first, then the mid tones, then the pale colours;
+      // each plate arrives through a carved, woodgrain-ragged edge (a fade-out reverses the order)
       float n=fbm(uv*vec2(sAsp,1.)*3.5+3.);
-      float m=smoothstep(n-.12,n+.12,pMix*1.5-.25);
+      float lum=dot(pc,vec3(.3,.55,.15));
+      float grain=vn(vec2(fc.x*.01+fc.y*.003,fc.y*.12))*.12;
+      float plate=smoothstep(.15,.85,lum)*.55+n*.3+grain;
+      float m=smoothstep(plate-.05,plate+.05,pMix*1.25-.1);
       col=mix(col,pc,m);
     }
     col=mix(col,flashCol,flash);
