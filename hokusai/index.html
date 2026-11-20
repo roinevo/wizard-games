@@ -1284,7 +1284,7 @@ function buildWorld() {
     const g = new THREE.Group();
     const y = s.y !== undefined ? s.y : Math.max(landH(s.x, s.z), 0) + 2;
     g.position.set(s.x, y, s.z);
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 260, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: .16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 260, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffc98a, transparent: true, opacity: .13, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
     pillar.position.y = 130; g.add(pillar);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(8, .45, 6, 36), new THREE.MeshBasicMaterial({ color: 0xd9a74a })); ring.rotation.x = Math.PI / 2; ring.position.y = .6; g.add(ring);
     const seal = makeSeal(KANJI[STATIONS.indexOf(s) % KANJI.length]); seal.position.y = 7; seal.scale.setScalar(1.6); g.add(seal);
@@ -1464,6 +1464,7 @@ function strikeBolt(b) {
   const mk = (a, c, w) => { const d = c.clone().sub(a); const len = d.length(); const m = new THREE.Mesh(new THREE.BoxGeometry(w, len, w * .4), b.mat); m.position.copy(a).add(c).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new V3(0, 1, 0), d.normalize()); b.g.add(m); b.segs.push([a.clone(), c.clone()]); };
   for (let s = 0; s < 6; s++) { const n = p.clone().add(new V3(Math.cos(dir) * rand(14, 26), rand(14, 26), Math.sin(dir) * rand(14, 26))); mk(p, n, 3); if (Math.random() < .5) mk(n, n.clone().add(new V3(rand(-18, 18), rand(-14, -5), rand(-18, 18))), 2); p = n; dir += rand(-1.6, 1.6); }
 }
+let _pillT = 0, _pillOn = new Set();
 function updateWorld(dt, t) {
   for (const b of BOATS) { const y = waterH(b.position.x, b.position.z, t); b.position.y = y + .2; b.rotation.x = Math.sin(t * 1.2 + b.position.x) * .1; b.rotation.z = Math.sin(t * .9 + b.position.z) * .06; }
   for (const wv of WAVES) {
@@ -1488,6 +1489,9 @@ function updateWorld(dt, t) {
   const st = STATIONS.find(s => s.id === 54433); st.pos.copy(BIRD.position); st.marker.position.copy(BIRD.position).add(new V3(0, -6, 0)); st.marker.children[0].visible = false;
   // markers bob
   for (const s of STATIONS) if (!s.got) { s.seal.position.y = 7 + Math.sin(t * 2 + s.x) * .6; s.ring.rotation.z = t * .6; }
+  // only the three nearest uncollected prints raise a pillar of light; the rest wait quietly (the compass and map still show them)
+  if ((_pillT -= 1) <= 0) { _pillT = 20; const open = STATIONS.filter(s => !s.got && !s.view.sky).sort((a, b) => Math.hypot(a.x - P.pos.x, a.z - P.pos.z) - Math.hypot(b.x - P.pos.x, b.z - P.pos.z)); _pillOn = new Set(open.slice(0, 3)); }
+  for (const s of STATIONS) if (!s.got) { const want = _pillOn.has(s) || s.view.sky ? .13 : 0; s.pillar.material.opacity += (want - s.pillar.material.opacity) * .05; s.pillar.visible = s.pillar.material.opacity > .004; }
   SKY.position.copy(camera.position);
   updateMood(dt);
 }
