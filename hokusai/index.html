@@ -2068,7 +2068,7 @@ function stallGeo(awn, awn2, kind) {
   return partsGeo(p);
 }
 const SELLER_LINES = {
-  kasa: ["מטריות נייר! הכי יפות בכל הטוקאידו", "אדומה? כחולה? יש לי מטריה לכל מזג אוויר", "גשם בהרים? עם מטריה שלי לא תירטבי"],
+  kasa: ["מטריות נייר! הכי יפות בכל הטוקאידו", "אדומה? כחולה? יש לי מטריה לכל מזג אוויר", "גשם בהרים? עם מטריה שלי לא נרטבים"],
   fan: ["מניפה לימי הקיץ החמים?", "כל מניפה מצוירת ביד, אין שתיים דומות", "נפנוף קטן, וכבר מרגישים כמו שחקן קאבוקי"],
   dye: ["אני צובעת סרטים. רוצה לצבוע את הסמל של העגור שלך?", "אינדיגו, אדום, זהב... איזה צבע הכי יפה בעיניכם?", "את הכחול הזה מביאים מאירופה, קוראים לו כחול פרוסי"],
   dango: ["דנגו טריים! שלושה כדורים על מקל", "בבית התה מגישים אותם עם תה ירוק"],
@@ -2087,6 +2087,23 @@ for (const [kind, x, sd, a1, a2, ch] of STALLS) {
   const p = addPerson(kind === "fish" || kind === "veg" ? "farmer" : "woman", x + .5, z + sd * .6, { ry: ry, line: SELLER_LINES[kind], col: [0x7a3b30, 0x24467a, 0x5a3f62][STALLS.findIndex(q => q[0] === kind) % 3] });
   p.seller = true;
 }
+// the print shop (ezoshi-ya 絵草紙屋): the prints already in the album hang on strings in front; the seller opens the album
+const PSHOP = { x: 1368, sd: -1 }; PSHOP.z = roadZ(PSHOP.x) - 12; PSHOP.y = landH(PSHOP.x, PSHOP.z);
+{ const g = new THREE.Group(); g.position.set(PSHOP.x, PSHOP.y - .2, PSHOP.z); scene.add(g); PSHOP.grp = g;
+  const st = new THREE.Mesh(stallGeo(0x5a3f62, 0xd9a74a, "prints"), VC); st.scale.setScalar(1.15); g.add(st);
+  const sg = signMesh("絵", "#d9a74a", "#1c2944", 1, 2); sg.position.set(3.9, 2.6, 2.7); g.add(sg);
+  // a display rack in front of the stall: two poles, a string, prints pegged along it
+  g.add(new THREE.Mesh(partsGeo([{ g: G_.cyl(.12, .14, 7, 5), c: 0x5a4632, m: M4(-4.3, 3.5, 4.2) }, { g: G_.cyl(.12, .14, 7, 5), c: 0x5a4632, m: M4(4.3, 3.5, 4.2) }, { g: G_.box(8.8, .05, .05), c: 0x2a2626, m: M4(0, 6.75, 4.2) }]), VC));
+  PSHOP.slots = [];
+  for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.95, 1.35), new THREE.MeshBasicMaterial({ color: 0xefe6d2, side: THREE.DoubleSide })); m.position.set(-3.15 + k * 2.1, 5.95, 4.22); m.rotation.x = .04; m.layers.set(GLOW_LAYER); g.add(m); PSHOP.slots.push(m); } // real prints: drawn after the woodblock pass, never re-quantised
+  for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.18), new THREE.MeshBasicMaterial({ color: 0xefe6d2, side: THREE.DoubleSide })); m.position.set(-2.1 + k * 2.1, 2.2, -1.95); m.layers.set(GLOW_LAYER); g.add(m); PSHOP.slots.push(m); }
+  const _ps = addPerson("traveler", PSHOP.x + .5, PSHOP.z - .6, { ry: 0, col: 0x5a3f62, line: ["הדפסים! כל אחד מלוח עץ שנחרט ביד", "פה תלויים ההדפסים שכבר אספתם. האלבום המלא אצלי", "הוקוסאי? הוא קונה פה נייר. ואף פעם לא משלם בזמן"] }); _ps.seller = true; _ps.name = "מוכר ההדפסים"; }
+PSHOP.n = -1;
+function refreshPrintShop() {
+  const have = (SAVE.have || []).slice(-PSHOP.slots.length).reverse(); if (have.length === PSHOP.n) return; PSHOP.n = have.length;
+  PSHOP.slots.forEach((m, i) => { const id = have[i]; if (id) { m.material.map = getPrintTex(id); m.material.color.set(0xffffff); } else { m.material.map = null; m.material.color.set(0xefe6d2); } m.material.needsUpdate = true; });
+}
+PLAY_HOOKS.push(() => { if (Math.hypot(P.pos.x - PSHOP.grp.position.x, P.pos.z - PSHOP.grp.position.z) < 150) refreshPrintShop(); });
 // lantern posts along the street
 { const lp = []; for (let x = 1280; x <= 1470; x += 38) for (const sd of [-1, 1]) { const z = roadZ(x) + sd * 6.5; lp.push([x, landH(x, z), z, 0, 1]); } instances(partsGeo([{ g: G_.cyl(.12, .14, 3.4, 5), c: 0x3d3026, m: M4(0, 1.7, 0) }, { g: G_.box(.8, 1, .8), c: 0xf3efe4, m: M4(0, 3.6, 0) }, { g: G_.box(.95, .18, .95), c: 0x2a2626, m: M4(0, 4.15, 0) }]), lp); }
 // a crowd on the market street
@@ -2234,7 +2251,7 @@ PLAY_HOOKS.push(dt => {
 });
 const TALK_PLACE = { label: "לדבר 💬", act: () => talkTo(TALK_PLACE.p) };
 function doAct() { if (placeNear && state === "play") { placeNear.act(); if (state !== "play") { $("actBtn").hidden = true; placeNear = null; } } }
-addEventListener("keydown", e => { if (e.code === "KeyE" && !e.repeat) { if (state === "shop") closeShop(); else doAct(); } else if (e.code === "Escape" && state === "shop") closeShop(); });
+addEventListener("keydown", e => { if (state === "album" && (e.code === "KeyE" || e.code === "Escape") && !e.repeat) { $("albumBack").onclick(); return; } if (e.code === "KeyE" && !e.repeat) { if (state === "shop") closeShop(); else doAct(); } else if (e.code === "Escape" && state === "shop") closeShop(); });
 
 /* ---------- sounds for the town ---------- */
 sfx.coin = () => { if (!AC) return; const t = AC.currentTime; pluck(note(12), t, .1, .5); pluck(note(14), t + .06, .09, .6); noiseHit(t, 5200, 6, .08, .05); };
@@ -2254,6 +2271,9 @@ SENTO.pool = new V3(SENTO.x - 13, SENTO.y, SENTO.z + 2);
   rocks.push({ g: G_.cyl(5.1, 5.1, .6, 20), c: 0x7aa6bf, m: M4(0, .2, 0, 0, 0, 0, 1, 1, .82) });
   addMesh(partsGeo(rocks), SENTO.pool.x, SENTO.pool.z, 0, 1, SENTO.pool.y - .1); }
 addPerson("woman", SENTO.x - 4, SENTO.z - 6, { ry: Math.PI, col: 0x24467a, line: ["מים חמים מההר! טבילה בשני חותמים", "אחרי יום בדרך, אין כמו האמבט", "בחורף השלג נופל על המים החמים, וזה הכי יפה"] });
+PLACES.push({ x: PSHOP.x, z: PSHOP.z + 5.2, label: "חנות ההדפסים", act: openAlbumHere });
+function openAlbumHere() { if (state !== "play") return; $("albumBtn").onclick(); $("startScr").hidden = true; state = "album"; sfx.scroll(); }
+{ const ob = $("albumBack").onclick; $("albumBack").onclick = () => { if (state === "album") { $("albumScr").hidden = true; state = "play"; } else ob(); }; }
 PLACES.push({ x: SENTO.x - 2, z: SENTO.z - 8, label: "בית המרחץ", act: () => openShop("בית המרחץ 湯", "מים חמים מהמעיינות שלמרגלות ההר. מנקים את אבק הדרך.", [{ name: "לטבול במעיין החם", price: 2, reuse: true, got: soak }]) });
 function soak() {
   const pl = SENTO.pool, keepStaff = walker.userData.arms[1].userData.staff; if (keepStaff) keepStaff.visible = false; umbrella.visible = false;
@@ -3293,7 +3313,8 @@ if (mT) setTimeout(() => {
   if (state !== "play") { enterWorld(); introT = 9.6; step(.05); state = "play"; }
   SAVE.crests = SAVE.crests || []; if (/rich/.test(HASH)) { SAVE.spent = -40; renderHUD(); }
   const w = mT[1];
-  const PL = { tea: [CHAYA.x - 1, CHAYA.z + 9], bell: [BELL.x + 5, BELL.z + 4], dye: STALL_POS.dye, sento: [SENTO.x - 2, SENTO.z - 9], kabuki: [KAB.x, KAB.z - 15], kite: [KITE.x + 22, KITE.z - 6], sumo: [SUMO.x + 4, SUMO.z + 10] };
+  const PL = { tea: [CHAYA.x - 1, CHAYA.z + 9], bell: [BELL.x + 5, BELL.z + 4], dye: STALL_POS.dye, sento: [SENTO.x - 2, SENTO.z - 9], kabuki: [KAB.x, KAB.z - 15], kite: [KITE.x + 22, KITE.z - 6], sumo: [SUMO.x + 4, SUMO.z + 10], prints: (() => { const pl = PLACES.find(q => q.label === "חנות ההדפסים"); return [pl.x, pl.z + 4]; })() };
+  if (w === "prints") { SAVE.have = STATIONS.slice(0, 8).map(s => s.id); STATIONS.slice(0, 8).forEach(s => s.got = true); }
   const at = PL[w] || [TOWN_GATE.x, TOWN_GATE.z];
   P.pos.set(at[0], landH(at[0], at[1]), at[1]); P.yaw = w ? Math.atan2(0, -1) : Math.PI / 2;
   if (w === "tea" || w === "bell" || w === "sumo") P.yaw = Math.PI; if (w === "sento" || w === "kabuki") P.yaw = 0; if (w === "kite") P.yaw = -Math.PI / 2;
