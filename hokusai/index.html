@@ -1257,12 +1257,12 @@ function buildWorld() {
   // clouds: Hokusai's flat banded clouds over the land; mackerel rows over the Red Fuji station
   // suyari-gasumi: long flat mist bands drifting across the land (one instanced billboard draw)
   const bands = [];
-  for (let k = 0; k < 70; k++) { const w = rand(420, 900); bands.push([rand(MAP.x0, MAP.x1), rand(220, 560), rand(MAP.z0, MAP.z1), w, w * rand(.07, .1)]); }
-  for (let k = 0; k < 50; k++) { const w = rand(160, 320); bands.push([rand(MAP.x0, MAP.x1), rand(780, 1000), rand(MAP.z0, MAP.z1), w, w * .2]); }
-  billboards(kasumiTex, bands);
+  for (let k = 0; k < 26; k++) { const w = rand(520, 1000); bands.push([rand(MAP.x0, MAP.x1), rand(220, 560), rand(MAP.z0, MAP.z1), w, w * rand(.07, .1)]); }
+  for (let k = 0; k < 14; k++) { const w = rand(200, 360); bands.push([rand(MAP.x0, MAP.x1), rand(780, 1000), rand(MAP.z0, MAP.z1), w, w * .2]); }
+  billboards(kasumiTex, bands, true);
   const mk = [];
   for (const [x, z] of MACKEREL) for (let row = 0; row < 12; row++) { const zz = z - 650 + row * 70, y = 520 + (row % 5) * 25; for (let xx = x - 900; xx < x + 900; xx += rand(55, 120)) { const w = rand(50, 110); mk.push([xx + 600, y + rand(-12, 12), zz, w, w * .25]); } }
-  if (mk.length) billboards(cloudTex, mk);
+  if (mk.length) billboards(kasumiTex, mk, true);
   // billowing cumulus around the mountain's waist: one instanced sphere mesh
   const pm = [], cs = new THREE.SphereGeometry(1, 10, 7);
   const puff = (x, y, z, n, sz) => { for (let j = 0; j < n; j++) { const r = rand(.6, 1.2) * sz; pm.push(new THREE.Matrix4().compose(new V3(x + rand(-3, 3) * sz, y + rand(0, .8) * sz, z + rand(-2, 2) * sz), new THREE.Quaternion(), new V3(r, r * .72, r))); } };
@@ -1312,15 +1312,25 @@ const ROAD = { pts: [] };
 let HOUSE_LIST = [], KURA_LIST = [];
 // a kasumi band: cream mist with stepped, lobed ends and a soft blue under-edge
 const kasumiTex = canvasTex(512, 64, (g) => {
-  g.fillStyle = "#f4eedf"; g.strokeStyle = "rgba(120,140,165,.7)"; g.lineWidth = 2;
+  g.fillStyle = "#fff"; g.filter = "blur(3px)";
   g.beginPath(); g.moveTo(40, 34);
   g.quadraticCurveTo(30, 14, 70, 16); g.lineTo(150, 16); g.quadraticCurveTo(160, 6, 190, 8); g.lineTo(380, 8); g.quadraticCurveTo(420, 8, 430, 18); g.lineTo(470, 18); g.quadraticCurveTo(500, 22, 490, 36);
   g.quadraticCurveTo(500, 52, 460, 50); g.lineTo(330, 50); g.quadraticCurveTo(320, 58, 290, 56); g.lineTo(90, 56); g.quadraticCurveTo(60, 56, 56, 46); g.quadraticCurveTo(26, 48, 40, 34);
-  g.closePath(); g.fill(); g.stroke();
+  g.closePath(); g.fill();
 });
 // many camera-facing quads in one draw call (instead of one Sprite each)
-function billboards(tex, list) {
-  const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial({
+// soft=true: drawn after the post pass (glow layer) as bokashi mist, never quantised or inked
+function billboards(tex, list, soft) {
+  const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial(soft ? {
+    uniforms: { map: { value: tex }, fogCol: FOG.col },
+    vertexShader: `varying vec2 vUv; varying float vF; void main(){ vUv=uv; vec3 c=vec3(instanceMatrix[3]); float sx=length(vec3(instanceMatrix[0])), sy=length(vec3(instanceMatrix[1]));
+      vec3 r=vec3(viewMatrix[0][0],viewMatrix[1][0],viewMatrix[2][0]); vec3 u=vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1]);
+      vec3 w=c+r*position.x*sx+u*position.y*sy; vec4 mv=viewMatrix*modelMatrix*vec4(w,1.); vF=-mv.z; gl_Position=projectionMatrix*mv; }`,
+    fragmentShader: `uniform sampler2D map; uniform vec3 fogCol; varying vec2 vUv; varying float vF; void main(){ float a=smoothstep(.3,.62,texture2D(map,vUv).r);
+      vec3 c=mix(vec3(.88,.86,.80),vec3(.968,.94,.87),smoothstep(.12,.42,vUv.y));
+      a*=.92*smoothstep(20.,120.,vF); if(a<.01) discard; gl_FragColor=vec4(c,a); }`,
+    transparent: true, depthWrite: false
+  } : {
     uniforms: { map: { value: tex } },
     vertexShader: `varying vec2 vUv; void main(){ vUv=uv; vec3 c=vec3(instanceMatrix[3]); float sx=length(vec3(instanceMatrix[0])), sy=length(vec3(instanceMatrix[1]));
       vec3 r=vec3(viewMatrix[0][0],viewMatrix[1][0],viewMatrix[2][0]); vec3 u=vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1]);
@@ -1328,7 +1338,7 @@ function billboards(tex, list) {
     fragmentShader: `uniform sampler2D map; varying vec2 vUv; void main(){ vec4 t=texture2D(map,vUv); if(t.a<.45) discard; gl_FragColor=vec4(t.rgb,1.); }`
   }), list.length);
   const m = new THREE.Matrix4(); list.forEach((b, i) => { m.makeScale(b[3], b[4], 1); m.setPosition(b[0], b[1], b[2]); im.setMatrixAt(i, m); });
-  im.frustumCulled = false; scene.add(im); return im;
+  im.frustumCulled = false; if (soft) im.layers.set(GLOW_LAYER); scene.add(im); return im;
 }
 
 /* ---------- hishi crests (菱): the currency of this world ---------- */
