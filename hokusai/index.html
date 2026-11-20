@@ -1073,13 +1073,11 @@ station(55237, "הגשר ניהונבאשי באדו", 1920, 820, { up: 25, d: [
   for (const [t, ry] of [[70, .1], [150, -.15], [230, .05]]) { const b = makeBoat(); b.scale.setScalar(.75); b.position.set(s.x - .92 * t + rand(-3, 3), 0, s.z - .39 * t); b.rotation.y = Math.atan2(-.92, -.39) + ry; scene.add(b); BOATS.push(b); }
 });
 station(53787, "גשר הסירות בסאנו בשלג", 1350, -1640, { up: 14, d: [18, 22], look: [1540, 2, -1500], fov: 60 }, { top: 0x2c3242, mid: 0xe9e3d6, hor: 0xb8b3a8, fog: 0xd8d4cc }, s => {
-  const pts = [[1380, -1600], [1430, -1560], [1490, -1530], [1560, -1500]];
-  const pp = []; for (let k = 0; k < 18; k++) { const u = k / 17; const x = lerp(1380, 1560, u), z = lerp(-1600, -1500, u) + Math.sin(u * 3) * 10; pp.push([x, 0, z, Math.atan2(180, 100) + Math.PI / 2, 1]); } instances(partsGeo([{ g: G_.box(5, 1.2, 9), c: 0x7a5f3a }]), pp);
-  addPerson("traveler", 1450, -1555, { y: 1, path: [[1380, -1600], [1560, -1500]], speed: 1 });
+  // the boat bridge, the camera and the travellers are laid out after the rescale: see dressSano() in world_places.js
   // the snowy farmhouse and tall pine on the near bank (right side of the print)
   { const hx = s.x + 40, hz = s.z - 8, hy = landH(hx, hz); const h = new THREE.Mesh(KIT.minka(), VC); h.position.set(hx, hy - .3, hz); h.rotation.y = -.5; h.scale.setScalar(1.6); scene.add(h);
     const sn = new THREE.Mesh(prism(19.5, 10.8, 15.4), toon(0xf2eee4)); sn.position.set(hx, hy + 6.7, hz); sn.rotation.y = -.5 + Math.PI / 2; scene.add(sn);
-    const pn = new THREE.Mesh(KIT.pine(), VC); pn.position.set(hx - 8, hy - 1, hz - 14); pn.scale.set(1.5, 2.2, 1.5); scene.add(pn); }
+    const pn = new THREE.Mesh(KIT.pine(), VC); pn.position.set(hx - 8, hy - 1, hz - 14); pn.scale.set(1.5, 2.2, 1.5); scene.add(pn); s.sano = { h, sn, pn }; }
   VILLAGES.push([1300, -1700, 5]);
 });
 station(56142, "המפל שבו רחץ יושיצונה את סוסו", 760, -2200, { up: 6, d: [0, 50], look: [760, 70, -2290], fov: 55 }, null, s => { FALLS.push([760, -2290, 80]); fallView(s, 760, -2290, 80, 95); });
@@ -2706,11 +2704,12 @@ function rescaleWorld(K) {
     st.pos.copy(st.marker.position);
   }
   // nothing instanced (pines, houses, props) may stand right in front of a station camera's lens
-  const LENS = STATIONS.filter(s => !s.view.sky).map(s => { const v = stationView(s), dx = v.look.x - v.pos.x, dz = v.look.z - v.pos.z, l = Math.hypot(dx, dz) || 1; return [v.pos.x, v.pos.z, v.pos.x + dx / l * 45, v.pos.z + dz / l * 45]; });
+  const LENS = STATIONS.filter(s => !s.view.sky).map(s => { const v = s.view, d = v.d || [0, 0], cx = s.x + d[0], cz = s.z + d[1], cy = v.y !== undefined ? v.y : gNew(cx, cz) + v.up, dx = v.look[0] - cx, dz = v.look[2] - cz, l = Math.hypot(dx, dz) || 1; return [cx, cz, cx + dx / l * 45, cz + dz / l * 45, cy]; });
   let nLens = 0;
   for (const c of scene.children) { if (!c.isInstancedMesh || PRE_WORLD.has(c) || skip.has(c)) continue; const a = c.instanceMatrix.array, P0 = c.position; let ch = false;
     for (let i = 0; i < c.count; i++) { const o = i * 16; if (a[o] === 0 && a[o + 5] === 0) continue; const x = a[o + 12] + P0.x, z = a[o + 14] + P0.z;
-      for (const q of LENS) if (segDist(x, z, q[0], q[1], q[2], q[3]) < 7) { for (let k = 0; k < 12; k++) a[o + k] = 0; ch = true; nLens++; break; } }
+      const top = a[o + 13] + P0.y + 6 * Math.hypot(a[o + 4], a[o + 5], a[o + 6]);
+      for (const q of LENS) if (top > q[4] - 1.5 && segDist(x, z, q[0], q[1], q[2], q[3]) < 7) { for (let k = 0; k < 12; k++) a[o + k] = 0; ch = true; nLens++; break; } }
     if (ch) c.instanceMatrix.needsUpdate = true; }
   for (const p of PEOPLE) if (p.path) p.path = p.path.map(q => m2(q[0], q[1]).slice(0, 2));
   for (const c of CRESTS.list) { [c.x, c.y, c.z] = m3(c.x, c.y, c.z); }
@@ -2743,6 +2742,51 @@ function rescaleWorld(K) {
   if (/dist|stats/.test(HASH)) console.log(`[rescale] K=${K} objects=${nObj} instances=${nInst} hidden=${nHid}`);
 }
 rescaleWorld(WORLD_K);
+
+/* ---------- Sano in the snow (53787), composed in final coordinates ----------
+   Surveyed from above after the rescale: the river runs N-S here. The camera stands on the west bank, raised;
+   the boat bridge enters bottom-left and curves across to the far bank on the right; the snowy farmhouse and
+   the tall pine stand on the near bank at the right of the frame, as in the print. */
+(function dressSano() {
+  const s = STATIONS.find(q => q.id === 53787); if (!s || !s.sano) return;
+  const H = (x, z) => Math.max(landH(x, z), 0), wet = (x, z) => landH(x, z) < .3;
+  // 1. find the river near the station and its local direction (principal axis of nearby water samples)
+  let W0 = null; for (let r = 0; r < 160 && !W0; r += 4) for (let a = 0; a < 6.28; a += .2) { const x = s.x + Math.cos(a) * r, z = s.z + Math.sin(a) * r; if (wet(x, z)) { W0 = [x, z]; break; } }
+  if (!W0) { console.log("[sano] no river"); return; }
+  let sxx = 0, szz = 0, sxz = 0, n = 0, mx = 0, mz = 0; const pts = [];
+  for (let x = -70; x <= 70; x += 5) for (let z = -70; z <= 70; z += 5) if (x * x + z * z < 4900 && wet(W0[0] + x, W0[1] + z)) { pts.push([x, z]); mx += x; mz += z; n++; }
+  mx /= n; mz /= n; for (const [x, z] of pts) { sxx += (x - mx) ** 2; szz += (z - mz) ** 2; sxz += (x - mx) * (z - mz); }
+  const th = .5 * Math.atan2(2 * sxz, sxx - szz), R = [Math.cos(th), Math.sin(th)], Nn = [-R[1], R[0]];
+  const M0 = [W0[0] + mx, W0[1] + mz];
+  // 2. banks across the river through the water centre
+  const bank = sg => { for (let t = 0; t < 140; t += 1) { const x = M0[0] + Nn[0] * t * sg, z = M0[1] + Nn[1] * t * sg; if (!wet(x, z)) return [x, z, t]; } return [M0[0] + Nn[0] * 30 * sg, M0[1] + Nn[1] * 30 * sg, 30]; };
+  const Pm = bank(-1), Pp = bank(1), wdt = Pm[2] + Pp[2];
+  // 3. a diagonal crossing: the far end lies downstream; the camera stands back on the near bank and looks across,
+  //    choosing the orientation that puts the near end at the LEFT and the far end at the RIGHT of the frame
+  let C, f, rgt, A, B = [Pm[0], Pm[1]];
+  for (const sg of [1, -1]) {
+    A = [Pp[0] + R[0] * sg * .7 * wdt, Pp[1] + R[1] * sg * .7 * wdt]; for (let t = 0; t < 40 && wet(A[0], A[1]); t++) { A[0] += Nn[0]; A[1] += Nn[1]; }
+    C = [B[0] - Nn[0] * 16 - R[0] * sg * .25 * wdt, B[1] - Nn[1] * 16 - R[1] * sg * .25 * wdt];
+    const mxp = (A[0] + B[0]) / 2 - C[0], mzp = (A[1] + B[1]) / 2 - C[1], ml = Math.hypot(mxp, mzp); f = [mxp / ml, mzp / ml]; rgt = [-f[1], f[0]];
+    if ((B[0] - C[0]) * rgt[0] + (B[1] - C[1]) * rgt[1] < 0 && (A[0] - C[0]) * rgt[0] + (A[1] - C[1]) * rgt[1] > 0) break;
+  }
+  // 4. the boat bridge: boats side by side with planks on top, bowed gently downstream
+  const dx = A[0] - B[0], dz = A[1] - B[1], L = Math.hypot(dx, dz), N = Math.max(8, Math.round(L / 3.2)), pp = [];
+  for (let k = -1; k <= N + 1; k++) { const u = k / N, bow = Math.sin(clamp(u, 0, 1) * Math.PI) * L * .12, x = B[0] + dx * u + R[0] * bow, z = B[1] + dz * u + R[1] * bow;
+    const slope = Math.cos(clamp(u, 0, 1) * Math.PI) * .12 * Math.PI, ry = Math.atan2(dx, dz) + Math.PI / 2 - slope; pp.push([x, H(x, z) + .15, z, ry, 1]); }
+  instances(partsGeo([{ g: G_.box(3.4, .9, 7.5), c: 0x6b5233 }, { g: G_.box(3.6, .35, 8.2), c: 0xd8cfa8, m: M4(0, .6, 0) }]), pp);
+  const path = [B, [B[0] + dx * .5 + R[0] * L * .12, B[1] + dz * .5 + R[1] * L * .12], A];
+  addPerson("traveler", B[0], B[1], { y: 1, path, speed: .9 }); addPerson("porter", A[0], A[1], { y: 1, path: path.slice().reverse(), speed: .8 }); addPerson("pilgrim", B[0], B[1], { y: 1, path, speed: .7 });
+  const cy = H(C[0], C[1]) + 11;
+  s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0; s.view.look = [C[0] + f[0] * 100, cy - 18, C[1] + f[1] * 100];
+  // 5. the farmhouse and the tall pine on the near bank, right of frame
+  const place = (along, side) => { for (let k = 0; k < 16; k++) { const sd = side - k * 1.5, x = C[0] + f[0] * along + rgt[0] * sd, z = C[1] + f[1] * along + rgt[1] * sd; if (sd > 3 && landH(x, z) > 1) return [x, z]; } return null; };
+  const { h, sn, pn } = s.sano, ry = Math.atan2(f[0], f[1]) + .6, hp = place(17, 19), pq = place(26, 14);
+  if (hp) { const hy = H(hp[0], hp[1]); h.position.set(hp[0], hy - .3, hp[1]); h.rotation.y = ry; sn.position.set(hp[0], hy + 6.7, hp[1]); sn.rotation.y = ry + Math.PI / 2; }
+  else { const bx = C[0] - f[0] * 14 - rgt[0] * 10, bz = C[1] - f[1] * 14 - rgt[1] * 10, hy = H(bx, bz); h.position.set(bx, hy - .3, bz); sn.position.set(bx, hy + 6.7, bz); }
+  if (pq) { pn.position.set(pq[0], H(pq[0], pq[1]) - 1, pq[1]); pn.scale.set(1, 2.3, 1); } else { const bx = C[0] - f[0] * 10 + rgt[0] * 6, bz = C[1] - f[1] * 10 + rgt[1] * 6; pn.position.set(bx, H(bx, bz) - 1, bz); }
+  if (/dbg/.test(HASH)) console.log(`[sano] river th=${th.toFixed(2)} width=${wdt} B=${B.map(Math.round)} A=${A.map(Math.round)} C=${C.map(Math.round)}`);
+})();
 
 /* ---------- the countryside, filled: farm clusters, paddies, field workers (all instanced, new coordinates) ---------- */
 const k_MAXD = 420, FARMS = [];
