@@ -1084,7 +1084,7 @@ station(53787, "גשר הסירות בסאנו בשלג", 1350, -1640, { up: 14,
 });
 station(56142, "המפל שבו רחץ יושיצונה את סוסו", 760, -2200, { up: 6, d: [0, 50], look: [760, 70, -2290], fov: 55 }, null, s => { FALLS.push([760, -2290, 80]); fallView(s, 760, -2290, 80, 95); });
 station(36484, "מפל רובן באויאמה", -200, -2420, { up: 5, d: [0, 60], look: [-200, 90, -2520], fov: 55 }, null, s => { FALLS.push([-200, -2520, 110]); fallView(s, -200, -2520, 110, 120); for (let k = 0; k < 5; k++) addPerson("farmer", -200 + rand(-14, 14), -2500 + rand(-6, 6), { y: landH(-200, -2500) - 1 }); });
-station(37362, "שקיעה מעל גשר ריוגוקו", 2000, 560, { up: 4, d: [0, 0], look: [2010, 20, 380], fov: 55 }, { top: 0x2b2f3d, mid: 0xead9b6, hor: 0xe7c9a0, fog: 0xd9c7a6 }, s => { BRIDGES.push([2030, 400, 260 * WORLD_K, 0]); const b = makeBoat(); b.scale.setScalar(.9); b.position.set(2010, 0, 520); b.rotation.y = Math.PI / 2; scene.add(b); BOATS.push(b); });
+station(37362, "שקיעה מעל גשר ריוגוקו", 2000, 560, { up: 4, d: [0, 0], look: [2010, 20, 380], fov: 55 }, { top: 0x33476b, mid: 0xead9b6, hor: 0xe7c9a0, fog: 0xd9c7a6 }, s => { BRIDGES.push([2030, 400, 260 * WORLD_K, 0]); const b = makeBoat(); b.scale.setScalar(.9); b.position.set(2010, 0, 520); b.rotation.y = Math.PI / 2; scene.add(b); BOATS.push(b); });
 station(44981, "שלג על נהר סומידה", 2160, -240, { up: 14, d: [40, 30], look: [1900, 30, -120], fov: 66 }, { top: 0x26344a, mid: 0xece6da, hor: 0xc9c3b4, fog: 0xdcd8ce }, s => { const h = new THREE.Mesh(KIT.minka(), VC); h.position.set(2110, landH(2110, -230), -230); scene.add(h); });
 station(56138, "פריחת הדובדבן ביושינו", -900, -2050, { up: 55, d: [0, 170], look: [-900, 185, -2180], fov: 58 }, null, s => {
   const list = []; for (let k = 0; k < 300; k++) { const x = s.x + rand(-200, 200), z = s.z + rand(-270, 60); list.push([x, landH(x, z) - .5, z, rand(0, 6), rand(1.6, 2.6)]); }
@@ -2877,6 +2877,15 @@ function aimFujiFrom(s, C, cy, right, up) {
   for (let k = 0; k < 9; k++) { const t = (k - 4) * 1.7, x = fx + r[0] * t + f[0] * (k % 2 ? .6 : -.6), z = fz + r[1] * t + f[1] * (k % 2 ? .6 : -.6);
     addPerson(["traveler", "woman", "parasol", "samurai", "porter", "monk", "woman", "traveler", "child"][k], x, z, { y: 1.3, ry: Math.atan2(f[0], f[1]) + Math.PI + rand(-.6, .6), s: 1.05 }); }
   addPerson("fisher", fx + r[0] * 9, fz + r[1] * 9, { y: 1.6, ry: Math.atan2(-r[0], -r[1]), s: 1.1 }); // the boatman with his pole at the stern
+  // the long Ryogoku bridge: from the left edge of the view, low over the water, running away into the distance
+  { const A = [C[0] + f[0] * 25 - r[0] * 34, C[1] + f[1] * 25 - r[1] * 34], B = [C[0] + f[0] * 230 - r[0] * 30, C[1] + f[1] * 230 - r[1] * 30];
+    const dx = B[0] - A[0], dz = B[1] - A[1], L = Math.hypot(dx, dz), ry = Math.atan2(dx, dz), parts = [], n = Math.round(L / 6);
+    for (let k = 0; k <= n; k++) { const u = k / n, y = 4.2 + Math.sin(u * Math.PI) * 2.2, z = u * L - L / 2;
+      parts.push({ g: G_.box(5, .5, 6.3), c: 0x8a6a42, m: M4(0, y, z) });
+      for (const sd of [-2.2, 2.2]) { parts.push({ g: G_.box(.35, y + 3, .35), c: 0x4a3a2a, m: M4(sd, (y - 3) / 2, z) }); parts.push({ g: G_.box(.15, 1, .15), c: 0x6b5233, m: M4(sd, y + .7, z) }); }
+      if (k < n) for (const sd of [-2.2, 2.2]) parts.push({ g: G_.box(.12, .12, 6.3), c: 0x6b5233, m: M4(sd, y + 1.2, z + 3) }); }
+    const br = new THREE.Mesh(partsGeo(parts), VC); br.position.set((A[0] + B[0]) / 2, 0, (A[1] + B[1]) / 2); br.rotation.y = ry; scene.add(br);
+    for (let k = 0; k < 10; k++) { const u = rand(.05, .9), x = A[0] + dx * u, z = A[1] + dz * u, p = addPerson(["traveler", "woman", "porter", "parasol", "samurai"][k % 5], x, z, { y: 4.7 + Math.sin(u * Math.PI) * 2.2, ry: ry + (k & 1 ? Math.PI : 0) }); } }
   clearWedge(C, f, 30, 4, .4);
 })();
 
