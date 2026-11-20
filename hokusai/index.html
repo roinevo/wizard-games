@@ -425,7 +425,7 @@ function makeSky(o) {
       void main(){ vec3 d=normalize(vD); float y=d.y; float a=atan(d.x,d.z);
         vec3 c=mix(cHor,cMid,smoothstep(-.02,midY,y)); c=mix(c,cTop,smoothstep(midY,topY,y));
         c=mix(c,cBand,bandAmt*exp(-pow((y-bandY)/bandW,2.)));
-        if(cloud>0.){ float n=fbm(d.xz/(max(y,0.)+.18)*1.3+3.); float m=smoothstep(.52,.6,n)*smoothstep(.0,.08,y)*(1.-smoothstep(.3,.5,y)); c=mix(c,cCloud,m*cloud); }
+        if(cloud>0.){ float n=fbm(d.xz/(max(y,0.)+.18)*1.3+3.); float m=smoothstep(.6,.66,n)*smoothstep(.02,.08,y)*(1.-smoothstep(.18,.3,y)); c=mix(c,cCloud,m*cloud); }
         c*=1.-.035*vn(vec2(d.x*7.+d.z*4.,y*90.));
         gl_FragColor=vec4(c,1.);}`,
     side: THREE.BackSide, depthWrite: true
@@ -1292,11 +1292,11 @@ function buildWorld() {
   for (const [x, z] of MACKEREL) { const hl = Math.hypot(x, z), dx = -x / hl, dz = -z / hl, cx = x + dx * 3100, cz = z + dz * 3100;
     for (let row = 0; row < 15; row++) { const y = 260 + row * 82 + rand(-15, 15), w0 = 40 + row * 5;
       for (let s = -2700; s < 2700; s += rand(90, 230)) { if (Math.random() < .25) continue; const w = w0 * rand(.7, 1.5); mk.push([cx - dz * s, y + rand(-10, 10), cz + dx * s, w, w * rand(.18, .26)]); } } }
-  if (mk.length) { const [x, z] = MACKEREL[0], hl = Math.hypot(x, z); billboards(kasumiTex, mk, true, 0, new V3(-x / hl, 0, -z / hl)); }
+  if (mk.length) { const [x, z] = MACKEREL[0], hl = Math.hypot(x, z); MACK = billboards(kasumiTex, mk, true, 0, new V3(-x / hl, 0, -z / hl)); }
   // billowing cumulus around the mountain's waist: one instanced sphere mesh
   const pm = [], cs = new THREE.SphereGeometry(1, 10, 7);
   const puff = (x, y, z, n, sz) => { for (let j = 0; j < n; j++) { const r = rand(.6, 1.2) * sz; pm.push(new THREE.Matrix4().compose(new V3(x + rand(-3, 3) * sz, y + rand(0, .8) * sz, z + rand(-2, 2) * sz), new THREE.Quaternion(), new V3(r, r * .72, r))); } };
-  for (let k = 0; k < 26; k++) { const a = rand(0, 6.28), r = rand(FUJI_R * .7, FUJI_R * 1.4); puff(Math.cos(a) * r, FUJI_H * rand(.42, .62), Math.sin(a) * r, 10, 11); }
+  for (let k = 0; k < 9; k++) { const a = k / 9 * 6.28 + rand(-.3, .3), r = rand(FUJI_R * .75, FUJI_R * 1.1); puff(Math.cos(a) * r, FUJI_H * rand(.45, .58), Math.sin(a) * r, 16, 15); } // a few big billows, not confetti
   for (const [x, z, r, n] of CUMULUS) for (let k = 0; k < n; k++) puff(x + rand(-r, r), rand(120, 200), z + rand(-r, r), 9, 8);
   // billowing clouds: flat cream with a pale blue lower edge (as in Mishima / the storm print), no carved hatching
   const pim = new THREE.InstancedMesh(cs, printMat(`varying vec3 vL; void main(){ float l=vL.y; vec3 c=mix(vec3(.80,.85,.86),vec3(.965,.945,.89),smoothstep(-.35,-.15,l)); gl_FragColor=vec4(fogIt(c),1.); }`,
@@ -1490,7 +1490,7 @@ function strikeBolt(b) {
   const mk = (a, c, w) => { const d = c.clone().sub(a); const len = d.length(); const m = new THREE.Mesh(new THREE.BoxGeometry(w, len, w * .4), b.mat); m.position.copy(a).add(c).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new V3(0, 1, 0), d.normalize()); b.g.add(m); b.segs.push([a.clone(), c.clone()]); };
   for (let s = 0; s < 6; s++) { const n = p.clone().add(new V3(Math.cos(dir) * rand(14, 26), rand(14, 26), Math.sin(dir) * rand(14, 26))); mk(p, n, 3); if (Math.random() < .5) mk(n, n.clone().add(new V3(rand(-18, 18), rand(-14, -5), rand(-18, 18))), 2); p = n; dir += rand(-1.6, 1.6); }
 }
-let _pillT = 0, _pillOn = new Set(), _pillSnap = true, WORLD_LIM = null;
+let _pillT = 0, _pillOn = new Set(), _pillSnap = true, WORLD_LIM = null, MACK = null, _redFuji = null;
 function updateWorld(dt, t) {
   for (const b of BOATS) { const y = waterH(b.position.x, b.position.z, t); b.position.y = y + .2; b.rotation.x = Math.sin(t * 1.2 + b.position.x) * .1; b.rotation.z = Math.sin(t * .9 + b.position.z) * .06; }
   for (const wv of WAVES) {
@@ -1519,6 +1519,8 @@ function updateWorld(dt, t) {
   if ((_pillT -= 1) <= 0) { _pillT = 20; const open = STATIONS.filter(s => !s.got && !s.view.sky).sort((a, b) => Math.hypot(a.x - P.pos.x, a.z - P.pos.z) - Math.hypot(b.x - P.pos.x, b.z - P.pos.z)); _pillOn = new Set(open.slice(0, 3)); }
   { const k = _pillSnap ? 1 : 1 - Math.exp(-dt * 2.5); _pillSnap = false; // time-based (and snapped on the first frame): slow devices don't show 31 pillars for seconds
     for (const s of STATIONS) if (!s.got) { const want = _pillOn.has(s) || s.view.sky ? .13 : 0; s.pillar.material.opacity += (want - s.pillar.material.opacity) * k; s.pillar.visible = s.pillar.material.opacity > .004; } }
+  // the mackerel sky belongs to the Red Fuji print only: shown near that station, nowhere else
+  if (MACK) { _redFuji = _redFuji || STATIONS.find(q => q.id === 36490); MACK.visible = Math.hypot(camera.position.x - _redFuji.x, camera.position.z - _redFuji.z) < 150; }
   SKY.position.copy(camera.position);
   updateMood(dt);
 }
