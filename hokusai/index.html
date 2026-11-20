@@ -1014,7 +1014,7 @@ station(45434, "מול חופי קנגאווה", 760, 2330, { up: 5, look: [180,
   for (const [dx, dz, ry] of [[-110, -175, .15], [-20, -110, -.25], [60, -260, .4]]) { const b = makeBoat(); b.position.set(s.x + dx, 0, s.z + dz); b.rotation.y = ry; scene.add(b); BOATS.push(b); }
 });
 station(36490, "גבעת היער שממערב להר", -2350, 420, { up: 14, look: [-260, 300, -860], fov: 36, aimFuji: [12.2, -9.1] }, { top: 0x1d4a86, mid: 0x4a7fb2, hor: 0xd4e2dc, fog: 0xa9c3c7, fLow: 0x9a4a35, fMid: 0xb9462d, fHigh: 0x6d2a20, thinSnow: 1 }, s => { MACKEREL.push([s.x, s.z]); });
-station(36492, "המדרון המזרחי של ההר", 980, 330, { up: 6, look: [0, 520, 0], fov: 60 }, { top: 0x16335f, mid: 0xece2c6, hor: 0x9eb0b4, fog: 0x8d8a7c, fLow: 0x1c1714, fMid: 0x82321f, fHigh: 0xa9482b, speckle: 1, dark: .6 }, s => { STORM.x = s.x; STORM.z = s.z; });
+station(36492, "המדרון המזרחי של ההר", 980, 330, { up: 50, dNew: [127, 43], look: [0, 520, 0], fov: 45, aimFuji: [9.8, -14.5] }, { top: 0x16335f, mid: 0xece2c6, hor: 0x9eb0b4, fog: 0x8d8a7c, fLow: 0x1c1714, fMid: 0x82321f, fHigh: 0xa9482b, speckle: 1, dark: .6, thinSnow: 1 }, s => { STORM.x = s.x; STORM.z = s.z; });
 station(56727, "קג'יקאזאווה על נהר פוג'י", -1985, -260, { up: 4, d: [60, 25], look: [-1990, 18, -250], fov: 55 }, null, s => {
   const rk = new THREE.Mesh(partsGeo([{ g: new THREE.DodecahedronGeometry(10, 0), c: 0x3f5a6e, m: M4(0, 2, 0, 0, 0, 0, 1.6, 1.4, 1) }, { g: new THREE.DodecahedronGeometry(6, 0), c: 0x2f475a, m: M4(8, 8, 0, .3, .4, 0) }]), VC); rk.position.set(s.x - 5, -3, s.z + 10); scene.add(rk);
   const f1 = addPerson("fisher", s.x + 4, s.z + 10, { y: 14, ry: Math.PI / 2 }), f2 = addPerson("farmer", s.x - 3, s.z + 8, { y: 10, s: .9 });
@@ -2694,6 +2694,7 @@ function rescaleWorld(K) {
     const L = v.look; v.look = zoneOf(L[0], L[2]) ? m3(L[0], L[1], L[2]).slice(0, 3) : [L[0] * K, L[1] * K, L[2] * K];
     const zq = zoneOf(st.x, st.z), sk = zq && zq.id === st.id ? KA[st.id] || K : K;
     st.x *= sk; st.z *= sk; v.d = [ncx - st.x, ncz - st.z];
+    if (v.dNew) v.d = v.dNew.slice(); // camera offset given directly in final units
     if (v.aimFuji) { // aim so the Fuji peak sits at a given place in the frame: [right deg, down deg]
       const cx2 = st.x + v.d[0], cz2 = st.z + v.d[1], cy = (v.y !== undefined ? v.y : Math.max(gNew(cx2, cz2), 0) + v.up), hl = Math.hypot(cx2, cz2);
       const hx = -cx2 / hl, hz = -cz2 / hl, a = v.aimFuji[0] * Math.PI / 180, rx = -hz, rz = hx;
