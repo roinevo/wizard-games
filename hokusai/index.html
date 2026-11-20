@@ -1342,7 +1342,7 @@ const kasumiTex = canvasTex(512, 64, (g) => {
 function billboards(tex, list, soft, maxD, face) {
   const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial(soft ? {
     uniforms: { map: { value: tex }, fogCol: FOG.col, maxD: { value: maxD || 1e6 }, face: { value: face || new V3() } },
-    vertexShader: `uniform vec3 face; varying vec2 vUv; varying float vF; varying float vFace; void main(){ vUv=uv; vec3 c=vec3(instanceMatrix[3]); vFace=dot(face,face)>0.?smoothstep(.55,.85,abs(dot(normalize(cameraPosition-c),face))):1.; float sx=length(vec3(instanceMatrix[0])), sy=length(vec3(instanceMatrix[1]));
+    vertexShader: `uniform vec3 face; varying vec2 vUv; varying float vF; varying float vFace; void main(){ vUv=uv; vec3 c=vec3(instanceMatrix[3]); vFace=dot(face,face)>0.?smoothstep(.55,.85,-dot(normalize(cameraPosition-c),face)):1.; float sx=length(vec3(instanceMatrix[0])), sy=length(vec3(instanceMatrix[1]));
       vec3 r=vec3(viewMatrix[0][0],viewMatrix[1][0],viewMatrix[2][0]); vec3 u=vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1]);
       vec3 w=c+r*position.x*sx+u*position.y*sy; vec4 mv=viewMatrix*modelMatrix*vec4(w,1.); vF=-mv.z; gl_Position=projectionMatrix*mv; }`,
     fragmentShader: `uniform sampler2D map; uniform vec3 fogCol; uniform float maxD; varying vec2 vUv; varying float vF; varying float vFace; void main(){ float a=smoothstep(.3,.62,texture2D(map,vUv).r);
