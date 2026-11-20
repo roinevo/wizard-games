@@ -1949,7 +1949,7 @@ let introT = 0;
 // any key or tap skips the opening straight to the end of the glide
 function skipIntro() { if (state === "intro" && introT > .3 && introT < 9.6) introT = 9.6; }
 addEventListener("keydown", skipIntro, true); addEventListener("pointerdown", skipIntro, true);
-let _hudIntro = false;
+let _hudIntro = false, _hudMoment = false;
 function updateIntro(dt) {
   introT += dt; post.uniforms.pMix.value = clamp(1 - (introT - 1.2) / 5, 0, 1);
   const v = stationView(STATIONS[0]);
@@ -1972,6 +1972,7 @@ function step(dt) {
   else if (state === "scene" && SCENE_HOOK) SCENE_HOOK(dt);
   else if (state === "menu") { const v = stationView(STATIONS[0]); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix(); post.uniforms.tP.value = getPrintTex(45434); post.uniforms.pAsp.value = 1.49; post.uniforms.pMix.value = 1; }
   { const hi = state === "intro"; if (hi !== _hudIntro) { _hudIntro = hi; $("hud").style.visibility = hi ? "hidden" : ""; $("touch").style.visibility = hi ? "hidden" : ""; } }
+  { const mo = state === "moment"; if (mo !== _hudMoment) { _hudMoment = mo; for (const id of ["compass", "cdist"]) $(id).style.visibility = mo ? "hidden" : ""; $("hud").style.opacity = mo ? ".35" : ""; $("touch").style.visibility = mo ? "hidden" : ""; } }
   NEARCUT.value = state === "play" ? 6.5 : 0;
   updateWorld(dt, T);
   const fl = Math.sin(T * (G.boosting ? 11 : 6.5)); wingL.rotation.z = fl * .55 + .1; wingR.rotation.z = -fl * .55 - .1;
@@ -3487,6 +3488,10 @@ if (/reachgo(\d+)/.test(HASH)) setTimeout(() => { const id = +HASH.match(/reachg
 if (/pick=([-\d.]+),([-\d.]+)/.test(HASH)) setTimeout(() => { const m = HASH.match(/pick=([-\d.]+),([-\d.]+)/), rc = new THREE.Raycaster(); rc.layers.enableAll(); rc.params.Points = { threshold: 5 };
   rc.setFromCamera(new THREE.Vector2(+m[1], +m[2]), camera); const hits = rc.intersectObjects(scene.children, true).slice(0, 8);
   console.log(`[pick] sky=${SKY.position.toArray().map(Math.round)} skyScale=${SKY.scale.x} cam=${camera.position.toArray().map(Math.round)} far=${camera.far} hitIsSky=${hits[0] && hits[0].object === SKY}`); console.log("[pick] " + hits.map(h => `${h.object.type}${h.object.isInstancedMesh ? "(inst" + h.object.count + ")" : ""} d=${h.distance.toFixed(0)} geo=${h.object.geometry && h.object.geometry.type} mat=${h.object.material && h.object.material.type} blend=${h.object.material && h.object.material.blending} layer=${h.object.layers.mask} pos=${h.point.toArray().map(Math.round)}`).join(" | ")); }, 4000);
+
+if (/momentshot/.test(HASH)) setTimeout(() => { const s = STATIONS.find(q => q.id === 56216); enterWorld(); introT = 9.6; step(.05); state = "play";
+  P.pos.set(s.pos.x - 6, s.pos.y + 2, s.pos.z - 6); setMode("fly"); for (let i = 0; i < 160; i++) { P.pos.lerp(s.pos, .05); step(1 / 30); if (state === "moment" && MOMENT.t > 5.2) break; }
+  console.log(`[momentshot] state=${state} t=${MOMENT.t && MOMENT.t.toFixed(1)} compass=${$("compass").style.visibility} hudOp=${$("hud").style.opacity}`); MOMENT.t = 5.2; setInterval(() => { if (state === "moment") MOMENT.t = Math.min(MOMENT.t, 5.3); }, 10); }, 1500);
 })();
 </script>
 </body>
