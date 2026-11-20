@@ -1895,7 +1895,8 @@ function drawMapBase() {
   }
   g.putImageData(id, 0, 0); mapImg = c;
 }
-const toMap = (x, z, W, H) => [(x - MAP.x0) / (MAP.x1 - MAP.x0) * W, (z - MAP.z0) / (MAP.z1 - MAP.z0) * H];
+// places beyond the painted map (the Great Wave lies far out at sea) sit on the map's edge, so they can still be seen and picked
+const toMap = (x, z, W, H) => [clamp((x - MAP.x0) / (MAP.x1 - MAP.x0) * W, 14, W - 14), clamp((z - MAP.z0) / (MAP.z1 - MAP.z0) * H, 14, H - 14)];
 function toggleMap() {
   if (state === "map") { state = "play"; $("mapScr").hidden = true; return; }
   if (state !== "play") return;
@@ -3372,7 +3373,7 @@ CRESTS.list.forEach(c => { let b = 0, bd = 1e9; REGIONS.forEach((r, i) => { cons
   g.font = "bold 14px serif"; g.textAlign = "center";
   REGIONS.forEach(([name, f], i) => { if (i === 2) return; const [x, y] = toMap(...f(), W, H); g.fillStyle = "rgba(243,233,208,.85)"; const w = g.measureText(name).width + 10; g.fillRect(x - w / 2, y - 26, w, 18); g.fillStyle = "#1c2944"; g.fillText(name, x, y - 12); });
   const lines = REGIONS.map((r, i) => { const L = CRESTS.list.filter(c => c.region === i); return `${r[0]} ${L.filter(c => c.got).length}/${L.length}`; });
-  g.font = "13px serif"; g.textAlign = "right"; const bx = W - 8, by = H - 12 - lines.length * 16 - 52;
+  g.font = "13px serif"; g.textAlign = "right"; const bx = W - 8, by = H - 26 - lines.length * 16 - 52; // (kept clear of the bottom edge, where far-out stations are pinned)
   g.fillStyle = "rgba(243,233,208,.92)"; g.strokeStyle = "#3b3a3a"; g.lineWidth = 1; g.fillRect(bx - 150, by - 4, 150, lines.length * 16 + 60); g.strokeRect(bx - 150, by - 4, 150, lines.length * 16 + 60);
   g.fillStyle = "#1c2944"; g.fillText("◆ חותמים לפי אזור", bx - 8, by + 12); lines.forEach((l, i) => g.fillText(l, bx - 8, by + 30 + i * 16));
   const ly = by + 30 + lines.length * 16; g.fillStyle = "#b3362b"; g.fillRect(bx - 18, ly - 9, 10, 10); g.fillStyle = "#8a7a5a"; g.fillRect(bx - 82, ly - 9, 10, 10);
@@ -3417,7 +3418,7 @@ if (mG) setTimeout(() => {
 }, 1200);
 if (/fasttravel|mapshow/.test(HASH)) setTimeout(() => {
   enterWorld(); introT = 9.6; step(.05); state = "play";
-  const s = STATIONS.find(q => q.id === 55237); s.got = true; toggleMap();
+  const s = STATIONS.find(q => q.id === (/wave/.test(HASH) ? 45434 : 55237)); s.got = true; toggleMap();
   const cv = $("mapCv"), r = cv.getBoundingClientRect(), [x, y] = toMap(s.x, s.z, cv.width, cv.height);
   cv.dispatchEvent(new MouseEvent("click", { clientX: r.left + x / cv.width * r.width, clientY: r.top + y / cv.height * r.height, bubbles: true }));
   console.log(`[travel] dest-btn hidden=${$("travelBtn").hidden} info=${$("mapInfo").textContent}`);
