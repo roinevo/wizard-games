@@ -1381,7 +1381,7 @@ function buildCrests() {
   for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283; add(Math.cos(a) * 30, FUJI_H * .985 + 3, Math.sin(a) * 30, "summit"); }
   for (const [x, z, h] of FALLS) { const base = landH(x, z + 30); add(x, base + h + 4, z + 3, "falls"); add(x, base + h * .5, z + 9, "falls"); }
   add(-1706, landH(-1700, 1050) + 84, 1050, "tree");
-  const fm = STATIONS.find(q => q.id === 36500), [bx, bz] = toward(fm.x, fm.z, 0, 0, 22); add(bx, landH(bx, bz) + 8, bz, "barrel");
+  const fm = STATIONS.find(q => q.id === 36500), [bx, bz] = toward(fm.x, fm.z, 0, 0, 22); add(bx, landH(bx, bz) + 19, bz, "barrel");
   if (WAVES[0]) { const w = waveWorld(WAVES[0], 22, 72, .5); add(w.x, w.y, w.z, "wave"); }
   for (const [ix, iz] of ISLANDS) add(ix + 20, gy(ix + 20, iz), iz - 10, "island");
   const nb = STATIONS.find(q => q.id === 56216); add(nb.x - 12, 21, nb.z + 40, "torii"); add(nb.x + 20, 14, nb.z + 90, "torii");
@@ -1467,7 +1467,7 @@ function strikeBolt(b) {
   const mk = (a, c, w) => { const d = c.clone().sub(a); const len = d.length(); const m = new THREE.Mesh(new THREE.BoxGeometry(w, len, w * .4), b.mat); m.position.copy(a).add(c).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new V3(0, 1, 0), d.normalize()); b.g.add(m); b.segs.push([a.clone(), c.clone()]); };
   for (let s = 0; s < 6; s++) { const n = p.clone().add(new V3(Math.cos(dir) * rand(14, 26), rand(14, 26), Math.sin(dir) * rand(14, 26))); mk(p, n, 3); if (Math.random() < .5) mk(n, n.clone().add(new V3(rand(-18, 18), rand(-14, -5), rand(-18, 18))), 2); p = n; dir += rand(-1.6, 1.6); }
 }
-let _pillT = 0, _pillOn = new Set();
+let _pillT = 0, _pillOn = new Set(), WORLD_LIM = null;
 function updateWorld(dt, t) {
   for (const b of BOATS) { const y = waterH(b.position.x, b.position.z, t); b.position.y = y + .2; b.rotation.x = Math.sin(t * 1.2 + b.position.x) * .1; b.rotation.z = Math.sin(t * .9 + b.position.z) * .06; }
   for (const wv of WAVES) {
@@ -1731,7 +1731,9 @@ function updatePlay(dt) {
     }
   }
   updateMounts(dt);
-  const lim = 2900 * WK; P.pos.x = clamp(P.pos.x, -lim, lim); P.pos.z = clamp(P.pos.z, -lim, 3300 * WK);
+  // world bounds: the map edge, widened so that every station (some sit further out after the rescale) can be reached
+  if (!WORLD_LIM) { WORLD_LIM = { x0: -2900 * WK, x1: 2900 * WK, z0: -2900 * WK, z1: 3300 * WK }; for (const s of STATIONS) { WORLD_LIM.x0 = Math.min(WORLD_LIM.x0, s.pos.x - 60); WORLD_LIM.x1 = Math.max(WORLD_LIM.x1, s.pos.x + 60); WORLD_LIM.z0 = Math.min(WORLD_LIM.z0, s.pos.z - 60); WORLD_LIM.z1 = Math.max(WORLD_LIM.z1, s.pos.z + 60); } }
+  P.pos.x = clamp(P.pos.x, WORLD_LIM.x0, WORLD_LIM.x1); P.pos.z = clamp(P.pos.z, WORLD_LIM.z0, WORLD_LIM.z1);
   // trail
   if (G.mode === "fly") { const tail = player.localToWorld(tmp.set(0, .2, -2.6)); if (Math.random() < .7) sparks.spawn(tail.x, tail.y, tail.z, { vx: rand(-1, 1), vy: rand(-.5, .5), vz: rand(-1, 1), life: rand(.5, .9), s0: G.boosting ? 1.1 : .7, s1: 0, r: 1, gg: .92, b: .75 }); }
   // camera
@@ -2720,7 +2722,7 @@ const TOWN_NEW = { x: 0, z: 0 };
 function rescaleWorld(K) {
   const AR = { 55237: 430, 45434: 300, 56142: 140, 36484: 140, 56216: 160, 54868: 30 };
   // the Great Wave keeps more open sea between it and Fuji, so Fuji stays small in the trough as in the print
-  const KA = { 45434: .8 };
+  const KA = { 45434: .8, 36500: .9 }; // Fujimigahara: Fuji must stay tiny inside the barrel
   const Z = STATIONS.filter(q => !q.view.sky).map(q => ({ id: q.id, x: q.x, z: q.z, r: AR[q.id] || 60, nx: q.x * (KA[q.id] || K), nz: q.z * (KA[q.id] || K) }));
   const TZ = { x: 1385, z: roadZ(1385), r: 220 }; TZ.nx = TZ.x * K; TZ.nz = TZ.z * K; Z.push(TZ);
   const zoneOf = (x, z) => { let b = null, bd = 1e9; for (const q of Z) { const d = Math.hypot(x - q.x, z - q.z); if (d < q.r && d < bd) { bd = d; b = q; } } return b; };
@@ -3427,6 +3429,12 @@ PLAY_HOOKS.push(dt => {
 if (/chattest/.test(HASH)) setTimeout(() => { enterWorld(); introT = 9.6; step(.05); state = "play"; CHAT.t = 0; for (let i = 0; i < 20; i++) step(1 / 30); console.log("[chat] near=" + CHAT.n + " pair=" + !!CHAT.pair + " text=" + B2.textContent + " hidden=" + B2.hidden); }, 1200);
 
 if (/crestcheck/.test(HASH)) setTimeout(() => { const by = {}; for (const c of CRESTS.list) { const h = landH(c.x, c.z); if (h < 0 && c.y < 4) { by[c.kind] = (by[c.kind] || 0) + 1; } } console.log("[crestcheck] wet-low by kind " + JSON.stringify(by) + " total=" + CRESTS.list.length); }, 1500);
+
+if (/reach/.test(HASH)) setTimeout(() => { enterWorld(); introT = 9.6; state = "play"; step(1 / 30); const L_ = WORLD_LIM, bad = STATIONS.filter(s => s.pos.x < L_.x0 || s.pos.x > L_.x1 || s.pos.z < L_.z0 || s.pos.z > L_.z1).map(s => s.id); console.log(`[reach] bounds=${[L_.x0, L_.x1, L_.z0, L_.z1].map(Math.round)} unreachable=${bad.join(" ") || "none"}`); }, 1500);
+
+if (/reachgo(\d+)/.test(HASH)) setTimeout(() => { const id = +HASH.match(/reachgo(\d+)/)[1], s = STATIONS.find(q => q.id === id); enterWorld(); introT = 9.6; step(.05); state = "play";
+  P.pos.set(s.pos.x - 40, s.pos.y + 3, s.pos.z - 40); setMode("fly"); P.yaw = Math.atan2(s.pos.x - P.pos.x, s.pos.z - P.pos.z); P.pitch = 0;
+  for (let i = 0; i < 400 && state === "play"; i++) { P.pos.lerp(s.pos, .03); step(1 / 30); } console.log(`[reachgo] ${id} state=${state} got=${!!s.got} dist=${P.pos.distanceTo(s.pos).toFixed(1)}`); }, 1500);
 })();
 </script>
 </body>
