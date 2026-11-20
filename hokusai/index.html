@@ -2865,6 +2865,21 @@ function aimFujiFrom(s, C, cy, right, up) {
   if (/dbg/.test(HASH)) { const hl = Math.hypot(C[0], C[1]); let blk = 0; for (let t = .05; t < 1; t += .05) { const x = C[0] * (1 - t), z = C[1] * (1 - t), h = landH(x, z), ray = cy + (FUJI_H * .95 - cy) * t; if (h > ray && Math.hypot(x, z) > FUJI_R * .8) blk = Math.max(blk, h - ray); } console.log(`[mishima] cam=${C.map(Math.round)},${cy.toFixed(0)} fujiBlockedBy=${blk.toFixed(0)}`); }
 })();
 
+/* ---------- Ryogoku (37362): a ferry full of passengers in front, the long bridge on the left, Fuji small beyond ---------- */
+(function dressRyogoku() {
+  const s = STATIONS.find(q => q.id === 37362); if (!s) return;
+  // the bridge spans the Sumida ~90 units north of the old camera; stand in the river south of it and turn toward Fuji
+  // (west), so the bridge runs along the right... then mirror: look slightly north-west so the bridge sits at the left
+  const v = stationView(s), C = [v.pos.x, v.pos.z - 150];
+  const f = aimFujiFrom(s, C, 5, -28, 3.5), r = [-f[1], f[0]]; s.view.fov = 64;
+  const fx = C[0] + f[0] * 34 + r[0] * 3, fz = C[1] + f[1] * 34 + r[1] * 3, ferry = makeBoat(); ferry.scale.set(1.9, 1.5, 2.3);
+  ferry.position.set(fx, 0, fz); ferry.rotation.y = Math.atan2(r[0], r[1]) + .12; scene.add(ferry); BOATS.push(ferry);
+  for (let k = 0; k < 9; k++) { const t = (k - 4) * 1.7, x = fx + r[0] * t + f[0] * (k % 2 ? .6 : -.6), z = fz + r[1] * t + f[1] * (k % 2 ? .6 : -.6);
+    addPerson(["traveler", "woman", "parasol", "samurai", "porter", "monk", "woman", "traveler", "child"][k], x, z, { y: 1.3, ry: Math.atan2(f[0], f[1]) + Math.PI + rand(-.6, .6), s: 1.05 }); }
+  addPerson("fisher", fx + r[0] * 9, fz + r[1] * 9, { y: 1.6, ry: Math.atan2(-r[0], -r[1]), s: 1.1 }); // the boatman with his pole at the stern
+  clearWedge(C, f, 30, 4, .4);
+})();
+
 /* ---------- Hakone (36498): from the hills above the lake, Fuji small at the left beyond the water ---------- */
 (function dressHakone() {
   const s = STATIONS.find(q => q.id === 36498), L = LAKES.find(q => q.name === "hakone"); if (!s || !L) return;
