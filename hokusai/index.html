@@ -3514,6 +3514,24 @@ if (/momentshot/.test(HASH)) setTimeout(() => { const s = STATIONS.find(q => q.i
   console.log(`[momentshot] state=${state} t=${MOMENT.t && MOMENT.t.toFixed(1)} compass=${$("compass").style.visibility} hudOp=${$("hud").style.opacity}`); MOMENT.t = 5.2; setInterval(() => { if (state === "moment") MOMENT.t = Math.min(MOMENT.t, 5.3); }, 10); }, 1500);
 
 if (/introat(\d+)/.test(HASH)) setTimeout(() => { const n = +HASH.match(/introat(\d+)/)[1]; $("startBtn").click(); setTimeout(() => { for (let i = 0; i < n * 3; i++) step(1 / 30); const fr = () => { if (state === "intro") introT = n / 10; requestAnimationFrame(fr); }; fr(); console.log(`[intro] t=${introT.toFixed(1)} pMix=${post.uniforms.pMix.value.toFixed(2)}`); }, 300); }, 500);
+
+/* ---------- ambience follows the place: surf by the sea, a roar by the falls, a quiet field, voices in town ---------- */
+(() => { let tick = 0, mur = null;
+  if (/ambtest/.test(HASH)) setTimeout(() => { audioInit(); for (const id of [56142, 45434]) { const st = STATIONS.find(q => q.id === id), v = stationView(st); P.pos.set(v.pos.x, v.pos.y, v.pos.z); tick = 0; PLAY_HOOKS[PLAY_HOOKS.length - 1](0); console.log(`[amb] ${id} gain=${amb && amb.g.gain.value} hasAC=${!!AC}`); } }, 3000);
+  PLAY_HOOKS.push(dt => { if (!AC || !amb || (tick -= dt) > 0) return; tick = .5;
+    const px = P.pos.x, pz = P.pos.z, t = AC.currentTime;
+    let fall = 0; for (const id of [56142, 36484]) { const st = STATIONS.find(q => q.id === id); if (st) { const v = stationView(st); fall = Math.max(fall, 1 - Math.hypot(px - v.look.x, pz - v.look.z) / 160); } }
+    let sea = 0; for (let a = 0; a < 6.28; a += .8) if (landH(px + Math.cos(a) * 60, pz + Math.sin(a) * 60) < -1) sea += 1 / 8;
+    const town = Math.max(0, 1 - Math.hypot(px - TOWN_NEW.x, pz - TOWN_NEW.z) / 180) + Math.max(0, 1 - Math.hypot(px - EDO.x, pz - EDO.z) / 160);
+    const fly = G.mode === "fly" ? 1 : 0;
+    amb.g.gain.setTargetAtTime(clamp(.02 + sea * .07 + fall * .12 + fly * .03, 0, .16), t, .8);
+    amb.lp.frequency.setTargetAtTime(fall > .1 ? 1400 + fall * 1600 : sea > .2 ? 520 : fly ? 700 : 300, t, .8);
+    // a soft murmur of voices in town: band-passed noise with a slow, syllable-like wobble
+    if (!mur) { const n = AC.createBufferSource(); n.buffer = AC.noiseBuf; n.loop = true; const bp = AC.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 620; bp.Q.value = 1.4;
+      const g = AC.createGain(); g.gain.value = 0; const l = AC.createOscillator(); l.frequency.value = 3.1; const lg = AC.createGain(); lg.gain.value = .012; l.connect(lg); lg.connect(g.gain);
+      n.connect(bp); bp.connect(g); out(g, .3); n.start(); l.start(); mur = g; }
+    mur.gain.setTargetAtTime(clamp(town, 0, 1) * .022, t, 1);
+  }); })();
 })();
 </script>
 </body>
