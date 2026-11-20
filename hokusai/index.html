@@ -1044,7 +1044,7 @@ station(56786, "מעבר מישימה", -1700, 1050, { up: 3, d: [0, 40], look: 
   const [tx, tz] = [s.x, s.z]; const ty = landH(tx, tz);
   { const L = Math.hypot(tx, tz), ux = -tx / L, uz = -tz / L, qx = -uz, qz = ux; const cx = tx - ux * 46 + qx * 13, cz = tz - uz * 46 + qz * 13; s.view.d = [cx - tx, cz - tz]; s.view.up = 9; s.view.look = [cx + ux * 46 - qx * 7, landH(cx, cz) + 17, cz + uz * 46 - qz * 7]; s.view.fov = 64; }
   const tree = new THREE.Mesh(partsGeo([{ g: G_.cyl(2.6, 3.4, 70, 12), c: 0x58687a, m: M4(0, 35, 0) }, { g: G_.sph(10, 10, 8), c: 0x2c4a42, m: M4(-6, 72, 0, 0, 0, 0, 1.4, .6, 1.2) }, { g: G_.sph(9, 10, 8), c: 0x3a5f52, m: M4(7, 66, 3, 0, 0, 0, 1.3, .55, 1.1) }, { g: G_.sph(7, 10, 8), c: 0x2c4a42, m: M4(2, 80, -2, 0, 0, 0, 1.3, .5, 1) }]), VC);
-  tree.position.set(tx, ty - 1, tz); scene.add(tree);
+  tree.position.set(tx, ty - 1, tz); scene.add(tree); s.mishimaTree = tree;
   for (let k = 0; k < 3; k++) { const a = k * 2.1; addPerson("traveler", tx + Math.cos(a) * 3.6, tz + Math.sin(a) * 3.6, { ry: a + Math.PI / 2 }); }
   CUMULUS.push([-1550, 750, 170, 8]);
 });
@@ -2833,6 +2833,16 @@ function aimFujiFrom(s, C, cy, right, up) {
       const pl = []; for (let q = 0; q < 26; q++) { const u = rand(0, 1), x = I[0] - fx / fl * 40 + rx * (u - .5) * 120, z = I[1] - fz / fl * 40 + rz * (u - .5) * 120; pl.push([x, Math.max(landH(x, z), 0) - .2, z, rand(0, 6), rand(.6, 1)]); }
       instances(KIT.pine(), pl); }
   });
+})();
+
+/* ---------- Mishima (56786): the giant tree in the centre, Fuji just to its right ---------- */
+(function dressMishima() {
+  const s = STATIONS.find(q => q.id === 56786); if (!s || !s.mishimaTree) return;
+  const T0 = [s.mishimaTree.position.x, s.mishimaTree.position.z], L = Math.hypot(T0[0], T0[1]), u = [-T0[0] / L, -T0[1] / L], q = [-u[1], u[0]];
+  const C = [T0[0] - u[0] * 46 + q[0] * 9, T0[1] - u[1] * 46 + q[1] * 9], cy = Math.max(landH(C[0], C[1]), 0) + 8;
+  const f = aimFujiFrom(s, C, cy, -16, 11); s.view.fov = 62;
+  clearWedge(C, f, 40, 3, .25); { const hl = Math.hypot(C[0], C[1]); clearWedge(C, [-C[0] / hl, -C[1] / hl], 160, 6, .12); }
+  if (/dbg/.test(HASH)) { const hl = Math.hypot(C[0], C[1]); let blk = 0; for (let t = .05; t < 1; t += .05) { const x = C[0] * (1 - t), z = C[1] * (1 - t), h = landH(x, z), ray = cy + (FUJI_H * .95 - cy) * t; if (h > ray && Math.hypot(x, z) > FUJI_R * .8) blk = Math.max(blk, h - ray); } console.log(`[mishima] cam=${C.map(Math.round)},${cy.toFixed(0)} fujiBlockedBy=${blk.toFixed(0)}`); }
 })();
 
 /* ---------- Hakone (36498): from the hills above the lake, Fuji small at the left beyond the water ---------- */
