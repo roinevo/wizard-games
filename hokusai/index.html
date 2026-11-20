@@ -3039,7 +3039,7 @@ function aimFujiFrom(s, C, cy, right, up) {
     if (cost < best) { best = cost; C = [cx, cz]; } }
   if (!C) return;
   const cy = Math.max(H(C[0], C[1]) + 18, 45), hl = Math.hypot(C[0], C[1]), jx = -C[0] / hl, jz = -C[1] / hl;
-  const yaw = 24 * deg, el = Math.atan2(FUJI_H * .95 - cy, hl) - 11 * deg; // Fuji 24 deg left of centre, peak a third down
+  const yaw = 33 * deg, el = Math.atan2(FUJI_H * .95 - cy, hl) - 16 * deg; s.view.fov = 74; // wide lens: Fuji small at the upper left, lake and hills fill the rest
   const fx = Math.cos(yaw) * jx - Math.sin(yaw) * jz, fz = Math.cos(yaw) * jz + Math.sin(yaw) * jx;
   s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0; s.view.look = [C[0] + fx * 100, cy + Math.tan(el) * 100, C[1] + fz * 100];
   clearWedge(C, [fx, fz], 40, 5, .8);
