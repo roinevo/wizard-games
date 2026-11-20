@@ -2658,11 +2658,12 @@ function sayBubble(p, txt) { const b = $("bubble"); b.innerHTML = `<b>${p.name |
 const TOWN_GATE = { x: 1478, z: roadZ(1478), yaw: -1.64 };
 { const gx = TOWN_GATE.x, gz = TOWN_GATE.z, gy = landH(gx, gz);
   addMesh(partsGeo([
-    { g: G_.cyl(.35, .4, 7.5, 6), c: 0x5a4632, m: M4(0, 3.75, -6.5) }, { g: G_.cyl(.35, .4, 7.5, 6), c: 0x5a4632, m: M4(0, 3.75, 6.5) },
-    { g: G_.box(1, .8, 16), c: 0x3d3026, m: M4(0, 7.3, 0) }, { g: prism(2.4, 1.2, 17), c: 0x3b3a3a, m: M4(0, 7.7, 0) },
-    { g: G_.box(.3, 1.6, 4), c: 0xefe6d2, m: M4(.4, 5.9, 0) }, { g: G_.box(.32, 1.2, 1.6), c: 0xb3362b, m: M4(.42, 5.9, 0) },
-    ...[-3.5, 3.5].map(z => ({ g: G_.sph(.5, 7, 5), c: 0xc8432c, m: M4(.3, 6.2, z, 0, 0, 0, 1, 1.35, 1) }))
-  ]), gx, gz, 0, 1, gy); }
+    { g: G_.cyl(.4, .45, 11, 6), c: 0x5a4632, m: M4(0, 5.5, -6.5) }, { g: G_.cyl(.4, .45, 11, 6), c: 0x5a4632, m: M4(0, 5.5, 6.5) },
+    { g: G_.box(.9, .7, 16), c: 0x5a4632, m: M4(0, 10.8, 0) }, { g: prism(2.2, 1.1, 17), c: 0x3b3a3a, m: M4(0, 11.2, 0) },
+    ...[-3.5, 3.5].map(z => ({ g: G_.sph(.55, 7, 5), c: 0xc8432c, m: M4(.3, 8.6, z, 0, 0, 0, 1, 1.35, 1) }))
+  ]), gx, gz, 0, 1, gy);
+  // the gate's board: 宿 (post town), readable from both sides
+  for (const sd of [-1, 1]) { const sg = signMesh("宿", "#efe6d2", "#2b2b2b", 1.5, 2.6); sg.position.set(gx + sd * .5, gy + 9.1, gz); sg.rotation.y = sd * Math.PI / 2; scene.add(sg); } }
 
 /* ---------- shrink the world (see WORLD_K in world_main.js) ----------
    Stations and the town are anchors: whatever stands within an anchor's radius moves rigidly with it
