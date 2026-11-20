@@ -1723,14 +1723,14 @@ function updatePlay(dt) {
   // trail
   if (G.mode === "fly") { const tail = player.localToWorld(tmp.set(0, .2, -2.6)); if (Math.random() < .7) sparks.spawn(tail.x, tail.y, tail.z, { vx: rand(-1, 1), vy: rand(-.5, .5), vz: rand(-1, 1), life: rand(.5, .9), s0: G.boosting ? 1.1 : .7, s1: 0, r: 1, gg: .92, b: .75 }); }
   // camera
-  const fly = G.mode === "fly", rideH = G.mode === "horse", hp = fly ? P.pitch * .5 : -.12, cd = fly ? 12 : rideH ? 15 : 10;
+  const fly = G.mode === "fly", rideH = G.mode === "horse", hp = fly ? P.pitch * .5 : -.12, port = innerWidth < innerHeight * .9, cd = (fly ? 12 : rideH ? 15 : 10) * (port ? 1.25 : 1);
   tmp2.set(Math.sin(P.yaw) * Math.cos(hp), Math.sin(hp), Math.cos(P.yaw) * Math.cos(hp));
   tmp3.copy(P.pos).addScaledVector(tmp2, -cd); tmp3.y += fly ? 3.6 : rideH ? 7.5 : 5;
   if (G.anim && G.anim.type === "craneIn") tmp3.y += 6 * smooth(clamp(G.anim.t / 1.9, 0, 1));
   camera.position.lerp(tmp3, 1 - Math.exp(-dt * 5));
   const cf = floorAt(camera.position.x, camera.position.z) + 1.5; if (camera.position.y < cf) camera.position.y = cf;
   camera.lookAt(tmp.copy(P.pos).addScaledVector(P.fwd, 8).add(tmp2.set(0, fly ? 1.4 : rideH ? 5 : 3.4, 0)));
-  const fovT = G.boosting && (fly || rideH) && G.spd >= 0 ? (fly ? 72 : 68) : 62; if (Math.abs(camera.fov - fovT) > .1) { camera.fov += (fovT - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
+  const fovT = (G.boosting && (fly || rideH) && G.spd >= 0 ? (fly ? 72 : 68) : 62) + (port ? 12 : 0); if (Math.abs(camera.fov - fovT) > .1) { camera.fov += (fovT - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
   // stations
   for (const s of STATIONS) {
     if (s.got && !s.revisit) continue;
@@ -2612,7 +2612,7 @@ const MOMENTS = {
 };
 const lastSaid = new Set(); let lastLine = "";
 function npcLine(p) {
-  const hr = Math.hypot(p.mesh.position.x - EDO.x, p.mesh.position.z - EDO.z) < 260 ? 18 : T < 150 ? 8 : 13, got = STATIONS.filter(s => s.got).length, x = p.mesh.position.x, z = p.mesh.position.z;
+  const hr = Math.hypot(p.mesh.position.x - EDO.x, p.mesh.position.z - EDO.z) < 120 ? 18 : T < 150 ? 8 : 13, got = STATIONS.filter(s => s.got).length, x = p.mesh.position.x, z = p.mesh.position.z;
   const ctx = [...MOMENTS[hr < 5 ? "night" : hr < 11 ? "morning" : hr < 17 ? "day" : hr < 21 ? "evening" : "night"]];
   if (Math.hypot(x - STORM.x, z - STORM.z) < 320) ctx.push(...MOMENTS.storm, ...MOMENTS.storm);
   for (const id of [53787, 44981]) { const s = STATIONS.find(q => q.id === id); if (Math.hypot(x - s.x, z - s.z) < 180) ctx.push(...MOMENTS.snow, ...MOMENTS.snow); }
