@@ -1022,7 +1022,7 @@ station(56727, "קג'יקאזאווה על נהר פוג'י", -1985, -260, { up:
   const f1 = addPerson("fisher", s.x + 4, s.z + 10, { y: 14, ry: Math.PI / 2 }), f2 = addPerson("farmer", s.x - 3, s.z + 8, { y: 10, s: .9 });
   const fo = [s.x, s.z + 10, 14]; FOAMSPOTS.push(fo); s.kaji = { rk, f1, f2, fo };
 });
-station(36500, "שדה פוג'ימיגהרה", -2550, -950, { up: 5, d: [-7.5, -2.8], look: [-2529.4, 199, -942.3], fov: 50 }, null, s => {
+station(36500, "שדה פוג'ימיגהרה", -2550, -950, { up: 5, d: [1.9, .7], look: [-2529.4, 199, -942.3], fov: 62 }, null, s => {
   const [bx, bz] = toward(s.x, s.z, 0, 0, 22); const ang = Math.atan2(-bx, -bz);
   const barrel = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 3.2, 40, 1, true), toon(0xd9c08c, { side: THREE.DoubleSide }));
   barrel.rotation.z = Math.PI / 2; barrel.rotation.y = ang + Math.PI / 2; barrel.position.set(bx, landH(bx, bz) + 8, bz); scene.add(barrel);
@@ -2722,7 +2722,7 @@ const TOWN_NEW = { x: 0, z: 0 };
 function rescaleWorld(K) {
   const AR = { 55237: 430, 45434: 300, 56142: 140, 36484: 140, 56216: 160, 54868: 30 };
   // the Great Wave keeps more open sea between it and Fuji, so Fuji stays small in the trough as in the print
-  const KA = { 45434: .8, 36500: .9 }; // Fujimigahara: Fuji must stay tiny inside the barrel
+  const KA = { 45434: .8 }; // (sea station: fine beyond the terrain mesh; land stations must stay within |x|,|z| <= 1500)
   const Z = STATIONS.filter(q => !q.view.sky).map(q => ({ id: q.id, x: q.x, z: q.z, r: AR[q.id] || 60, nx: q.x * (KA[q.id] || K), nz: q.z * (KA[q.id] || K) }));
   const TZ = { x: 1385, z: roadZ(1385), r: 220 }; TZ.nx = TZ.x * K; TZ.nz = TZ.z * K; Z.push(TZ);
   const zoneOf = (x, z) => { let b = null, bd = 1e9; for (const q of Z) { const d = Math.hypot(x - q.x, z - q.z); if (d < q.r && d < bd) { bd = d; b = q; } } return b; };
