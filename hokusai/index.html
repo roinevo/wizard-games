@@ -2920,7 +2920,9 @@ function aimFujiFrom(s, C, cy, right, up) {
     const wx = s.x + gx, wz = s.z + gz; if (gx * gx + gz * gz > 90000 || !deep(wx, wz)) continue;
     for (let a = 0; a < 6.28; a += .1) { const cx = wx + Math.cos(a) * 36, cz = wz + Math.sin(a) * 36; if (!wet(cx, cz)) continue;
       const fx = (wx - cx) / 36, fz = (wz - cz) / 36, jl = Math.hypot(cx, cz), jx = -cx / jl, jz = -cz / jl;
-      const ang = Math.atan2(-fz * jx + fx * jz, fx * jx + fz * jz) * 180 / Math.PI, cost = Math.abs(ang - 12) + Math.hypot(gx, gz) * .02;
+      const ang = Math.atan2(-fz * jx + fx * jz, fx * jx + fz * jz) * 180 / Math.PI; if (Math.abs(ang - 12) > 25) continue;
+      let blk = 0; for (let t = .04; t < .85; t += .04) { const x = cx * (1 - t), z = cz * (1 - t), ray = 9 + (FUJI_H * .7 - 9) * t; blk = Math.max(blk, landH(x, z) - ray); }
+      const cost = Math.abs(ang - 12) + Math.hypot(gx, gz) * .02 + Math.max(0, blk) * 2;
       if (cost < best) { best = cost; W = [wx, wz]; C = [cx, cz]; f = [fx, fz]; s._kang = ang; } } }
   if (!W) { console.log("[kaji] no river"); return; }
   const { rk, f1, f2, fo } = s.kaji, dx0 = W[0] - rk.position.x, dz0 = W[1] - rk.position.z;
@@ -2930,10 +2932,9 @@ function aimFujiFrom(s, C, cy, right, up) {
   f1.mesh.position.set(W[0] + rx * 1.5 - f[0] * 1, 8.7, W[1] + rz * 1.5 - f[1] * 1); f1.mesh.rotation.y = Math.atan2(rx, rz); f1.fixedY = true;
   f2.mesh.position.set(W[0] - rx * 4.5 - f[0] * 2, 5.6, W[1] - rz * 4.5 - f[1] * 2); f2.fixedY = true;
   fo[0] = W[0]; fo[1] = W[1]; fo[2] = 1;
-  for (let k = 0; k < 6; k++) { const a = k / 6 * 6.28; FOAMSPOTS.push([W[0] + Math.cos(a) * 9, W[1] + Math.sin(a) * 9, .5]); }
   // Hokusai's mist hides the middle ground: a cream bank beyond the rock, only Fuji's upper cone above it
-  const mist = []; for (const [dd, yy] of [[16, 5], [26, 14], [38, 24], [52, 34], [70, 44], [95, 54]]) for (let k = -2; k <= 2; k++) { const w = 110 + dd * 1.6; mist.push([W[0] + f[0] * dd + rx * k * w * .3, yy, W[1] + f[1] * dd + rz * k * w * .38, w, 24]); }
-  for (const [dd, yy, sd] of [[6, 6, 22], [8, 16, 30], [10, 27, 40], [12, 38, 52], [5, 4, 50], [9, 22, 70]]) mist.push([W[0] + f[0] * dd + rx * sd, yy, W[1] + f[1] * dd + rz * sd, 70, 14]);
+  const mist = []; for (const [dd, yy] of [[16, 5], [26, 10], [38, 14], [52, 18], [70, 22], [95, 26]]) for (let k = -2; k <= 2; k++) { const w = 110 + dd * 1.6; mist.push([W[0] + f[0] * dd + rx * k * w * .3, yy, W[1] + f[1] * dd + rz * k * w * .38, w, 24]); }
+  for (const [dd, yy, sd] of [[6, 5, 22], [8, 10, 30], [10, 14, 40], [12, 18, 52], [5, 4, 50], [9, 14, 70]]) mist.push([W[0] + f[0] * dd + rx * sd, yy, W[1] + f[1] * dd + rz * sd, 70, 14]);
   billboards(kasumiTex, mist, true, 190); // only near the station: invisible from Hakone and the rest of the world
   const cy = Math.max(landH(C[0], C[1]), 0) + 9;
   s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0; s.view.look = [W[0], 9, W[1]];
