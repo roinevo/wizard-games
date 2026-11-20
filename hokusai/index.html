@@ -1028,8 +1028,8 @@ station(36500, "שדה פוג'ימיגהרה", -2550, -950, { up: 5, d: [-7.5, -
   for (const k of [-1.4, 1.4]) { const hoop = new THREE.Mesh(new THREE.TorusGeometry(8.05, .22, 6, 40), toon(0x3b3a3a)); hoop.quaternion.setFromUnitVectors(new V3(0, 0, 1), ax); hoop.position.copy(barrel.position).addScaledVector(ax, k); scene.add(hoop); }
   addPerson("farmer", bx + .5, bz, { y: landH(bx, bz) + .3, bend: 1, col: 0x3b5f8a });
 });
-station(56216, "מפרץ נובוטו", 1500, 1420, { up: 5, d: [0, -60], look: [1500, 12, 1560], fov: 58 }, null, s => {
-  for (const [dx, dz, sc] of [[-12, 40, 1.6], [20, 90, 1]]) { const t = new THREE.Mesh(KIT.torii(), VC); t.position.set(s.x + dx, -3, s.z + dz); t.scale.setScalar(sc); scene.add(t); }
+station(56216, "מפרץ נובוטו", 1500, 1420, { up: 5, d: [0, -60], look: [1439, 12, 1560], fov: 58 }, null, s => {
+  for (const [dx, dz, sc] of [[-19, 40, 3.6], [20, 90, 1]]) { const t = new THREE.Mesh(KIT.torii(), VC); t.position.set(s.x + dx, -3, s.z + dz); t.scale.setScalar(sc); scene.add(t); }
   for (let k = 0; k < 6; k++) addPerson(k % 2 ? "farmer" : "woman", s.x + rand(-25, 25), s.z + rand(30, 70), { y: -.3, bend: 1 });
 });
 station(56132, "ביצות אושיבורי", 2350, -620, { up: 16, d: [74, 40], look: [2234, 12, -535], fov: 56 }, null, s => {
@@ -1968,7 +1968,7 @@ if (mS) setTimeout(() => {
   const s = STATIONS.find(q => q.id === +mS[2]) || STATIONS[+mS[2]];
   enterWorld(); state = "viewtest"; post.uniforms.pMix.value = 0; $("startScr").hidden = true;
   P.pos.copy(s.pos); updateMood(10); updateMood(10); updateMood(10);
-  s.marker.visible = false; const v = stationView(s); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix();
+  s.marker.visible = false; const v = stationView(s); if (/dbg/.test(HASH)) console.log(`[view] st=${s.x.toFixed(0)},${s.z.toFixed(0)} cam=${v.pos.toArray().map(q => q.toFixed(0))} look=${v.look.toArray().map(q => q.toFixed(0))} d=${s.view.d}`); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix();
   if (mS[1] === "st") { const tx = getPrintTex(s.id); post.uniforms.tP.value = tx; setTimeout(() => { post.uniforms.pAsp.value = tx.image && tx.image.width ? tx.image.width / tx.image.height : 1.49; }, 900); post.uniforms.pMix.value = .55; }
 }, 600);
 const mC = HASH.match(/cam=([-\d.,]+)/);
@@ -2698,6 +2698,13 @@ function rescaleWorld(K) {
     }
     st.pos.copy(st.marker.position);
   }
+  // nothing instanced (pines, houses, props) may stand right in front of a station camera's lens
+  const LENS = STATIONS.filter(s => !s.view.sky).map(s => { const v = stationView(s), dx = v.look.x - v.pos.x, dz = v.look.z - v.pos.z, l = Math.hypot(dx, dz) || 1; return [v.pos.x, v.pos.z, v.pos.x + dx / l * 45, v.pos.z + dz / l * 45]; });
+  let nLens = 0;
+  for (const c of scene.children) { if (!c.isInstancedMesh || PRE_WORLD.has(c) || skip.has(c)) continue; const a = c.instanceMatrix.array, P0 = c.position; let ch = false;
+    for (let i = 0; i < c.count; i++) { const o = i * 16; if (a[o] === 0 && a[o + 5] === 0) continue; const x = a[o + 12] + P0.x, z = a[o + 14] + P0.z;
+      for (const q of LENS) if (segDist(x, z, q[0], q[1], q[2], q[3]) < 7) { for (let k = 0; k < 12; k++) a[o + k] = 0; ch = true; nLens++; break; } }
+    if (ch) c.instanceMatrix.needsUpdate = true; }
   for (const p of PEOPLE) if (p.path) p.path = p.path.map(q => m2(q[0], q[1]).slice(0, 2));
   for (const c of CRESTS.list) { [c.x, c.y, c.z] = m3(c.x, c.y, c.z); }
   for (const f of FOAMSPOTS) { const [nx, ny, nz] = m3(f[0], f[2], f[1]); f[0] = nx; f[1] = nz; f[2] = ny; }
@@ -2735,7 +2742,9 @@ const k_MAXD = 420, FARMS = [];
 function fillCountryside() {
   const F = { house: [], hay: [], rack: [], scare: [], fence: [], worker: [], worker2: [], jizo: [] };
   const roadD = (x, z) => { let d = 1e9; const R = ROAD.pts; for (let i = 0; i < R.length - 1; i++) d = Math.min(d, segDist(x, z, R[i][0], R[i][1], R[i + 1][0], R[i + 1][1])); return d; };
-  const stD = (x, z) => { let d = 1e9; for (const s of STATIONS) d = Math.min(d, Math.hypot(x - s.x, z - s.z)); return d; };
+  // keep clear: the station itself, and the first 170 units of each station camera's line of sight
+  const SL = STATIONS.filter(s => !s.view.sky).map(s => { const d = s.view.d || [0, 0], cx = s.x + d[0], cz = s.z + d[1], L = s.view.look, dx = L[0] - cx, dz = L[2] - cz, l = Math.hypot(dx, dz) || 1; return [cx, cz, cx + dx / l * 170, cz + dz / l * 170]; });
+  const stD = (x, z) => { let d = 1e9; for (const s of STATIONS) d = Math.min(d, Math.hypot(x - s.x, z - s.z)); for (const q of SL) d = Math.min(d, segDist(x, z, q[0], q[1], q[2], q[3]) - 8); return d; };
   const inTown = (x, z) => Math.abs(x - TOWN_NEW.x) < 200 && Math.abs(z - roadZ(x)) < 70;
   const ok = (x, z, clear) => { const h = landH(x, z); if (h < 1.2 || h > 75 || seaness(x, z) > .2) return false; if (Math.hypot(x, z) < FUJI_R * 1.1) return false;
     if (Math.abs(landH(x + 4, z) - landH(x - 4, z)) > 4 || Math.abs(landH(x, z + 4) - landH(x, z - 4)) > 4) return false;
