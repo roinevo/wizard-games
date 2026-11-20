@@ -2170,7 +2170,7 @@ applyItems();
   b.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); doAct(); });
   $("shopX").onclick = closeShop;
 })();
-function hishiTxt(n) { return `◆ ${n}`; }
+function hishiTxt(n) { return n ? `◆ ${n}` : "חינם"; }
 function openShop(title, who, items) {
   if (state !== "play") return;
   state = "shop"; $("shop").hidden = false; $("actBtn").hidden = true;
@@ -2207,6 +2207,7 @@ PLACES.push(
 let SCN = null;
 SCENE_HOOK = dt => {
   if (!SCN) { state = "play"; return; }
+  $("bubble").hidden = true; $("actBtn").hidden = true; { const b2 = document.getElementById("bubble2"); if (b2) b2.hidden = true; }
   SCN.t += dt; SCN.upd(dt, SCN.t);
   if (SCN.cam) { camera.position.lerp(SCN.cam, 1 - Math.exp(-dt * 3)); camera.lookAt(SCN.look); }
   if (SCN.t >= SCN.dur) { const e = SCN.end; SCN = null; state = "play"; if (e) e(); }
@@ -2271,8 +2272,28 @@ SENTO.pool = new V3(SENTO.x - 13, SENTO.y, SENTO.z + 2);
   rocks.push({ g: G_.cyl(5.1, 5.1, .6, 20), c: 0x7aa6bf, m: M4(0, .2, 0, 0, 0, 0, 1, 1, .82) });
   addMesh(partsGeo(rocks), SENTO.pool.x, SENTO.pool.z, 0, 1, SENTO.pool.y - .1); }
 addPerson("woman", SENTO.x - 4, SENTO.z - 6, { ry: Math.PI, col: 0x24467a, line: ["מים חמים מההר! טבילה בשני חותמים", "אחרי יום בדרך, אין כמו האמבט", "בחורף השלג נופל על המים החמים, וזה הכי יפה"] });
-PLACES.push({ x: PSHOP.x, z: PSHOP.z + 5.2, label: "חנות ההדפסים", act: openAlbumHere });
+PLACES.push({ x: PSHOP.x, z: PSHOP.z + 5.2, label: "חנות ההדפסים", act: () => {
+  const hung = (SAVE.have || []).slice(-PSHOP.slots.length).reverse();
+  openShop("חנות ההדפסים 絵", hung.length ? "כל הדפס שתלוי כאן הוא דלת. נכנסים אליו, ויוצאים במקום שבו הוא צויר." : "עוד אין כאן הדפסים שלכם. כל הדפס שנאסף בדרך נתלה כאן.",
+    [{ name: "לדפדף באלבום 📜", price: 0, reuse: true, got: () => setTimeout(openAlbumHere, 0) }, ...hung.map(id => ({ name: "להיכנס אל: " + PRINTS[id], price: 0, reuse: true, got: () => enterPrint(id) }))]); } });
 function openAlbumHere() { if (state !== "play") return; $("albumBtn").onclick(); $("startScr").hidden = true; state = "album"; sfx.scroll(); }
+// step INTO a print: the print fills the screen, and dissolves away at the place where it was painted
+function enterPrint(id) {
+  const s = STATIONS.find(q => q.id === id); if (!s) return;
+  const tex = getPrintTex(id); let moved = false;
+  SCN = { t: 0, dur: 4.4, cam: null,
+    upd: (dt, t) => {
+      post.uniforms.tP.value = tex; post.uniforms.pAsp.value = tex.image && tex.image.width ? tex.image.width / tex.image.height : 1.49;
+      if (t < 1.6) { post.uniforms.pMix.value = smooth(t / 1.6); return; }
+      if (!moved) { moved = true; const v = stationView(s); camera.position.copy(v.pos); camera.lookAt(v.look); camera.fov = v.fov; camera.updateProjectionMatrix();
+        const px = s.pos.x, pz = s.pos.z, gh = landH(px, pz); P.pos.set(px, Math.max(gh, 0), pz); P.yaw = Math.atan2(v.look.x - v.pos.x, v.look.z - v.pos.z); P.fwd.set(Math.sin(P.yaw), 0, Math.cos(P.yaw));
+        if (s.view.sky || gh < .3) { P.pos.y = Math.max(gh, 0) + 30; setMode("fly"); } else setMode("walk"); updateMood(10); updateMood(10); }
+      else { camera.position.copy(stationView(s).pos); camera.lookAt(stationView(s).look); }
+      post.uniforms.pMix.value = 1 - smooth(clamp((t - 2.1) / 2.2, 0, 1));
+    },
+    end: () => { post.uniforms.pMix.value = 0; toast(PRINTS[id], 2.4); } };
+  state = "scene"; sfx.scroll();
+}
 { const ob = $("albumBack").onclick; $("albumBack").onclick = () => { if (state === "album") { $("albumScr").hidden = true; state = "play"; } else ob(); }; }
 PLACES.push({ x: SENTO.x - 2, z: SENTO.z - 8, label: "בית המרחץ", act: () => openShop("בית המרחץ 湯", "מים חמים מהמעיינות שלמרגלות ההר. מנקים את אבק הדרך.", [{ name: "לטבול במעיין החם", price: 2, reuse: true, got: soak }]) });
 function soak() {
@@ -3331,7 +3352,7 @@ if (mT) setTimeout(() => {
   SAVE.crests = SAVE.crests || []; if (/rich/.test(HASH)) { SAVE.spent = -40; renderHUD(); }
   const w = mT[1];
   const PL = { tea: [CHAYA.x - 1, CHAYA.z + 9], bell: [BELL.x + 5, BELL.z + 4], dye: STALL_POS.dye, sento: [SENTO.x - 2, SENTO.z - 9], kabuki: [KAB.x, KAB.z - 15], kite: [KITE.x + 22, KITE.z - 6], sumo: [SUMO.x + 4, SUMO.z + 10], prints: (() => { const pl = PLACES.find(q => q.label === "חנות ההדפסים"); return [pl.x, pl.z + 4]; })() };
-  if (w === "prints") { SAVE.have = STATIONS.slice(0, 8).map(s => s.id); STATIONS.slice(0, 8).forEach(s => s.got = true); }
+  if (w === "prints") { SAVE.have = STATIONS.slice(0, 8).map(s => s.id); STATIONS.slice(0, 8).forEach(s => s.got = true); if (/enter/.test(HASH)) setTimeout(() => { enterPrint(SAVE.have[1]); for (let i = 0; i < 75; i++) step(1 / 30); console.log(`[enter] state=${state} pMix=${post.uniforms.pMix.value.toFixed(2)} mode=${G.mode} pos=${P.pos.x.toFixed(0)},${P.pos.z.toFixed(0)}`); }, 300); }
   const at = PL[w] || [TOWN_GATE.x, TOWN_GATE.z];
   P.pos.set(at[0], landH(at[0], at[1]), at[1]); P.yaw = w ? Math.atan2(0, -1) : Math.PI / 2;
   if (w === "tea" || w === "bell" || w === "sumo") P.yaw = Math.PI; if (w === "sento" || w === "kabuki") P.yaw = 0; if (w === "kite") P.yaw = -Math.PI / 2;
