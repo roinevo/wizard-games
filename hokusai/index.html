@@ -2984,6 +2984,8 @@ function aimFujiFrom(s, C, cy, right, up) {
     const slope = Math.cos(clamp(u, 0, 1) * Math.PI) * .12 * Math.PI, ry = Math.atan2(dx, dz) + Math.PI / 2 - slope; pp.push([x, H(x, z) + .15, z, ry, 1]); }
   instances(partsGeo([{ g: G_.box(3.4, .9, 7.5), c: 0x6b5233 }, { g: G_.box(3.6, .35, 8.2), c: 0xd8cfa8, m: M4(0, .6, 0) }]), pp);
   const path = [B, [B[0] + dx * .5 + R[0] * L * .12, B[1] + dz * .5 + R[1] * L * .12], A];
+  { const u = .58, bow = Math.sin(u * Math.PI) * L * .12, x = B[0] + dx * u + R[0] * bow, z = B[1] + dz * u + R[1] * bow, hs = bakeStatic(makeHorse()); // a packhorse led across, as in the print
+    hs.position.set(x, H(x, z) + 1.1, z); hs.rotation.y = Math.atan2(dx, dz); scene.add(hs); addPerson("porter", x + dx / L * 3.2, z + dz / L * 3.2, { y: H(x, z) + 1.1, ry: Math.atan2(dx, dz) }); }
   addPerson("traveler", B[0], B[1], { y: 1, path, speed: .9 }); addPerson("porter", A[0], A[1], { y: 1, path: path.slice().reverse(), speed: .8 }); addPerson("pilgrim", B[0], B[1], { y: 1, path, speed: .7 });
   const cy = H(C[0], C[1]) + 11;
   s.view.d = [C[0] - s.x, C[1] - s.z]; s.view.y = cy; s.view.up = 0; s.view.look = [C[0] + f[0] * 100, cy - 18, C[1] + f[1] * 100];
