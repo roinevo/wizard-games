@@ -1040,7 +1040,7 @@ station(56132, "ביצות אושיבורי", 2350, -620, { up: 16, d: [74, 40],
   instances(KIT.reed(), reeds);
 });
 station(36498, "אגם האקונה", -1250, 900, { up: 0, y: 120, d: [40, -300], look: [-1450, 0, 650], fov: 62 }, null, s => { VILLAGES.push([-1300, 420, 10]); });
-station(36496, "חוף שיצ'יריגהאמה", -1000, 1650, { up: 18, d: [0, 0], look: [-300, 120, 600], fov: 58 }, null, s => { PINEGROVES.push([s.x + 80, s.z - 60, 60, 25]); });
+station(36496, "חוף שיצ'יריגהאמה", -1000, 1650, { up: 18, d: [0, 0], look: [-300, 120, 600], fov: 58, aimFuji: [14, -12.5] }, null, s => { PINEGROVES.push([s.x + 80, s.z - 60, 60, 25]); });
 station(54868, "השתקפות באגם מיסאקה", -150, -1760, { up: 12, d: [0, 60], look: [-130, 70, -800], fov: 60, aimFuji: [5, -18.4] }, null, s => { MIRROR_FUJI.on = true; VILLAGES.push([-380, -1650, 8]); });
 station(56786, "מעבר מישימה", -1700, 1050, { up: 3, d: [0, 40], look: [-1500, 180, 600], fov: 58 }, null, s => {
   const [tx, tz] = [s.x, s.z]; const ty = landH(tx, tz);
