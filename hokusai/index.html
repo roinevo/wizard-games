@@ -1153,8 +1153,19 @@ function buildWorld() {
       c=mix(c,c*.72,hatch*.8);
       float forest=smoothstep(.55,.62,n+fbm(vP.xz*.013)*.25)*smoothstep(15.,30.,h);
       c=mix(c,mix(dark,vec3(.44,.57,.32),step(.55,n2)),forest*.8);
-      float rd=1e9; for(int i=0;i<8;i++){ vec2 a=uRoad[i], b=uRoad[i+1]; vec2 pa=vP.xz-a, ba=b-a; float t=clamp(dot(pa,ba)/dot(ba,ba),0.,1.); rd=min(rd,length(pa-ba*t)); }
-      c=mix(c,vec3(.8,.7,.5),smoothstep(6.,3.5,rd+n2*2.)*step(1.,h));
+      float rd=1e9; vec2 rdir=vec2(1.,0.), roff=vec2(0.); for(int i=0;i<8;i++){ vec2 a=uRoad[i], b=uRoad[i+1]; vec2 pa=vP.xz-a, ba=b-a; float t=clamp(dot(pa,ba)/dot(ba,ba),0.,1.); float dd=length(pa-ba*t); if(dd<rd){ rd=dd; rdir=normalize(ba); roff=pa-ba*t; } }
+      float roadM=smoothstep(6.,3.5,rd+n2*2.)*step(1.,h);
+      c=mix(c,vec3(.8,.7,.5),roadM);
+      // carved detail near the eye: cart ruts and pebbles on the road, grass tufts on the hills, stipple on the sand
+      float nearF=1.-smoothstep(70.,170.,vDist);
+      { float across=dot(roff,vec2(-rdir.y,rdir.x)), along=dot(vP.xz,rdir);
+        float rut=step(.86,fract(across*.75+vn(vec2(along*.05,across))*.35))*step(.4,vn(vec2(along*.3,across*2.)));
+        float peb=step(.94,h21(floor(vP.xz*2.3)));
+        c=mix(c,c*.8,max(rut*.8,peb*.6)*roadM*nearF); }
+      { vec2 q=vP.xz*vec2(1.5,.5)+vec2(n*3.,n2); vec2 qf=fract(q); float hr=h21(floor(q));
+        float tuft=step(.6,hr)*step(abs(qf.x-.5),.1+.05*hr)*step(abs(qf.y-.5),.3);
+        c=mix(c,c*.78,tuft*nearF*.75*smoothstep(40.,46.,h+n*14.)*(1.-roadM)); }
+      { float dots=step(.9,h21(floor(vP.xz*1.7+n2))); c=mix(c,c*.84,dots*nearF*(1.-smoothstep(1.5,4.,h))*step(.2,h)*(1.-roadM)); }
       float band=abs(fract(h*.035+n*.8)-.5); c=mix(c,c*.86,smoothstep(.05,.0,band)*smoothstep(60.,90.,h)*.6);
       c=mix(c,vec3(.95,.95,.93),vSnow*smoothstep(-1.,2.,h));
       float l=dot(normalize(vN),sun); c*= mix(.8,1.,smoothstep(.18,.22,l));
