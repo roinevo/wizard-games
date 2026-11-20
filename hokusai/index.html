@@ -1251,7 +1251,7 @@ function buildWorld() {
   for (let k = 0; k < 90; k++) { const x = EDO.x + rand(-60, 380), z = EDO.z + rand(60, 260) * (k % 2 ? 1 : -1); const y = landH(x, z); if (y > 1.5) (k % 3 ? houses : kuras).push([x, y - .3, z, Math.PI / 2, rand(.9, 1.1)]); }
   BRIDGES.push([EDO.x - 4, EDO.z - 2, 56, Math.atan2(.92, .39)]);
   const snowTint = (o, c) => { const s = snowAt(o[0], o[2]); return c.setRGB(1, 1, 1).lerp(new THREE.Color(0xffffff), 0).multiplyScalar(1).lerp(new THREE.Color(1.25, 1.25, 1.3), s); };
-  instances(KIT.cedar(), ced, null, (o, c) => c.setRGB(1, 1, 1).multiplyScalar(.82 + (Math.sin(o[0] * 12.9898 + o[2] * 78.233) * 43758.5453 % 1 + 1) % 1 * .3)); instances(KIT.pine(), pines); instances(KIT.minka(), houses, null, snowTint); instances(KIT.kura(), kuras); HOUSE_LIST = houses; KURA_LIST = kuras;
+  instances(KIT.cedar(), ced); instances(KIT.pine(), pines); instances(KIT.minka(), houses, null, snowTint); instances(KIT.kura(), kuras); HOUSE_LIST = houses; KURA_LIST = kuras;
   // bridges
   for (const [x, z, L, ry] of BRIDGES) {
     const parts = []; const n = Math.round(L / 4);
